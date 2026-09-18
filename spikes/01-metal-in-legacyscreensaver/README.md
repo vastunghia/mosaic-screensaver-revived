@@ -7,6 +7,9 @@ If there were a wall here, module M7 of the plan would have to be rethought and 
 (the screen saver proper) would be at risk — while the stand-alone app would stay intact,
 which is the reason the deliverable was designed this way.
 
+**Outcome: no wall.** Metal runs at 60 fps inside `legacyScreenSaver` with ample headroom.
+Details and numbers below.
+
 ## What is here
 
 | file | what it does |
@@ -49,9 +52,50 @@ A steady 60 fps, **~0.2 ms of GPU per frame**, `nextDrawable()` never nil. The b
 from the command line loads and its `principalClass` resolves correctly. This is the lower
 bound of the hardware we care about: on Apple Silicon it will be better.
 
-### Inside `legacyScreenSaver` — ⏳ to be run
+### Inside `legacyScreenSaver` — ✅
 
-Requires selecting MetalSpike in System Settings → Screen Saver.
+MetalSpike selected in System Settings, on a 4K Retina iMac (4096×2304 panel, interface at
+2560×1440 points, hence a **5120×2880 ≈ 14.7 Mpixel** drawable).
+
+```
+process=legacyScreenSaver preview=true  frame=143x80     fps=60.0  gpu=0.015ms
+process=legacyScreenSaver preview=false frame=2560x1440  fps=60.0  gpu=1.035ms
+sandbox: APP_SANDBOX_CONTAINER_ID=com.apple.ScreenSaver.Engine.legacyScreenSaver
+HOME=/Users/sergio/Library/Containers/com.apple.ScreenSaver.Engine.legacyScreenSaver/Data
+```
+
+**Metal works without friction inside the sandbox.** A constant 60 fps both in preview and
+full screen, `nextDrawable()` never nil, no error message, no behavioural difference from
+the host outside the sandbox. The Metal device is the same one — no software fallback, no
+low-power device.
+
+None of the worries that motivated this spike materialised.
+
+### Two side observations
+
+**The preview stays alive.** With System Settings open behind the full-screen saver, **two
+instances run in distinct processes**, both at 60 fps. In that condition the GPU time of the
+full-screen instance rises from 1.03 to ~2.25 ms: real contention, but on a transient
+configuration that only occurs while the user is in the settings pane. Worth remembering
+when we measure the performance of the product: it has to be done with System Settings
+closed, or the numbers double.
+
+**Half the answer to spike 2, for free.** Inside the saver, `NSHomeDirectory()` is
+`~/Library/Containers/com.apple.ScreenSaver.Engine.legacyScreenSaver/Data`, not the user's
+home. The container is the documented one, shared by every third-party `.saver`. It is the
+natural candidate for the index the app has to write and the saver to read, and whether the
+app can write there remains to be verified.
+
+### Headroom for the real effect
+
+The triangle covers about a quarter of the drawable. The effect the spec describes will
+cover the whole screen with textured quads sampled from mips, so the fill cost will be
+several times higher: a rough estimate of **4–6 ms per frame**, against a budget of 16.6 ms
+at 60 fps. On Apple Silicon it will be better still.
+
+It is an estimate extrapolated from a flat-shaded triangle, not a measurement: the real
+number will come from milestone 1. But the headroom is wide enough that nothing needs
+redesigning, which is exactly what this spike had to establish.
 
 ## Two traps found along the way
 
