@@ -41,7 +41,8 @@ Note: on this Mac `log` is shadowed by a shell function — `/usr/bin/log` is ne
 
 ### Outside the sandbox (control) — ✅
 
-On an Intel MacBook Pro with a **Radeon Pro 560X**, 960×540 window:
+On an Intel 4K Retina iMac with the **integrated Radeon Pro 560X**, 960×540 window
+(the machine also has an RX 6800 in a Thunderbolt eGPU, not attached during these measurements):
 
 ```
 device=AMD Radeon Pro 560X low-power=false unified-memory=false max-buffer=3072MB
