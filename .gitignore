@@ -6,3 +6,14 @@ DerivedData/
 .swiftpm/
 build/
 spikes/*/build/
+
+# Metal artefacts, in case anyone compiles by hand outside build.sh
+*.air
+*.metallib
+
+# Signing material: must never end up in here, for any reason
+*.p12
+*.cer
+*.certSigningRequest
+*.mobileprovision
+scripts/*.local.sh
