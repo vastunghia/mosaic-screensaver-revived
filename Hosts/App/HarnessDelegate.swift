@@ -8,7 +8,8 @@ final class HarnessDelegate: NSObject, NSApplicationDelegate {
     private let options: Options
     private let clock = HarnessClock()
     private let readout = HarnessReadout()
-    private var window: NSWindow?
+    private let ui = HarnessUIState()
+    private var window: HarnessWindow?
 
     init(engine: MosaicEngine, options: Options) {
         self.engine = engine
@@ -22,7 +23,7 @@ final class HarnessDelegate: NSObject, NSApplicationDelegate {
             engine.updateSettings(settings)
         }
 
-        let window = NSWindow(
+        let window = HarnessWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1280, height: 720),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
@@ -30,13 +31,15 @@ final class HarnessDelegate: NSObject, NSApplicationDelegate {
         )
         window.title = "Mosaic — harness"
         window.contentView = NSHostingView(
-            rootView: HarnessView(engine: engine, clock: clock, readout: readout)
+            rootView: HarnessView(engine: engine, clock: clock, readout: readout, ui: ui)
         )
         window.center()
         window.makeKeyAndOrderFront(nil)
         if options.fullScreen {
             window.toggleFullScreen(nil)
         }
+        window.clock = clock
+        window.ui = ui
         self.window = window
 
         NSApp.activate(ignoringOtherApps: true)

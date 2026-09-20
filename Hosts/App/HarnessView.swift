@@ -12,15 +12,14 @@ struct HarnessView: View {
     let engine: MosaicEngine
     @ObservedObject var clock: HarnessClock
     @ObservedObject var readout: HarnessReadout
-
-    @State private var showsControls = true
+    @ObservedObject var ui: HarnessUIState
 
     var body: some View {
         ZStack(alignment: .topLeading) {
             MosaicView(engine: engine, clock: clock, readout: readout)
                 .ignoresSafeArea()
 
-            if showsControls {
+            if ui.showsControls {
                 VStack(alignment: .leading, spacing: 12) {
                     statistics
                     controls
@@ -33,9 +32,6 @@ struct HarnessView: View {
             }
         }
         .background(.black)
-        .onKeyPress { press in handle(press) }
-        .focusable()
-        .focusEffectDisabled()
     }
 
     private var statistics: some View {
@@ -63,7 +59,7 @@ struct HarnessView: View {
                         get: { Double(clock.settings.rows) },
                         set: { clock.settings.rows = Int($0.rounded()) }
                     ),
-                    in: 4...60,
+                    in: 30...90,
                     step: 1
                 )
             }
@@ -74,7 +70,7 @@ struct HarnessView: View {
                         get: { clock.settings.cycleDuration },
                         set: { clock.settings.cycleDuration = $0 }
                     ),
-                    in: 4...60
+                    in: 5...60
                 )
             }
 
@@ -108,7 +104,7 @@ struct HarnessView: View {
             .buttonStyle(.bordered)
             .controlSize(.small)
 
-            Text("space pause · ←/→ one frame · f full screen · h hide")
+            Text("space pause · ←/→ frame · ↑/↓ cycle · f full screen · h hide · r rewind")
                 .font(.system(size: 10))
                 .foregroundStyle(.white.opacity(0.6))
         }
@@ -131,23 +127,4 @@ struct HarnessView: View {
         }
     }
 
-    private func handle(_ press: KeyPress) -> KeyPress.Result {
-        switch press.key {
-        case .space:
-            clock.isPaused.toggle()
-        case .leftArrow:
-            clock.step(frames: press.modifiers.contains(.shift) ? -10 : -1)
-        case .rightArrow:
-            clock.step(frames: press.modifiers.contains(.shift) ? 10 : 1)
-        case KeyEquivalent("f"):
-            NSApp.keyWindow?.toggleFullScreen(nil)
-        case KeyEquivalent("h"):
-            showsControls.toggle()
-        case KeyEquivalent("r"):
-            clock.reset()
-        default:
-            return .ignored
-        }
-        return .handled
-    }
 }

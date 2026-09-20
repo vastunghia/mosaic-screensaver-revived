@@ -5,9 +5,9 @@ import MosaicPhotos
 /// Command line options. Deliberately tiny: this is a development harness, and
 /// anything worth keeping ends up in the preferences of the real app instead.
 struct Options {
-    var rows = 20
-    var cycleDuration: Double = 20
-    var crossfadeDuration: Double = 0.15
+    var rows = 60
+    var cycleDuration: Double = 25
+    var crossfadeDuration: Double = 0.30
     var poolSize = 256
     var exportDirectory: URL?
     var exportFrames = 240
