@@ -50,7 +50,7 @@ struct HarnessView: View {
                 format: "%.0f fps · %.2f ms GPU · %d tiles",
                 readout.framesPerSecond, stats.gpuMilliseconds, stats.tileCount
             ))
-            Text(String(format: "cycle %d · u = %.3f", clock.cycleIndex, clock.u))
+            Text(String(format: "cycle %d · u = %.3f", stats.cycleIndex, stats.u))
         }
         .font(.system(size: 11, design: .monospaced))
     }
@@ -88,10 +88,10 @@ struct HarnessView: View {
                 )
             }
 
-            labelled("scrub u", value: String(format: "%.3f", clock.u)) {
+            labelled("scrub u", value: String(format: "%.3f", readout.statistics.u)) {
                 Slider(
                     value: Binding(
-                        get: { clock.u },
+                        get: { readout.statistics.u },
                         set: { clock.isPaused = true; clock.u = $0 }
                     ),
                     in: 0...1

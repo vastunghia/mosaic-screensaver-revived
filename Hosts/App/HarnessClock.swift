@@ -12,7 +12,13 @@ final class HarnessClock: ObservableObject {
         didSet { onSettingsChange?(settings) }
     }
 
-    @Published private(set) var time: TimeInterval = 0
+    /// Deliberately *not* @Published. It changes 60 times a second, and a
+    /// publisher here redraws the whole control panel at 60 Hz: the harness
+    /// would then spend more of the CPU than the effect does, and the numbers it
+    /// shows would be measuring itself. The overlay reads the time back from the
+    /// engine's statistics instead, a few times a second.
+    private(set) var time: TimeInterval = 0
+
     @Published var isPaused = false
 
     var onSettingsChange: ((MosaicSettings) -> Void)?
