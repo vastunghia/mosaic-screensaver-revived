@@ -5,6 +5,9 @@ set -euo pipefail
 
 cd "$(dirname "$0")"
 
+# Stable signing identity: see scripts/sign.sh and spike 3 § 5.
+source ../../scripts/sign.sh
+
 NAME="MetalSpike"
 BUNDLE_ID="dev.mosaic.spike.metalspike"
 TARGET="$(uname -m)-apple-macos15.0"
@@ -53,8 +56,7 @@ cat > "$SAVER/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 
-echo "==> ad-hoc signature"
-codesign --force --sign - --timestamp=none "$SAVER"
+sign_bundle "$SAVER"
 
 echo "==> check"
 file "$SAVER/Contents/MacOS/$NAME"

@@ -3,6 +3,9 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+# Stable signing identity: see scripts/sign.sh and spike 3 § 5.
+source ../../scripts/sign.sh
+
 TARGET="$(uname -m)-apple-macos15.0"
 BUILD="build"
 APP="$BUILD/MosaicSpike2Writer.app"
@@ -35,7 +38,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 </dict>
 </plist>
 PLIST
-codesign --force --sign - --timestamp=none "$APP"
+sign_bundle "$APP"
 
 echo "==> saver (the reading side)"
 # swiftc drives the link: with clang -bundle the global stored properties go to SIGSEGV (spike 1).
@@ -61,7 +64,7 @@ cat > "$SAVER/Contents/Info.plist" <<PLIST
 </dict>
 </plist>
 PLIST
-codesign --force --sign - --timestamp=none "$SAVER"
+sign_bundle "$SAVER"
 
 DEST="$HOME/Library/Screen Savers"
 mkdir -p "$DEST"

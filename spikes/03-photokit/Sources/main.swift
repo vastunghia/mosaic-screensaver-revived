@@ -22,6 +22,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         say("SPIKE3 ===== APP side =====")
         say("SPIKE3 initial authorisation status: \(describe(PHPhotoLibrary.authorizationStatus(for: .readWrite)))")
 
+        // `probe`: read the status and nothing else — do not request it, do not
+        // index. This exists for the stable-signing-identity experiment: a rebuild
+        // changes the cdhash, and the question is whether TCC notices. Requesting
+        // authorisation would spoil the test, because a granted prompt would make
+        // the two possible outcomes indistinguishable.
+        if CommandLine.arguments.contains("probe") {
+            say("SPIKE3 probe mode — no request, no indexing")
+            NSApp.terminate(nil)
+            return
+        }
+
         PHPhotoLibrary.requestAuthorization(for: .readWrite) { status in
             DispatchQueue.main.async {
                 say("SPIKE3 status after the request: \(self.describe(status))")
