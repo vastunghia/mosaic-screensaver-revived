@@ -51,7 +51,10 @@ let package = Package(
         // M9 — the development harness. A thin shell over MosaicEngine.
         .executableTarget(
             name: "MosaicApp",
-            dependencies: ["MosaicEngine", "MosaicCore"],
+            // The host picks the settings (M1) and where the photographs come
+            // from (M4), and drives the engine (M8). It has no business knowing
+            // that there is a renderer behind it.
+            dependencies: ["MosaicEngine", "MosaicCore", "MosaicPhotos"],
             path: "Hosts/App"
         ),
 

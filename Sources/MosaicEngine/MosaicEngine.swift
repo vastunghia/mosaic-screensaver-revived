@@ -35,16 +35,19 @@ public final class MosaicEngine {
 
     private var layer: CAMetalLayer?
     private let inFlight: DispatchSemaphore
+    private let statisticsBox = StatisticsBox()
 
-    /// - Parameter renderer: normally left to the engine, which resolves
-    ///   default.metallib from its own bundle. The harness passes one in when it
-    ///   wants shaders compiled some other way.
+    /// - Parameter library: normally nil, and then the engine resolves
+    ///   default.metallib from the bundle its own code lives in — the app or the
+    ///   .saver, without either having to say which. A host passes one in only
+    ///   when it has compiled the shaders some other way, which is what the
+    ///   development harness does when it runs outside a bundle.
     public init(
         device: MTLDevice,
         settings: MosaicSettings = MosaicSettings(),
         source: PhotoSource = SyntheticPhotoSource(),
         builder: LayoutBuilder = RandomLayoutBuilder(),
-        renderer: Renderer? = nil,
+        library: MTLLibrary? = nil,
         seed: UInt64 = 0x4D05_A1C0,
         tilePixelWidth: Int = 256
     ) throws {
@@ -72,7 +75,8 @@ public final class MosaicEngine {
         self.builder = builder
         self.seed = seed
         self.pool = descriptors.map(\.id)
-        self.renderer = try renderer ?? Renderer(device: device)
+        self.renderer = try library.map { try Renderer(device: device, library: $0) }
+            ?? Renderer(device: device)
         self.atlas = try StaticTileAtlas(
             device: device,
             queue: queue,
@@ -80,6 +84,7 @@ public final class MosaicEngine {
             tileSize: (tilePixelWidth, Int((Double(tilePixelWidth) * 9 / 16).rounded()))
         )
         self.inFlight = DispatchSemaphore(value: Renderer.inFlightFrameCount)
+        statisticsBox.update { $0.deviceName = device.name }
     }
 
     // MARK: - Host API
@@ -118,7 +123,11 @@ public final class MosaicEngine {
             inFlight.signal()
             return
         }
-        commands.addCompletedHandler { [inFlight] _ in inFlight.signal() }
+        commands.addCompletedHandler { [inFlight, statisticsBox] buffer in
+            let milliseconds = (buffer.gpuEndTime - buffer.gpuStartTime) * 1000
+            statisticsBox.update { $0.gpuMilliseconds = milliseconds }
+            inFlight.signal()
+        }
 
         let pass = MTLRenderPassDescriptor()
         pass.colorAttachments[0].texture = drawable.texture
@@ -127,8 +136,13 @@ public final class MosaicEngine {
         pass.colorAttachments[0].clearColor = Renderer.clearColor
 
         if let encoder = commands.makeRenderCommandEncoder(descriptor: pass) {
-            renderer.encode(frame, atlas: atlas, into: encoder)
+            let drawn = renderer.encode(frame, atlas: atlas, into: encoder)
             encoder.endEncoding()
+            statisticsBox.update {
+                $0.tileCount = drawn
+                $0.cycleIndex = frame.position.index
+                $0.u = frame.position.u
+            }
         }
 
         commands.present(drawable)
@@ -178,6 +192,8 @@ public final class MosaicEngine {
     /// A Radeon Pro 560X and an RX 6800 are far too different for an unlabelled
     /// frame time to mean anything.
     public var deviceName: String { device.name }
+
+    public var statistics: FrameStatistics { statisticsBox.current }
 
     // MARK: - Lookahead
 

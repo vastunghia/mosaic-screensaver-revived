@@ -94,12 +94,19 @@ public final class Renderer {
     /// cannot supply should read as absence rather than as a colour choice.
     public static let clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
 
-    public func encode(_ frame: FrameState, atlas: TileAtlas, into encoder: MTLRenderCommandEncoder) {
+    /// - Returns: how many tiles were drawn, which is the one number that says
+    ///   whether culling is doing its job.
+    @discardableResult
+    public func encode(
+        _ frame: FrameState,
+        atlas: TileAtlas,
+        into encoder: MTLRenderCommandEncoder
+    ) -> Int {
         instances.removeAll(keepingCapacity: true)
         appendTiles(of: frame, using: atlas)
-        guard !instances.isEmpty else { return }
+        guard !instances.isEmpty else { return 0 }
 
-        guard let buffer = buffer(for: instances.count) else { return }
+        guard let buffer = buffer(for: instances.count) else { return 0 }
         buffer.contents()
             .withMemoryRebound(to: TileInstance.self, capacity: instances.count) { destination in
                 destination.update(from: instances, count: instances.count)
@@ -121,6 +128,7 @@ public final class Renderer {
             vertexCount: 4,
             instanceCount: instances.count
         )
+        return instances.count
     }
 
     /// Builds the instance list for one frame: the current mosaic, then the
