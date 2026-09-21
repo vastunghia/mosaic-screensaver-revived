@@ -1,10 +1,13 @@
 import AppKit
 import Metal
 import MosaicEngine
+import MosaicPhotos
+import PhotoIndex
 import SwiftUI
 
-// M9, in its milestone-1 form: a window for judging the movement, and an
-// offscreen mode for looking at it cold.
+// M9, in its milestone-2 form: a window for judging the effect, an offscreen
+// mode for looking at it cold, and a way to build the index the photographs come
+// from.
 //
 // Everything of substance is behind MosaicEngine. If this file ever grows a
 // shortcut the .saver could not take, that is an architecture bug, not a
@@ -12,13 +15,45 @@ import SwiftUI
 
 let options = Options.parse(Array(CommandLine.arguments.dropFirst()))
 
-guard let device = MTLCreateSystemDefaultDevice() else {
-    FileHandle.standardError.write(Data("\(HarnessError.noMetalDevice)\n".utf8))
-    exit(1)
-}
-
 do {
+    // Indexing needs no GPU, so it happens before we go looking for one.
+    if options.buildIndex {
+        guard let folder = options.folder else {
+            throw HarnessError.indexingWithoutAFolder
+        }
+        let source = try FolderPhotoSource(root: folder)
+        print("mosaic: indexing \(source.root.path)")
+        try PhotoSourceFactory.buildIndex(
+            folder: source,
+            store: PhotoIndexStore(directory: options.resolvedIndexDirectory),
+            root: source.root.path
+        )
+        exit(0)
+    }
+
+    guard let device = MTLCreateSystemDefaultDevice() else {
+        throw HarnessError.noMetalDevice
+    }
     let library = try ShaderLibrary.load(device: device)
+    let photos = try PhotoSourceFactory.make(options: options)
+    let planning = PlannerFactory.make(options: options, photos: photos)
+    print(options.banner(sourceDescription: photos.description))
+    for note in planning.notes { print("  \(note)") }
+
+    if let file = options.exportMosaic {
+        try MosaicExporter.export(
+            to: file,
+            cycle: options.exportCycle,
+            width: options.exportWidth,
+            settings: options.settings,
+            device: device,
+            library: library,
+            photos: photos,
+            planner: planning.planner,
+            tileWidth: options.tileWidth
+        )
+        exit(0)
+    }
 
     if let directory = options.exportDirectory {
         try CycleExporter.export(
@@ -29,7 +64,9 @@ do {
             startCycle: options.exportCycle,
             device: device,
             library: library,
-            poolSize: options.poolSize
+            source: photos.source,
+            planner: planning.planner,
+            tileWidth: options.tileWidth
         )
         exit(0)
     }
@@ -37,8 +74,10 @@ do {
     let engine = try MosaicEngine(
         device: device,
         settings: options.settings,
-        source: SyntheticPhotoSourceFactory.make(count: options.poolSize),
-        library: library
+        source: photos.source,
+        planner: planning.planner,
+        library: library,
+        tilePixelWidth: options.tileWidth
     )
 
     let application = NSApplication.shared

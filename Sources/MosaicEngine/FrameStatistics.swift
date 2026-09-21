@@ -1,4 +1,5 @@
 import Foundation
+import MosaicSolver
 
 /// What the last few frames cost.
 ///
@@ -12,6 +13,17 @@ public struct FrameStatistics: Sendable {
     public var tileCount: Int = 0
     public var cycleIndex: Int = 0
     public var u: Double = 0
+
+    /// Which photograph the current mosaic depicts. Comparing two solver
+    /// settings is meaningless unless it is the same photograph both times.
+    public var subject: String = ""
+
+    /// How the last mosaic scored. Milestone 2's deliverable is a judgement, and
+    /// this is what turns "that one looks worse" into "that one is worse".
+    public var solve: SolveStatistics?
+
+    /// Why the last mosaic fell back to random tiles, if it did.
+    public var lastError: String?
 
     public init() {}
 }

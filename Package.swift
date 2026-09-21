@@ -8,8 +8,8 @@ import PackageDescription
 // enforces exactly the same boundaries for a single-author repository, and the
 // decision is recorded there.
 //
-// Modules are created when they are needed, not in advance: MosaicSolver (M3),
-// PhotoIndex (M5), TileStore (M6) and SharedStore (M11) do not exist yet.
+// Modules are created when they are needed, not in advance: TileStore (M6) and
+// SharedStore (M11) do not exist yet.
 let package = Package(
     name: "Mosaic",
     platforms: [.macOS(.v15)],
@@ -24,8 +24,17 @@ let package = Package(
         // it returns a FrameState. No I/O, no GPU, no AppKit.
         .target(name: "CycleEngine", dependencies: ["MosaicCore"]),
 
+        // M3 — the photomosaic itself. Pure: colours in, a layout out. No I/O,
+        // no CoreGraphics, no knowledge of where the colours were measured.
+        .target(name: "MosaicSolver", dependencies: ["MosaicCore"]),
+
         // M4 — where images come from. Only the synthetic source for now.
         .target(name: "MosaicPhotos", dependencies: ["MosaicCore"]),
+
+        // M5 — the persistent index: the "Creating photo database" of the
+        // original, made incremental. Depends on MosaicPhotos because it reads
+        // through a PhotoSource, and on nothing above it.
+        .target(name: "PhotoIndex", dependencies: ["MosaicCore", "MosaicPhotos"]),
 
         // M7 — Metal. Shaders.metal is excluded from the Swift build: it is
         // compiled to default.metallib by the host build scripts, because
@@ -45,7 +54,10 @@ let package = Package(
         // that orchestration would be code the saver cannot reuse.
         .target(
             name: "MosaicEngine",
-            dependencies: ["MosaicCore", "CycleEngine", "MosaicPhotos", "MosaicRender"]
+            dependencies: [
+                "MosaicCore", "CycleEngine", "MosaicPhotos", "MosaicRender",
+                "MosaicSolver", "PhotoIndex",
+            ]
         ),
 
         // M9 — the development harness. A thin shell over MosaicEngine.
@@ -54,11 +66,18 @@ let package = Package(
             // The host picks the settings (M1) and where the photographs come
             // from (M4), and drives the engine (M8). It has no business knowing
             // that there is a renderer behind it.
-            dependencies: ["MosaicEngine", "MosaicCore", "MosaicPhotos"],
-            path: "Hosts/App"
+            dependencies: ["MosaicEngine", "MosaicCore", "MosaicPhotos", "PhotoIndex"],
+            path: "Hosts/App",
+            // build.sh lives next to the sources it builds; SwiftPM only needs
+            // telling that it is not one of them.
+            exclude: ["build.sh"]
         ),
 
         .testTarget(name: "MosaicCoreTests", dependencies: ["MosaicCore"]),
+        .testTarget(name: "MosaicSolverTests", dependencies: ["MosaicSolver", "MosaicCore"]),
+        .testTarget(name: "MosaicPhotosTests", dependencies: ["MosaicPhotos", "MosaicCore"]),
+        .testTarget(name: "PhotoIndexTests", dependencies: ["PhotoIndex", "MosaicPhotos", "MosaicCore"]),
+        .testTarget(name: "MosaicEngineTests", dependencies: ["MosaicEngine", "MosaicSolver", "MosaicCore"]),
         .testTarget(name: "CycleEngineTests", dependencies: ["CycleEngine", "MosaicCore"]),
     ]
 )

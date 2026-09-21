@@ -24,12 +24,36 @@ public struct PhotoDescriptor: Equatable, Sendable {
 public protocol PhotoSource: Sendable {
     func photos() throws -> [PhotoDescriptor]
 
-    /// An image for `id`, at most `maxPixelWidth` across. Sources are free to
-    /// return something smaller; nothing may assume an exact size.
-    func image(for id: PhotoID, maxPixelWidth: Int) throws -> CGImage
+    /// The **canonical 16:9 crop** of `id`, at most `maxPixelWidth` across.
+    ///
+    /// The postcondition is the contract, and every source owes all of it:
+    ///
+    /// - the aspect ratio is `CanonicalAspect.ratio`, within one pixel;
+    /// - the EXIF orientation has been applied, so the image is upright;
+    /// - the colour space is sRGB, whatever the file said;
+    /// - `maxPixelWidth` bounds the width **of the crop**, not the longest side
+    ///   of the original. Sources may return something smaller when the original
+    ///   is smaller; nothing may assume an exact size.
+    ///
+    /// SPEC § 4 gives every photograph one crop used at every scale, because it
+    /// appears both as a tile and full screen and the two share an aspect ratio.
+    /// Vertical photographs are centre cropped (§ 8.2, closed).
+    ///
+    /// **This may block for hundreds of milliseconds** — it decodes a file. It
+    /// must never be called from the render thread.
+    func canonicalImage(for id: PhotoID, maxPixelWidth: Int) throws -> CGImage
 }
 
-public enum PhotoSourceError: Error {
+public enum PhotoSourceError: Error, CustomStringConvertible {
     case unknownPhoto(PhotoID)
     case couldNotRender(PhotoID)
+    case couldNotReadFolder(URL)
+
+    public var description: String {
+        switch self {
+        case .unknownPhoto(let id): return "no photograph called \(id.rawValue)"
+        case .couldNotRender(let id): return "could not render \(id.rawValue)"
+        case .couldNotReadFolder(let url): return "could not read the folder \(url.path)"
+        }
+    }
 }

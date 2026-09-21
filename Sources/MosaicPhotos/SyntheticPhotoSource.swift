@@ -31,14 +31,15 @@ public struct SyntheticPhotoSource: PhotoSource {
         PhotoID(String(format: "synthetic:%05d", index))
     }
 
-    public func image(for id: PhotoID, maxPixelWidth: Int) throws -> CGImage {
+    public func canonicalImage(for id: PhotoID, maxPixelWidth: Int) throws -> CGImage {
         guard let index = Self.index(of: id), index < count else {
             throw PhotoSourceError.unknownPhoto(id)
         }
 
-        // 16:9, the canonical crop of SPEC § 4.
-        let width = max(16, maxPixelWidth)
-        let height = max(9, Int((Double(width) * 9 / 16).rounded()))
+        // 16:9, the canonical crop of SPEC § 4. These photographs have no
+        // original to crop from: they are generated at the canonical aspect.
+        let width = max(CanonicalAspect.width, maxPixelWidth)
+        let height = CanonicalAspect.height(forWidth: width)
 
         guard let context = CGContext(
             data: nil,
@@ -132,27 +133,5 @@ public struct SyntheticPhotoSource: PhotoSource {
         default: (r, g, b) = (c, 0, x)
         }
         return (r + m, g + m, b + m)
-    }
-}
-
-/// A small deterministic generator, so a given PhotoID always produces the same
-/// image in every process and on every run.
-struct SplitMix64 {
-    private var state: UInt64
-
-    init(seed: UInt64) {
-        state = seed
-    }
-
-    mutating func next() -> UInt64 {
-        state &+= 0x9E37_79B9_7F4A_7C15
-        var z = state
-        z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
-        z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
-        return z ^ (z >> 31)
-    }
-
-    mutating func nextUnit() -> Double {
-        Double(next() >> 11) * (1.0 / 9_007_199_254_740_992.0)
     }
 }

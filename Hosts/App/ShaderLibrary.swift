@@ -35,9 +35,12 @@ enum ShaderLibrary {
 enum HarnessError: Error, CustomStringConvertible {
     case noMetalDevice
     case noShaderLibrary(tried: [String])
+    case indexingWithoutAFolder
 
     var description: String {
         switch self {
+        case .indexingWithoutAFolder:
+            return "--build-index needs a --folder to index"
         case .noMetalDevice:
             return "no MTLDevice available"
         case .noShaderLibrary(let tried):

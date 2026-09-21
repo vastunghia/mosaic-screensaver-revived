@@ -1,5 +1,6 @@
 import MosaicCore
 import MosaicEngine
+import MosaicSolver
 import SwiftUI
 
 /// The harness: the effect, plus the controls needed to judge it.
@@ -47,6 +48,29 @@ struct HarnessView: View {
                 readout.framesPerSecond, stats.gpuMilliseconds, stats.tileCount
             ))
             Text(String(format: "cycle %d · u = %.3f", stats.cycleIndex, stats.u))
+
+            // Which photograph, and how well the tiles match it. Judging two
+            // solver settings against each other is meaningless unless it is
+            // the same photograph both times, and "that one looks worse" is
+            // worth very little next to "that one is worse by a fifth".
+            if !stats.subject.isEmpty {
+                Text(stats.subject)
+                    .lineLimit(1)
+                    .truncationMode(.head)
+                    .foregroundStyle(.white.opacity(0.75))
+            }
+            if let solve = stats.solve {
+                Text(String(
+                    format: "dE %.1f rms · %d photos · max %d uses",
+                    solve.rootMeanSquareDeltaE, solve.distinctPhotos, solve.maximumUses
+                ))
+                .foregroundStyle(.white.opacity(0.75))
+            }
+            if let error = stats.lastError {
+                Text(error)
+                    .lineLimit(2)
+                    .foregroundStyle(.orange)
+            }
         }
         .font(.system(size: 11, design: .monospaced))
     }
