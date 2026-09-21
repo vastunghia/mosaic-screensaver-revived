@@ -119,11 +119,14 @@ public final class StaticTileAtlas: TileAtlas {
             ) else {
                 return false
             }
-            // CGContext draws bottom-up; the texture wants the first row to be
-            // the top one, so the image is flipped here rather than in the
-            // shader, where it would cost a branch per fragment.
-            context.translateBy(x: 0, y: CGFloat(height))
-            context.scaleBy(x: 1, y: -1)
+            // No flip, and it is worth saying why the obvious one is wrong. A
+            // bitmap context's first row of memory is the top of the image, and
+            // `draw` puts the CGImage's first row there. Metal's texture origin
+            // is also top-left, and the shader maps a tile's top edge to v = 0,
+            // so the chain is already consistent end to end. Flipping here —
+            // which looks right, because the user-space origin is at the bottom
+            // left — renders every tile upside down. Milestone 1 could not see
+            // it: a mirrored synthetic blob is another synthetic blob.
             context.interpolationQuality = .high
             context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
             return true
