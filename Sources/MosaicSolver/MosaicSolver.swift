@@ -250,10 +250,12 @@ public enum MosaicSolver {
             tiles: tiles
         )
 
+        var cellDeltaE = [Double](repeating: 0, count: cellCount)
         var sumOfSquares = 0.0
         var worst = 0.0
         for index in 0..<cellCount {
             let distance = cellMean[index].deltaE(to: poolMean[assigned[index]], weights: options.weights)
+            cellDeltaE[index] = distance
             sumOfSquares += distance * distance
             worst = max(worst, distance)
         }
@@ -264,7 +266,8 @@ public enum MosaicSolver {
             distinctPhotos: uses.reduce(0) { $0 + ($1 > 0 ? 1 : 0) },
             maximumUses: uses.max() ?? 0,
             anchorDeltaE: anchorDeltaE,
-            cellCount: cellCount
+            cellCount: cellCount,
+            cellDeltaE: cellDeltaE
         )
 
         return SolveResult(layout: layout, statistics: statistics)

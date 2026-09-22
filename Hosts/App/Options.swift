@@ -12,7 +12,11 @@ struct Options {
 
     /// How many photographs the mosaic may draw from. Also the size of the tile
     /// atlas, because the solver may pick any of them.
-    var poolSize = 1024
+    ///
+    /// The atlas ceiling, and not less: at 1024 a 2048-photograph corpus was
+    /// solved from half of itself, and the full one was better on all three
+    /// counts at once — delta E, distinct photographs, most uses.
+    var poolSize = 2048
 
     /// Where real photographs come from. Without it the harness runs on
     /// synthetic images, which is how milestone 1 judged the movement.
@@ -33,6 +37,11 @@ struct Options {
     var maximumUses: Int?
     var lightnessWeight: Double = 1
     var chromaWeight: Double = 1
+
+    /// Many subjects, each at several penalties, and a page to compare them on.
+    var exportBatch: URL?
+    var batchSubjects = 20
+    var batchPenalties: [Double] = [0.5, 1, 2]
 
     var exportDirectory: URL?
     var exportFrames = 240
@@ -109,6 +118,11 @@ struct Options {
             case "--max-uses": options.maximumUses = next().flatMap(Int.init)
             case "--lightness-weight": options.lightnessWeight = next().flatMap(Double.init) ?? options.lightnessWeight
             case "--chroma-weight": options.chromaWeight = next().flatMap(Double.init) ?? options.chromaWeight
+            case "--export-batch": options.exportBatch = path()
+            case "--subjects": options.batchSubjects = next().flatMap(Int.init) ?? options.batchSubjects
+            case "--penalties":
+                let values = next()?.split(separator: ",").compactMap { Double($0) } ?? []
+                if !values.isEmpty { options.batchPenalties = values }
             case "--export-cycle": options.exportDirectory = path()
             case "--frames": options.exportFrames = next().flatMap(Int.init) ?? options.exportFrames
             case "--width": options.exportWidth = next().flatMap(Int.init) ?? options.exportWidth
@@ -139,6 +153,13 @@ struct Options {
                 lightnessWeight, chromaWeight
             ))
             lines.append("  index: \(resolvedIndexDirectory.path)")
+        }
+        if exportBatch != nil {
+            lines.append(String(
+                format: "  batch: %d subjects from cycle %d · penalties %@ (--repeat-penalty ignored)",
+                batchSubjects, exportCycle,
+                batchPenalties.map { String(format: "%g", $0) }.joined(separator: ", ")
+            ))
         }
         if randomTiles {
             lines.append("  tiles chosen at RANDOM (--random-tiles)")

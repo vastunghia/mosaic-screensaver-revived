@@ -25,13 +25,20 @@ public struct SolveStatistics: Equatable, Sendable {
 
     public var cellCount: Int
 
+    /// Every cell's delta E, row-major, `R × R`. The headline numbers say how
+    /// good a mosaic is; this says *where* it is not, which is what separates
+    /// "the corpus has no photograph of that colour" from "the spreading pushed
+    /// a worse one in". The error map of the harness is drawn from it.
+    public var cellDeltaE: [Double]
+
     public init(
         rootMeanSquareDeltaE: Double = 0,
         maximumDeltaE: Double = 0,
         distinctPhotos: Int = 0,
         maximumUses: Int = 0,
         anchorDeltaE: Double = 0,
-        cellCount: Int = 0
+        cellCount: Int = 0,
+        cellDeltaE: [Double] = []
     ) {
         self.rootMeanSquareDeltaE = rootMeanSquareDeltaE
         self.maximumDeltaE = maximumDeltaE
@@ -39,6 +46,7 @@ public struct SolveStatistics: Equatable, Sendable {
         self.maximumUses = maximumUses
         self.anchorDeltaE = anchorDeltaE
         self.cellCount = cellCount
+        self.cellDeltaE = cellDeltaE
     }
 }
 

@@ -95,6 +95,42 @@ struct MosaicSolverTests {
         }
     }
 
+    @Test("the per-cell errors are the tiles' own, and the headline numbers summarise them")
+    func perCellErrors() throws {
+        // The error map is drawn from these, so they have to be recomputable from
+        // the layout alone. A map built from anything else would show where the
+        // solver thinks it went wrong, not where it did.
+        let pool = latticePool(perAxis: 4)
+        let rows = 12
+        let target = randomTarget(rows: rows, seed: 3)
+        let result = try MosaicSolver.solve(
+            target: target,
+            subject: PhotoID("C"),
+            previousSubject: pool[9].id,
+            pool: pool,
+            options: SolverOptions(repetitionSpacing: 2),
+            seed: 11
+        )
+        let statistics = result.statistics
+        #expect(statistics.cellDeltaE.count == rows * rows)
+
+        for row in 0..<rows {
+            for column in 0..<rows {
+                let index = row * rows + column
+                let tile = result.layout.tiles[index].photo
+                let entry = try #require(pool.first { $0.id == tile })
+                let expected = LabColor(target.signature(of: GridCell(column: column, row: row)).mean)
+                    .deltaE(to: LabColor(entry.signature.mean))
+                #expect(abs(statistics.cellDeltaE[index] - expected) < 1e-9)
+            }
+        }
+
+        let squares = statistics.cellDeltaE.reduce(0) { $0 + $1 * $1 }
+        let rms = (squares / Double(rows * rows)).squareRoot()
+        #expect(abs(rms - statistics.rootMeanSquareDeltaE) < 1e-9)
+        #expect(statistics.cellDeltaE.max() == statistics.maximumDeltaE)
+    }
+
     @Test("B sits in the anchor cell and in no other, as SPEC § 5 step 4 requires")
     func theAnchorHoldsBAlone() throws {
         let pool = latticePool(perAxis: 5)

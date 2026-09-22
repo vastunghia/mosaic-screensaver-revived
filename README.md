@@ -27,9 +27,13 @@ APP=.build/bundle/Mosaic.app/Contents/MacOS/Mosaic
 # Index a folder once. It is incremental: adding photographs later re-reads only those.
 "$APP" --folder ~/Pictures/SomeFolder --build-index
 
-# A single mosaic, held still, with its target photograph beside it and its numbers
-# printed underneath.
+# A single mosaic, held still, with its target photograph and its error map beside it
+# and its numbers printed underneath.
 "$APP" --folder ~/Pictures/SomeFolder --rows 60 --export-mosaic /tmp/mosaic.png
+
+# Twenty mosaics at three repetition penalties, on one page: index.html shows each
+# target, its mosaics and their error maps side by side, and summary.csv has the numbers.
+"$APP" --folder ~/Pictures/SomeFolder --export-batch ~/Pictures/mosaic-specimens/default
 
 # The same thing moving.
 "$APP" --folder ~/Pictures/SomeFolder --full-screen
@@ -37,8 +41,14 @@ APP=.build/bundle/Mosaic.app/Contents/MacOS/Mosaic
 
 Tile choice has knobs, because how good a mosaic looks is not something to settle by
 argument: `--k 1|2|4` weighs average colour against structure, `--spacing` and
-`--repeat-penalty` trade colour accuracy for variety, and `--subject <name>` pins the
-target so two settings can be compared on the same photograph.
+`--repeat-penalty` trade colour accuracy for variety, `--max-uses` caps how many cells one
+photograph may hold, and `--subject <name>` pins the target so two settings can be compared
+on the same photograph.
+
+The error map shades every cell by its delta E on a fixed 0–40 scale, so two maps compare.
+A batch also solves each target with every variety constraint off: that *floor* is the
+closest the photographs can get at all, and the gap above it is the price of variety. A
+batch is deterministic — the same folder and options give the same files, byte for byte.
 
 Xcode and an *Apple Development* certificate in the keychain are required; without one the
 build falls back to an ad-hoc signature, with a warning.

@@ -40,6 +40,21 @@ do {
     print(options.banner(sourceDescription: photos.description))
     for note in planning.notes { print("  \(note)") }
 
+    if let directory = options.exportBatch {
+        try BatchExporter.export(
+            to: directory,
+            subjects: options.batchSubjects,
+            firstCycle: options.exportCycle,
+            penalties: options.batchPenalties,
+            width: options.exportWidth,
+            options: options,
+            device: device,
+            library: library,
+            photos: photos
+        )
+        exit(0)
+    }
+
     if let file = options.exportMosaic {
         try MosaicExporter.export(
             to: file,

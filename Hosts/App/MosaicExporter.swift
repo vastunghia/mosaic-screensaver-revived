@@ -43,15 +43,7 @@ enum MosaicExporter {
         let subject = engine.renderMosaic(cycle: cycle, into: texture)
         let elapsed = Date().timeIntervalSince(started)
 
-        let bytesPerRow = width * 4
-        var pixels = [UInt8](repeating: 0, count: bytesPerRow * height)
-        pixels.withUnsafeMutableBytes { raw in
-            texture.getBytes(
-                raw.baseAddress!, bytesPerRow: bytesPerRow,
-                from: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0
-            )
-        }
-        try PNGWriter.write(pixels: pixels, width: width, height: height, to: file)
+        try PNGWriter.write(pixels: readBack(texture), width: width, height: height, to: file)
 
         // The target next to the mosaic. Judging a photomosaic against a
         // remembered photograph is judging the memory.
@@ -67,11 +59,35 @@ enum MosaicExporter {
         print("  \(file.path)")
         print("  \(beside.path)")
         if let statistics = engine.statistics.solve {
+            let map = errorMapURL(for: file)
+            try ErrorMap.write(
+                cellDeltaE: statistics.cellDeltaE, rows: settings.rows,
+                width: width, height: height, to: map
+            )
+            print("  \(map.path)")
             print(report(statistics))
         }
         if let error = engine.statistics.lastError {
             print("  WARNING: fell back to random tiles: \(error)")
         }
+    }
+
+    /// `m.png` → `m.error.png`, next to the mosaic it describes.
+    static func errorMapURL(for file: URL) -> URL {
+        file.deletingPathExtension().appendingPathExtension("error.png")
+    }
+
+    /// The pixels of an offscreen texture, in the BGRA order PNGWriter takes.
+    static func readBack(_ texture: MTLTexture) -> [UInt8] {
+        let bytesPerRow = texture.width * 4
+        var pixels = [UInt8](repeating: 0, count: bytesPerRow * texture.height)
+        pixels.withUnsafeMutableBytes { raw in
+            texture.getBytes(
+                raw.baseAddress!, bytesPerRow: bytesPerRow,
+                from: MTLRegionMake2D(0, 0, texture.width, texture.height), mipmapLevel: 0
+            )
+        }
+        return pixels
     }
 
     /// The six numbers. They are what turns "that one looks worse" into "that
