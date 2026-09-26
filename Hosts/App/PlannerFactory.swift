@@ -26,6 +26,7 @@ enum PlannerFactory {
         let solved = SolvedMosaicPlanner(
             catalog: IndexedTileCatalog(source: indexed),
             options: options.solverOptions,
+            seed: options.seed,
             subjectCandidates: options.subjectCandidates
         )
         guard solved.isUsable else {

@@ -67,7 +67,8 @@ do {
             library: library,
             photos: photos,
             planner: planning.planner,
-            tileWidth: options.tileWidth
+            tileWidth: options.tileWidth,
+            seed: options.seed
         )
         exit(0)
     }
@@ -83,7 +84,8 @@ do {
             library: library,
             source: photos.source,
             planner: planning.planner,
-            tileWidth: options.tileWidth
+            tileWidth: options.tileWidth,
+            seed: options.seed
         )
         exit(0)
     }
@@ -94,6 +96,7 @@ do {
         source: photos.source,
         planner: planning.planner,
         library: library,
+        seed: options.seed,
         tilePixelWidth: options.tileWidth
     )
 

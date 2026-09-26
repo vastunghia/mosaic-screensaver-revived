@@ -48,7 +48,8 @@ Tile choice has knobs, because how good a mosaic looks is not something to settl
 argument: `--k 1|2|4|8` weighs average colour against structure (4 by default), `--spacing` and
 `--tolerance` (16 by default, at the default `--k 4`) trade colour accuracy for variety — each cell takes the least
 used photograph within that delta E of it — `--tolerance none --repeat-penalty <p>` prices
-each repetition instead, `--max-uses` caps how many cells one photograph may hold, `--candidates <n>` sets how many photographs of the shuffled deck each cycle picks its
+each repetition instead, `--max-uses` caps how many cells one photograph may hold, `--seed <n>` replays a session (each launch otherwise takes a new seed, printed at startup;
+exports always use a fixed one, so they regenerate identically), `--candidates <n>` sets how many photographs of the shuffled deck each cycle picks its
 subject among, so the photograph it zooms out of fits in (8 by default, 1 for a plain
 deck), and `--subject <name>` pins the target so two settings can be compared
 on the same photograph.

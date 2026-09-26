@@ -56,6 +56,17 @@ struct Options {
     var batchPenalties: [Double] = [0.5, 1, 2]
     var batchTolerances: [Double] = []
 
+    /// What every random choice follows: which photographs make the pool,
+    /// the order of the deck, where each anchor goes. A new one per launch, so
+    /// no two sessions show the same sequence; a fixed one for anything
+    /// exported, so a specimen regenerates byte for byte. `--seed` sets it
+    /// either way, and the banner prints it, so a session worth seeing again
+    /// can be.
+    var seed = Options.reproducibleSeed
+    var seedIsPerLaunch = false
+    private var seedGiven = false
+    static let reproducibleSeed: UInt64 = 0x4D05_A1C0
+
     var exportDirectory: URL?
     var exportFrames = 240
     var exportWidth = 1280
@@ -136,6 +147,11 @@ struct Options {
             case "--chroma-weight": options.chromaWeight = next().flatMap(Double.init) ?? options.chromaWeight
             case "--export-batch": options.exportBatch = path()
             case "--subjects": options.batchSubjects = next().flatMap(Int.init) ?? options.batchSubjects
+            case "--seed":
+                if let value = next().flatMap({ UInt64($0) ?? UInt64($0.replacingOccurrences(of: "0x", with: ""), radix: 16) }) {
+                    options.seed = value
+                    options.seedGiven = true
+                }
             case "--candidates": options.subjectCandidates = max(1, next().flatMap(Int.init) ?? options.subjectCandidates)
             case "--tolerance":
                 let value = next()
@@ -156,6 +172,12 @@ struct Options {
             index += 1
         }
 
+        let exporting = options.exportMosaic != nil || options.exportBatch != nil
+            || options.exportDirectory != nil || options.buildIndex
+        if !options.seedGiven && !exporting {
+            options.seed = UInt64.random(in: .min ... .max)
+            options.seedIsPerLaunch = true
+        }
         return options
     }
 
@@ -191,6 +213,10 @@ struct Options {
             ))
             lines.append("    --repeat-penalty and --tolerance are ignored; --max-uses holds for penalty columns only")
         }
+        lines.append(String(
+            format: "  seed %llu%@", seed,
+            seedIsPerLaunch ? " (new each launch; --seed to see this session again)" : ""
+        ))
         if randomTiles {
             lines.append("  tiles chosen at RANDOM (--random-tiles)")
         }

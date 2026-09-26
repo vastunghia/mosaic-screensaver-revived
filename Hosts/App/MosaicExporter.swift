@@ -23,7 +23,8 @@ enum MosaicExporter {
         library: MTLLibrary,
         photos: PhotoSourceFactory.Resolved,
         planner: (any MosaicPlanner)?,
-        tileWidth: Int
+        tileWidth: Int,
+        seed: UInt64
     ) throws {
         let height = CanonicalAspect.height(forWidth: width)
         let engine = try MosaicEngine(
@@ -32,6 +33,7 @@ enum MosaicExporter {
             source: photos.source,
             planner: planner,
             library: library,
+            seed: seed,
             tilePixelWidth: tileWidth
         )
 

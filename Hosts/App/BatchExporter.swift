@@ -103,6 +103,7 @@ enum BatchExporter {
                 source: photos.source,
                 planner: planner,
                 library: library,
+                seed: options.seed,
                 tilePixelWidth: options.tileWidth
             )
             guard let texture = engine.makeOffscreenTexture(width: width, height: height) else {

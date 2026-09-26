@@ -51,7 +51,7 @@ enum PhotoSourceFactory {
         }
 
         let full = try IndexedPhotoSource(store: store, originals: folderSource)
-        let pool = subset(of: full, count: options.poolSize)
+        let pool = subset(of: full, count: options.poolSize, seed: options.seed)
 
         return Resolved(
             source: pool,
@@ -93,11 +93,15 @@ enum PhotoSourceFactory {
     /// A deterministic subset, because the atlas has a ceiling and a library does
     /// not. Seeded rather than "the first N": the entries are sorted by
     /// identifier, so taking a prefix would take one corner of the folder.
-    private static func subset(of source: IndexedPhotoSource, count: Int) -> IndexedPhotoSource {
+    ///
+    /// It follows the session's seed, so a library bigger than the atlas is
+    /// drawn from afresh at every launch: with a fixed subset, a 54,000-photo
+    /// library would show the same 2048 forever.
+    private static func subset(of source: IndexedPhotoSource, count: Int, seed: UInt64) -> IndexedPhotoSource {
         let limit = min(count, maximumAtlasSlices)
         guard source.entries.count > limit else { return source }
 
-        var rng = SplitMix64(seed: 0x5EED_0F00)
+        var rng = SplitMix64(seed: seed ^ 0x5EED_0F00)
         let chosen = Array(rng.shuffled(source.entries).prefix(limit))
         var manifest = source.manifest
         manifest.entries = chosen.sorted { $0.id < $1.id }
