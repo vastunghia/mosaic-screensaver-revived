@@ -1,5 +1,6 @@
 import Foundation
 import MosaicCore
+import MosaicEngine
 import MosaicPhotos
 import MosaicSolver
 import PhotoIndex
@@ -44,6 +45,7 @@ struct Options {
     var maximumUses: Int?
     /// `--tolerance none` goes back to the penalty.
     var tolerance: Double? = SolverOptions.standard.tolerance
+    var subjectCandidates = SolvedMosaicPlanner.defaultSubjectCandidates
     var lightnessWeight: Double = 1
     var chromaWeight: Double = 1
 
@@ -134,6 +136,7 @@ struct Options {
             case "--chroma-weight": options.chromaWeight = next().flatMap(Double.init) ?? options.chromaWeight
             case "--export-batch": options.exportBatch = path()
             case "--subjects": options.batchSubjects = next().flatMap(Int.init) ?? options.batchSubjects
+            case "--candidates": options.subjectCandidates = max(1, next().flatMap(Int.init) ?? options.subjectCandidates)
             case "--tolerance":
                 let value = next()
                 options.tolerance = value == "none" ? nil : value.flatMap(Double.init) ?? options.tolerance
@@ -173,6 +176,7 @@ struct Options {
                 maximumUses.map(String.init) ?? (tolerance == nil ? "derived" : "none"),
                 lightnessWeight, chromaWeight
             ))
+            lines.append("  subjects: shuffled deck, each chosen among \(subjectCandidates) for the last to fit in")
             lines.append(String(
                 format: "  index: %@ · thumbnails %d px · signatures %d×%d",
                 resolvedIndexDirectory.path, thumbnailWidth, signatureSide, signatureSide

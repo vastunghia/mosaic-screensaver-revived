@@ -25,7 +25,8 @@ enum PlannerFactory {
 
         let solved = SolvedMosaicPlanner(
             catalog: IndexedTileCatalog(source: indexed),
-            options: options.solverOptions
+            options: options.solverOptions,
+            subjectCandidates: options.subjectCandidates
         )
         guard solved.isUsable else {
             notes.append("WARNING: the index has no usable signatures — falling back to random tiles")

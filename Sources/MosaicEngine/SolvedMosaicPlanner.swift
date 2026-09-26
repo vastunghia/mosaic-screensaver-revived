@@ -22,7 +22,15 @@ public final class SolvedMosaicPlanner: MosaicPlanner, @unchecked Sendable {
         let detail: Int
     }
 
-    public init(catalog: any TileCatalog, options: SolverOptions = .standard, seed: UInt64 = 0x4D05_A1C0) {
+    /// - Parameter subjectCandidates: how many photographs of the shuffled deck
+    ///   each cycle chooses its subject among, for the previous subject to fit
+    ///   in. 1 is a plain deck.
+    public init(
+        catalog: any TileCatalog,
+        options: SolverOptions = .standard,
+        seed: UInt64 = 0x4D05_A1C0,
+        subjectCandidates: Int = SolvedMosaicPlanner.defaultSubjectCandidates
+    ) {
         self.catalog = catalog
         self.options = options
         self.seed = seed
@@ -36,8 +44,13 @@ public final class SolvedMosaicPlanner: MosaicPlanner, @unchecked Sendable {
         }
         pool = entries
         subjects = entries.map(\.id)
-        sequence = SubjectSequence(count: max(1, entries.count), seed: seed)
+        sequence = SubjectSequence(
+            count: max(1, entries.count), seed: seed,
+            signatures: entries.map(\.signature), candidates: subjectCandidates
+        )
     }
+
+    public static let defaultSubjectCandidates = SubjectSequence.defaultCandidates
 
     public var isUsable: Bool { !pool.isEmpty }
     public var poolSize: Int { pool.count }
