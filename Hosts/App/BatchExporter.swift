@@ -301,6 +301,12 @@ enum BatchExporter {
         for subject in subjects {
             var mosaics = ""
             var maps = ""
+            var usage = ""
+            // One scale for the row, so the four shapes compare; not one for the
+            // page, or a night sky's tail would flatten every other subject.
+            let ceiling = subject.mosaics.map { mosaic in
+                Double(mosaic.statistics.photoUses.max() ?? 0) / Double(max(mosaic.statistics.cellCount, 1))
+            }.max() ?? 0
             for mosaic in subject.mosaics {
                 let s = mosaic.statistics
                 mosaics += """
@@ -311,6 +317,7 @@ enum BatchExporter {
                 ))</figcaption></figure>
 
                 """
+                usage += usageChart(mosaic.statistics, ceiling: ceiling)
                 maps += """
                 <figure><a href="\(mosaic.errorFile)"><img src="\(mosaic.errorFile)" loading="lazy" alt=""></a></figure>
 
@@ -326,6 +333,8 @@ enum BatchExporter {
             \(mosaics)</div>
             <div class="row maps"><figure></figure>
             \(maps)</div>
+            <div class="row usage"><figure><figcaption><b>uses</b> every photograph of the pool, least used to most, as a share of the cells; one scale per row, 0 to \(String(format: "%.2f", 100 * ceiling)) %</figcaption></figure>
+            \(usage)</div>
             </section>
 
             """
@@ -341,8 +350,8 @@ enum BatchExporter {
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>Mosaic batch</title>
         <style>
-        :root { --bg: #fafaf8; --ink: #1d1d1b; --muted: #6b6b66; --rule: #e2e1dc; }
-        @media (prefers-color-scheme: dark) { :root { --bg: #1b1b1a; --ink: #ecebe6; --muted: #9a9993; --rule: #34342f; } }
+        :root { --bg: #fafaf8; --ink: #1d1d1b; --muted: #6b6b66; --rule: #c9c8c2; --plot: #f0efeb; --bar: #256abf; }
+        @media (prefers-color-scheme: dark) { :root { --bg: #1b1b1a; --ink: #ecebe6; --muted: #9a9993; --rule: #4a4a45; --plot: #242422; --bar: #6da7ec; } }
         body { background: var(--bg); color: var(--ink); font: 14px/1.4 -apple-system, system-ui, sans-serif; margin: 24px; }
         h1 { font-size: 20px; margin: 0 0 4px; }
         h2 { font-size: 15px; margin: 32px 0 8px; }
@@ -352,7 +361,9 @@ enum BatchExporter {
         th:first-child, td:first-child { text-align: left; }
         th { font-weight: 600; color: var(--muted); }
         .row { display: grid; grid-template-columns: repeat(\(columns), minmax(0, 1fr)); gap: 8px; }
-        .maps { margin-top: 4px; }
+        .maps, .usage { margin-top: 4px; }
+        .usage svg { width: 100%; height: 72px; display: block; background: var(--plot); border-top: 1px solid var(--rule); }
+        .usage path { fill: var(--bar); }
         figure { margin: 0; }
         img { width: 100%; display: block; }
         figcaption { font-size: 12px; color: var(--muted); margin-top: 3px; font-variant-numeric: tabular-nums; }
@@ -372,6 +383,36 @@ enum BatchExporter {
         \(sections)
         </body>
         </html>
+
+        """
+    }
+
+    /// Every photograph of the pool as one bar, least used to most, the height
+    /// its share of the cells. Sorted, the bars are a staircase, so they are
+    /// drawn as one path with a step per run of equal counts: 2048 rectangles
+    /// per chart, eighty charts a page, would be a slow page for nothing.
+    static func usageChart(_ statistics: SolveStatistics, ceiling: Double) -> String {
+        let uses = statistics.photoUses.sorted()
+        let cells = Double(max(statistics.cellCount, 1))
+        let width = uses.count
+        let height = 1000.0
+        var path = "M0 \(Int(height))"
+        var index = 0
+        while index < width {
+            var end = index
+            while end < width, uses[end] == uses[index] { end += 1 }
+            let y = ceiling > 0 ? height * (1 - Double(uses[index]) / cells / ceiling) : height
+            path += String(format: " L%d %.1f L%d %.1f", index, y, end, y)
+            index = end
+        }
+        path += " L\(width) \(Int(height)) Z"
+        let most = uses.last ?? 0
+        let used = uses.filter { $0 > 0 }.count
+        return """
+        <figure><svg viewBox="0 0 \(width) \(Int(height))" preserveAspectRatio="none" role="img" aria-label="uses per photograph"><path d="\(path)"/></svg>
+        <figcaption>\(String(
+            format: "%d of %d used · most %d uses, %.2f %%", used, width, most, 100 * Double(most) / cells
+        ))</figcaption></figure>
 
         """
     }

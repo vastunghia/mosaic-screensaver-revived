@@ -32,7 +32,7 @@ APP=.build/bundle/Mosaic.app/Contents/MacOS/Mosaic
 "$APP" --folder ~/Pictures/SomeFolder --rows 60 --export-mosaic /tmp/mosaic.png
 
 # Twenty mosaics at three repetition penalties, on one page: index.html shows each
-# target, its mosaics and their error maps side by side, usage.html how often each
+# target, its mosaics, their error maps and their usage curves side by side, usage.html how often each
 # photograph is used in every column, and summary.csv and usage.csv have the numbers.
 "$APP" --folder ~/Pictures/SomeFolder --export-batch ~/Pictures/mosaic-specimens/default
 
