@@ -35,13 +35,16 @@ struct Options {
     var spacing = 3
     var repeatPenalty: Double = 2
     var maximumUses: Int?
+    var tolerance: Double?
     var lightnessWeight: Double = 1
     var chromaWeight: Double = 1
 
-    /// Many subjects, each at several penalties, and a page to compare them on.
+    /// Many subjects, each solved several ways, and a page to compare them on.
+    /// The columns are the penalties and then the tolerances.
     var exportBatch: URL?
     var batchSubjects = 20
     var batchPenalties: [Double] = [0.5, 1, 2]
+    var batchTolerances: [Double] = []
 
     var exportDirectory: URL?
     var exportFrames = 240
@@ -60,7 +63,8 @@ struct Options {
             weights: LabWeights(lightness: lightnessWeight, chroma: chromaWeight),
             repetitionSpacing: spacing,
             repetitionPenalty: repeatPenalty,
-            maximumUses: maximumUses
+            maximumUses: maximumUses,
+            tolerance: tolerance
         )
     }
 
@@ -120,9 +124,12 @@ struct Options {
             case "--chroma-weight": options.chromaWeight = next().flatMap(Double.init) ?? options.chromaWeight
             case "--export-batch": options.exportBatch = path()
             case "--subjects": options.batchSubjects = next().flatMap(Int.init) ?? options.batchSubjects
+            case "--tolerance": options.tolerance = next().flatMap(Double.init)
             case "--penalties":
-                let values = next()?.split(separator: ",").compactMap { Double($0) } ?? []
-                if !values.isEmpty { options.batchPenalties = values }
+                // An empty list is allowed, for a batch of tolerances alone.
+                options.batchPenalties = next()?.split(separator: ",").compactMap { Double($0) } ?? []
+            case "--tolerances":
+                options.batchTolerances = next()?.split(separator: ",").compactMap { Double($0) } ?? []
             case "--export-cycle": options.exportDirectory = path()
             case "--frames": options.exportFrames = next().flatMap(Int.init) ?? options.exportFrames
             case "--width": options.exportWidth = next().flatMap(Int.init) ?? options.exportWidth
@@ -147,19 +154,23 @@ struct Options {
         ))
         if folder != nil {
             lines.append(String(
-                format: "  k = %d · spacing %d · penalty %.1f · max uses %@ · weights L %.2f C %.2f",
-                detail, spacing, repeatPenalty,
-                maximumUses.map(String.init) ?? "derived",
+                format: "  k = %d · spacing %d · %@ · max uses %@ · weights L %.2f C %.2f",
+                detail, spacing,
+                tolerance.map { String(format: "tolerance %g (penalty ignored)", $0) }
+                    ?? String(format: "penalty %.1f", repeatPenalty),
+                maximumUses.map(String.init) ?? (tolerance == nil ? "derived" : "none"),
                 lightnessWeight, chromaWeight
             ))
             lines.append("  index: \(resolvedIndexDirectory.path)")
         }
         if exportBatch != nil {
             lines.append(String(
-                format: "  batch: %d subjects from cycle %d · penalties %@ (--repeat-penalty ignored)",
+                format: "  batch: %d subjects from cycle %d · penalties [%@] · tolerances [%@]",
                 batchSubjects, exportCycle,
-                batchPenalties.map { String(format: "%g", $0) }.joined(separator: ", ")
+                batchPenalties.map { String(format: "%g", $0) }.joined(separator: ", "),
+                batchTolerances.map { String(format: "%g", $0) }.joined(separator: ", ")
             ))
+            lines.append("    --repeat-penalty and --tolerance are ignored; --max-uses holds for penalty columns only")
         }
         if randomTiles {
             lines.append("  tiles chosen at RANDOM (--random-tiles)")

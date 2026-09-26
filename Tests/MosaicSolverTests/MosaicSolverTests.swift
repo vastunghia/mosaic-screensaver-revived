@@ -301,6 +301,70 @@ struct MosaicSolverTests {
         #expect(withPenalty > withoutPenalty * 2, "\(withoutPenalty) -> \(withPenalty)")
     }
 
+    @Test("with a tolerance, an easy target is spread thin and a hard one may repeat")
+    func toleranceFollowsTheCorpus() throws {
+        // One pool, two flat targets. Mid grey has many lattice neighbours
+        // within the tolerance, so the cells should share them out evenly;
+        // pure black has one, and only the band slack beyond it, so the
+        // repetitions are allowed to pile up there instead of the error.
+        let pool = latticePool(perAxis: 10)
+        let rows = 24
+        let options = SolverOptions(repetitionSpacing: 0, tolerance: 20)
+
+        func solve(_ colour: LinearRGB) throws -> SolveStatistics {
+            try MosaicSolver.solve(
+                target: uniformTarget(rows: rows, colour: colour),
+                subject: PhotoID("C"),
+                previousSubject: nil,
+                pool: pool,
+                options: options,
+                seed: 4
+            ).statistics
+        }
+
+        let grey = try solve(LinearRGB(r: 0.2, g: 0.2, b: 0.2))
+        let black = try solve(LinearRGB(r: 0, g: 0, b: 0))
+
+        #expect(grey.maximumDeltaE <= 20 + 1e-9)
+        #expect(grey.distinctPhotos > 10, "\(grey.distinctPhotos)")
+        // Evenly: the most used photograph holds its share, rounded up.
+        let share = (rows * rows + grey.distinctPhotos - 1) / grey.distinctPhotos
+        #expect(grey.maximumUses == share, "\(grey.maximumUses) vs \(share)")
+        #expect(black.maximumUses > grey.maximumUses * 2, "\(black.maximumUses) vs \(grey.maximumUses)")
+    }
+
+    @Test("a cell nothing reaches takes from the nearest few, not only the nearest")
+    func toleranceWidensWhereTheCorpusRunsOut() throws {
+        let pool = latticePool(perAxis: 6)
+        let result = try MosaicSolver.solve(
+            target: uniformTarget(rows: 16, colour: LinearRGB(r: 0.03, g: 0.9, b: 0.03)),
+            subject: PhotoID("C"),
+            previousSubject: nil,
+            pool: pool,
+            options: SolverOptions(repetitionSpacing: 0, tolerance: 0.5),
+            seed: 5
+        )
+        let nearestDeltaE = pool.map {
+            LabColor($0.signature.mean).deltaE(to: LabColor(LinearRGB(r: 0.03, g: 0.9, b: 0.03)))
+        }.min()!
+        #expect(nearestDeltaE > 0.5)
+        #expect(result.statistics.maximumDeltaE <= nearestDeltaE + SolverOptions.toleranceSlack + 1e-9)
+    }
+
+    @Test("an explicit cap still holds under a tolerance")
+    func toleranceKeepsAnExplicitCap() throws {
+        let pool = latticePool(perAxis: 4)
+        let result = try MosaicSolver.solve(
+            target: uniformTarget(rows: 20, colour: LinearRGB(r: 0, g: 0, b: 0)),
+            subject: PhotoID("C"),
+            previousSubject: nil,
+            pool: pool,
+            options: SolverOptions(repetitionSpacing: 0, maximumUses: 10, tolerance: 5),
+            seed: 6
+        )
+        #expect(result.statistics.maximumUses <= 10)
+    }
+
     // MARK: - Quality
 
     @Test("a denser pool gives a closer mosaic, at every step")

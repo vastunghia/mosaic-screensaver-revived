@@ -45,7 +45,8 @@ do {
             to: directory,
             subjects: options.batchSubjects,
             firstCycle: options.exportCycle,
-            penalties: options.batchPenalties,
+            columns: options.batchPenalties.map(BatchExporter.Column.penalty)
+                + options.batchTolerances.map(BatchExporter.Column.tolerance),
             width: options.exportWidth,
             options: options,
             device: device,

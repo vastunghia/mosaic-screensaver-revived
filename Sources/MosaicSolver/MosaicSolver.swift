@@ -162,6 +162,8 @@ public enum MosaicSolver {
         let chromaSquared = options.weights.chroma * options.weights.chroma
         let penalty = options.repetitionPenalty
         let inverseBlock = 1 / Double(block)
+        let tolerance = options.tolerance
+        var distances = [Double](repeating: .infinity, count: tolerance == nil ? 0 : pool.count)
 
         poolLab.withUnsafeBufferPointer { poolBuffer in
             targetLab.withUnsafeBufferPointer { targetBuffer in
@@ -190,7 +192,10 @@ public enum MosaicSolver {
                     var spareIndex = -1
 
                     for candidate in 0..<pool.count {
-                        if isForbidden[candidate] || candidate == barred { continue }
+                        if isForbidden[candidate] || candidate == barred {
+                            if tolerance != nil { distances[candidate] = .infinity }
+                            continue
+                        }
 
                         var total = 0.0
                         var poolOffset = candidate * block * 3
@@ -208,8 +213,17 @@ public enum MosaicSolver {
                         // Root mean square over the sub-cells, so detail 1 is
                         // exactly the plain delta E of the average colour and
                         // the number means the same thing at every detail.
-                        let score = (total * inverseBlock).squareRoot()
-                            + penalty * Double(uses[candidate])
+                        let distance = (total * inverseBlock).squareRoot()
+                        if tolerance != nil {
+                            // Chosen in a second pass, once the nearest is known.
+                            distances[candidate] = distance
+                            if distance < spareScore {
+                                spareScore = distance
+                                spareIndex = candidate
+                            }
+                            continue
+                        }
+                        let score = distance + penalty * Double(uses[candidate])
 
                         if score < spareScore {
                             spareScore = score
@@ -219,6 +233,33 @@ public enum MosaicSolver {
                             bestScore = score
                             bestIndex = candidate
                         }
+                    }
+
+                    if let tolerance {
+                        // Least used within the band, then closest. Outside the
+                        // band, or when the band is all at its cap, the closest
+                        // photograph still under the cap.
+                        let band = max(tolerance, spareScore + SolverOptions.toleranceSlack)
+                        var bestUses = Int.max
+                        var bestDistance = Double.infinity
+                        var fallbackDistance = Double.infinity
+                        var fallbackIndex = -1
+                        for candidate in 0..<pool.count {
+                            let distance = distances[candidate]
+                            let used = uses[candidate]
+                            if distance == .infinity || used >= maximumUses { continue }
+                            if distance <= band {
+                                if used < bestUses || (used == bestUses && distance < bestDistance) {
+                                    bestUses = used
+                                    bestDistance = distance
+                                    bestIndex = candidate
+                                }
+                            } else if distance < fallbackDistance {
+                                fallbackDistance = distance
+                                fallbackIndex = candidate
+                            }
+                        }
+                        if bestIndex < 0 { bestIndex = fallbackIndex }
                     }
 
                     // spareIndex is always set: the precondition above says the

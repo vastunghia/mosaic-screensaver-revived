@@ -4,17 +4,53 @@ import MosaicCore
 import MosaicEngine
 import MosaicSolver
 
-/// Many mosaics, each solved at several repetition penalties, with one page to
-/// look at them side by side.
+/// Many mosaics, each solved several ways — at several repetition penalties,
+/// several tolerances, or both — with one page to look at them side by side.
 ///
 /// One export is an anecdote: a single photograph can be kind or cruel to a
 /// corpus, and a sunset with a peach sky says little about a snowfield. The
 /// subjects are the ones cycles `first…first+N-1` would show — the ordinary
 /// seeded sequence, so they are a sample rather than a selection, and every
-/// penalty sees the same photographs with the same B in the anchor.
+/// column sees the same photographs with the same B in the anchor.
 enum BatchExporter {
+    /// One way of solving: a penalty with whatever cap `--max-uses` says, or a
+    /// tolerance with no cap at all, since leaving the repetitions to the
+    /// corpus is what a tolerance is for.
+    enum Column {
+        case penalty(Double)
+        case tolerance(Double)
+
+        /// `p1`, `t10`: short enough for a file name, exact enough to tell apart.
+        var name: String {
+            switch self {
+            case .penalty(let value): return "p" + BatchExporter.label(value)
+            case .tolerance(let value): return "t" + BatchExporter.label(value)
+            }
+        }
+
+        var caption: String {
+            switch self {
+            case .penalty(let value): return "penalty " + BatchExporter.label(value)
+            case .tolerance(let value): return "tolerance " + BatchExporter.label(value)
+            }
+        }
+
+        func apply(to options: Options) -> Options {
+            var variant = options
+            switch self {
+            case .penalty(let value):
+                variant.repeatPenalty = value
+                variant.tolerance = nil
+            case .tolerance(let value):
+                variant.tolerance = value
+                variant.maximumUses = nil
+            }
+            return variant
+        }
+    }
+
     struct Mosaic {
-        let penalty: Double
+        let column: Column
         let file: String
         let errorFile: String
         let statistics: SolveStatistics
@@ -38,23 +74,22 @@ enum BatchExporter {
         to directory: URL,
         subjects count: Int,
         firstCycle: Int,
-        penalties: [Double],
+        columns: [Column],
         width: Int,
         options: Options,
         device: MTLDevice,
         library: MTLLibrary,
         photos: PhotoSourceFactory.Resolved
     ) throws {
-        guard count > 0, !penalties.isEmpty else { throw BatchError.nothingToExport }
+        guard count > 0, !columns.isEmpty else { throw BatchError.nothingToExport }
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let height = CanonicalAspect.height(forWidth: width)
         var subjects: [Subject] = []
 
-        // One engine per penalty, built one at a time: each holds an atlas of
+        // One engine per column, built one at a time: each holds an atlas of
         // the whole pool, and three of them at once is a gigabyte for nothing.
-        for (column, penalty) in penalties.enumerated() {
-            var variant = options
-            variant.repeatPenalty = penalty
+        for (position, column) in columns.enumerated() {
+            var variant = column.apply(to: options)
             variant.subject = nil
             guard let planner = PlannerFactory.make(options: variant, photos: photos).planner else {
                 // Random tiles have no statistics, and a batch of them would
@@ -90,7 +125,7 @@ enum BatchExporter {
                     throw BatchError.solverFailed(cycle: cycle, reason: "no statistics")
                 }
 
-                if column == 0 {
+                if position == 0 {
                     let targetFile = String(format: "%02d-target.png", number)
                     if let image = try? photos.source.canonicalImage(for: photo, maxPixelWidth: width) {
                         try PNGWriter.write(image: image, to: directory.appendingPathComponent(targetFile))
@@ -103,12 +138,12 @@ enum BatchExporter {
                     ))
                 } else if subjects[index].photo != photo {
                     // The subject sequence depends on the pool and the seed and
-                    // on nothing the penalty touches. If this ever fires, the
+                    // on nothing a column touches. If this ever fires, the
                     // columns of the page compare different photographs.
                     throw BatchError.subjectsDiverged(cycle: cycle)
                 }
 
-                let stem = String(format: "%02d-p%@", number, label(penalty))
+                let stem = String(format: "%02d-%@", number, column.name)
                 let file = stem + ".png"
                 let errorFile = stem + ".error.png"
                 try PNGWriter.write(
@@ -121,16 +156,16 @@ enum BatchExporter {
                     to: directory.appendingPathComponent(errorFile)
                 )
                 subjects[index].mosaics.append(Mosaic(
-                    penalty: penalty, file: file, errorFile: errorFile, statistics: statistics
+                    column: column, file: file, errorFile: errorFile, statistics: statistics
                 ))
             }
             print(String(
-                format: "  penalty %@: %d mosaics in %.1f s",
-                label(penalty), count, Date().timeIntervalSince(started)
+                format: "  %@: %d mosaics in %.1f s",
+                column.caption, count, Date().timeIntervalSince(started)
             ))
         }
 
-        let summary = summarise(subjects, penalties: penalties)
+        let summary = summarise(subjects, columns: columns)
         try csv(subjects).write(to: directory.appendingPathComponent("summary.csv"), atomically: true, encoding: .utf8)
         try page(subjects, summary: summary, options: options, photos: photos, device: device)
             .write(to: directory.appendingPathComponent("index.html"), atomically: true, encoding: .utf8)
@@ -155,6 +190,7 @@ enum BatchExporter {
         unconstrained.spacing = 0
         unconstrained.repeatPenalty = 0
         unconstrained.maximumUses = .max
+        unconstrained.tolerance = nil
         unconstrained.subject = nil
         guard let planner = PlannerFactory.make(options: unconstrained, photos: photos).planner else {
             throw BatchError.noSolver
@@ -185,10 +221,10 @@ enum BatchExporter {
         let maximumUses: Int
     }
 
-    static func summarise(_ subjects: [Subject], penalties: [Double]) -> [Aggregate] {
+    static func summarise(_ subjects: [Subject], columns: [Column]) -> [Aggregate] {
         let floor = aggregate("floor", subjects, subjects.map(\.floor))
-        return [floor] + penalties.indices.map { column in
-            aggregate(label(penalties[column]), subjects, subjects.map { $0.mosaics[column].statistics })
+        return [floor] + columns.indices.map { position in
+            aggregate(columns[position].caption, subjects, subjects.map { $0.mosaics[position].statistics })
         }
     }
 
@@ -207,11 +243,11 @@ enum BatchExporter {
     }
 
     static func table(_ summary: [Aggregate]) -> String {
-        var lines = ["  penalty   mean rms   worst rms (#)   worst cell   mean distinct   max uses"]
+        var lines = ["  column          mean rms   worst rms (#)   worst cell   mean distinct   max uses"]
         for row in summary {
             lines.append(String(
                 format: "  %@   %8.2f   %9.2f (%02d)   %10.2f   %13.0f   %8d",
-                String(repeating: " ", count: max(0, 7 - row.name.count)) + row.name,
+                row.name + String(repeating: " ", count: max(0, 13 - row.name.count)),
                 row.meanRMS, row.worstRMS, row.worstSubject,
                 row.worstCell, row.meanDistinct, row.maximumUses
             ))
@@ -220,14 +256,14 @@ enum BatchExporter {
     }
 
     static func csv(_ subjects: [Subject]) -> String {
-        var lines = ["number,cycle,subject,penalty,rms_delta_e,worst_delta_e,distinct,cells,max_uses,anchor_delta_e"]
+        var lines = ["number,cycle,subject,column,rms_delta_e,worst_delta_e,distinct,cells,max_uses,anchor_delta_e"]
         for subject in subjects {
-            let rows = [("floor", subject.floor)] + subject.mosaics.map { (label($0.penalty), $0.statistics) }
-            for (penalty, s) in rows {
+            let rows = [("floor", subject.floor)] + subject.mosaics.map { ($0.column.name, $0.statistics) }
+            for (column, s) in rows {
                 let name = "\"" + subject.photo.rawValue.replacingOccurrences(of: "\"", with: "\"\"") + "\""
                 lines.append(String(
                     format: "%d,%d,%@,%@,%.3f,%.3f,%d,%d,%d,%.3f",
-                    subject.number, subject.cycle, name, penalty,
+                    subject.number, subject.cycle, name, column,
                     s.rootMeanSquareDeltaE, s.maximumDeltaE, s.distinctPhotos,
                     s.cellCount, s.maximumUses, s.anchorDeltaE
                 ))
@@ -246,7 +282,7 @@ enum BatchExporter {
         device: MTLDevice
     ) -> String {
         let settings = String(
-            format: "R = %d · k = %d · spacing %d · max uses %@ · weights L %.2f C %.2f · %@ · %@",
+            format: "R = %d · k = %d · spacing %d · max uses %@ for penalties, none for tolerances · weights L %.2f C %.2f · %@ · %@",
             options.rows, options.detail, options.spacing,
             options.maximumUses.map(String.init) ?? "derived",
             options.lightnessWeight, options.chromaWeight,
@@ -270,7 +306,7 @@ enum BatchExporter {
                 let s = mosaic.statistics
                 mosaics += """
                 <figure><a href="\(mosaic.file)"><img src="\(mosaic.file)" loading="lazy" alt=""></a>
-                <figcaption><b>penalty \(label(mosaic.penalty))</b> \(String(
+                <figcaption><b>\(mosaic.column.caption)</b> \(String(
                     format: "ΔE rms %.2f · worst %.2f · %d distinct · max %d uses",
                     s.rootMeanSquareDeltaE, s.maximumDeltaE, s.distinctPhotos, s.maximumUses
                 ))</figcaption></figure>
@@ -296,7 +332,7 @@ enum BatchExporter {
             """
         }
 
-        let columns = summary.count + 1
+        let columns = summary.count   // the target, where the floor is, and one per column
         let gradient = ErrorMap.cssStops.joined(separator: ", ")
         return """
         <!doctype html>
@@ -330,7 +366,7 @@ enum BatchExporter {
         <h1>Mosaic batch</h1>
         <p class="muted">\(settings)</p>
         <table>
-        <tr><th>penalty</th><th>mean ΔE rms</th><th>worst subject</th><th>worst cell</th><th>mean distinct</th><th>max uses</th></tr>
+        <tr><th>column</th><th>mean ΔE rms</th><th>worst subject</th><th>worst cell</th><th>mean distinct</th><th>max uses</th></tr>
         \(summaryRows)</table>
         <div class="legend">error map: ΔE <span>0</span><i></i><span>\(String(format: "%.0f", ErrorMap.ceiling))+</span> — fixed scale, so maps compare across mosaics</div>
         \(sections)
@@ -340,9 +376,8 @@ enum BatchExporter {
         """
     }
 
-    /// `0.5`, `1`, `2`: short enough for a file name, exact enough to tell apart.
-    static func label(_ penalty: Double) -> String {
-        String(format: "%g", penalty)
+    static func label(_ value: Double) -> String {
+        String(format: "%g", value)
     }
 
     private static func escape(_ text: String) -> String {
@@ -362,13 +397,13 @@ enum BatchError: Error, CustomStringConvertible {
     var description: String {
         switch self {
         case .nothingToExport:
-            return "a batch needs at least one subject and one penalty"
+            return "a batch needs at least one subject, and one penalty or tolerance"
         case .noSolver:
             return "a batch needs real photographs and the solver: pass --folder, and not --random-tiles"
         case .solverFailed(let cycle, let reason):
             return "the solver failed on cycle \(cycle), so its numbers would be of another mosaic: \(reason)"
         case .subjectsDiverged(let cycle):
-            return "cycle \(cycle) depicts a different photograph at a different penalty"
+            return "cycle \(cycle) depicts a different photograph in a different column"
         }
     }
 }

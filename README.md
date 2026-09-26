@@ -35,6 +35,10 @@ APP=.build/bundle/Mosaic.app/Contents/MacOS/Mosaic
 # target, its mosaics and their error maps side by side, and summary.csv has the numbers.
 "$APP" --folder ~/Pictures/SomeFolder --export-batch ~/Pictures/mosaic-specimens/default
 
+# Columns can be tolerances as well as penalties, or instead of them.
+"$APP" --folder ~/Pictures/SomeFolder --export-batch ~/Pictures/mosaic-specimens/tolerance \
+    --penalties 1 --max-uses 32 --tolerances 6,10,14
+
 # The same thing moving.
 "$APP" --folder ~/Pictures/SomeFolder --full-screen
 ```
@@ -42,7 +46,8 @@ APP=.build/bundle/Mosaic.app/Contents/MacOS/Mosaic
 Tile choice has knobs, because how good a mosaic looks is not something to settle by
 argument: `--k 1|2|4` weighs average colour against structure, `--spacing` and
 `--repeat-penalty` trade colour accuracy for variety, `--max-uses` caps how many cells one
-photograph may hold, and `--subject <name>` pins the target so two settings can be compared
+photograph may hold, `--tolerance` replaces the penalty with a per-cell delta E within
+which the least used photograph wins, and `--subject <name>` pins the target so two settings can be compared
 on the same photograph.
 
 The error map shades every cell by its delta E on a fixed 0–40 scale, so two maps compare.
