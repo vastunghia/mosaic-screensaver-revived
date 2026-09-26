@@ -31,6 +31,12 @@ public struct SolveStatistics: Equatable, Sendable {
     /// a worse one in". The error map of the harness is drawn from it.
     public var cellDeltaE: [Double]
 
+    /// How many cells each photograph of the pool holds, in pool order, zeros
+    /// included. `maximumUses` is its tail and `distinctPhotos` its support;
+    /// the whole distribution is what tells an even spread from a few
+    /// photographs carrying a sky.
+    public var photoUses: [Int]
+
     public init(
         rootMeanSquareDeltaE: Double = 0,
         maximumDeltaE: Double = 0,
@@ -38,7 +44,8 @@ public struct SolveStatistics: Equatable, Sendable {
         maximumUses: Int = 0,
         anchorDeltaE: Double = 0,
         cellCount: Int = 0,
-        cellDeltaE: [Double] = []
+        cellDeltaE: [Double] = [],
+        photoUses: [Int] = []
     ) {
         self.rootMeanSquareDeltaE = rootMeanSquareDeltaE
         self.maximumDeltaE = maximumDeltaE
@@ -47,6 +54,7 @@ public struct SolveStatistics: Equatable, Sendable {
         self.anchorDeltaE = anchorDeltaE
         self.cellCount = cellCount
         self.cellDeltaE = cellDeltaE
+        self.photoUses = photoUses
     }
 }
 

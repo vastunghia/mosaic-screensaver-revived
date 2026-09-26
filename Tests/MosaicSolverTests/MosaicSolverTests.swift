@@ -129,6 +129,16 @@ struct MosaicSolverTests {
         let rms = (squares / Double(rows * rows)).squareRoot()
         #expect(abs(rms - statistics.rootMeanSquareDeltaE) < 1e-9)
         #expect(statistics.cellDeltaE.max() == statistics.maximumDeltaE)
+
+        // The same for the uses: counted back from the layout, photograph by
+        // photograph, and summarised by the headline numbers.
+        #expect(statistics.photoUses.count == pool.count)
+        for (index, entry) in pool.enumerated() {
+            let counted = result.layout.tiles.filter { $0.photo == entry.id }.count
+            #expect(statistics.photoUses[index] == counted)
+        }
+        #expect(statistics.photoUses.max() == statistics.maximumUses)
+        #expect(statistics.photoUses.filter { $0 > 0 }.count == statistics.distinctPhotos)
     }
 
     @Test("B sits in the anchor cell and in no other, as SPEC § 5 step 4 requires")

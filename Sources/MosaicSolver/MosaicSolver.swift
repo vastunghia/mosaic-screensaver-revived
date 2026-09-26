@@ -308,7 +308,8 @@ public enum MosaicSolver {
             maximumUses: uses.max() ?? 0,
             anchorDeltaE: anchorDeltaE,
             cellCount: cellCount,
-            cellDeltaE: cellDeltaE
+            cellDeltaE: cellDeltaE,
+            photoUses: uses
         )
 
         return SolveResult(layout: layout, statistics: statistics)

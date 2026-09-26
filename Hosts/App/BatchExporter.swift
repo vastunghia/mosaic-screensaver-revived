@@ -169,11 +169,16 @@ enum BatchExporter {
         try csv(subjects).write(to: directory.appendingPathComponent("summary.csv"), atomically: true, encoding: .utf8)
         try page(subjects, summary: summary, options: options, photos: photos, device: device)
             .write(to: directory.appendingPathComponent("index.html"), atomically: true, encoding: .utf8)
+        let usage = UsagePage.series(of: subjects, columns: columns)
+        try UsagePage.csv(usage).write(to: directory.appendingPathComponent("usage.csv"), atomically: true, encoding: .utf8)
+        try UsagePage.page(usage, subjects: subjects.count, settings: settings(options, photos: photos, device: device))
+            .write(to: directory.appendingPathComponent("usage.html"), atomically: true, encoding: .utf8)
 
         print("")
         print(table(summary))
         print("")
         print("  \(directory.appendingPathComponent("index.html").path)")
+        print("  \(directory.appendingPathComponent("usage.html").path)")
         print("  \(directory.appendingPathComponent("summary.csv").path)")
     }
 
@@ -281,13 +286,7 @@ enum BatchExporter {
         photos: PhotoSourceFactory.Resolved,
         device: MTLDevice
     ) -> String {
-        let settings = String(
-            format: "R = %d · k = %d · spacing %d · max uses %@ for penalties, none for tolerances · weights L %.2f C %.2f · %@ · %@",
-            options.rows, options.detail, options.spacing,
-            options.maximumUses.map(String.init) ?? "derived",
-            options.lightnessWeight, options.chromaWeight,
-            escape(photos.description), escape(device.name)
-        )
+        let settings = escape(settings(options, photos: photos, device: device))
 
         var summaryRows = ""
         for row in summary {
@@ -365,6 +364,7 @@ enum BatchExporter {
         <body>
         <h1>Mosaic batch</h1>
         <p class="muted">\(settings)</p>
+        <p><a href="usage.html">How often each photograph is used →</a></p>
         <table>
         <tr><th>column</th><th>mean ΔE rms</th><th>worst subject</th><th>worst cell</th><th>mean distinct</th><th>max uses</th></tr>
         \(summaryRows)</table>
@@ -374,6 +374,17 @@ enum BatchExporter {
         </html>
 
         """
+    }
+
+    /// The line under a page's title: what every column had in common.
+    static func settings(_ options: Options, photos: PhotoSourceFactory.Resolved, device: MTLDevice) -> String {
+        String(
+            format: "R = %d · k = %d · spacing %d · max uses %@ for penalties, none for tolerances · weights L %.2f C %.2f · %@ · %@",
+            options.rows, options.detail, options.spacing,
+            options.maximumUses.map(String.init) ?? "derived",
+            options.lightnessWeight, options.chromaWeight,
+            photos.description, device.name
+        )
     }
 
     static func label(_ value: Double) -> String {
