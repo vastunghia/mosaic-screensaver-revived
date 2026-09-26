@@ -41,13 +41,13 @@ enum PhotoSourceFactory {
         // otherwise share them and serve each other's photographs.
         let usable = try store.load()?.matches(
             root: root,
-            thumbnailWidth: PhotoIndexBuilder.defaultThumbnailWidth,
-            signatureSide: PhotoIndexBuilder.defaultSignatureSide
+            thumbnailWidth: options.thumbnailWidth,
+            signatureSide: options.signatureSide
         ) ?? false
 
         if !usable {
             print("no usable index for \(root) — building one")
-            try buildIndex(folder: folderSource, store: store, root: root)
+            try buildIndex(folder: folderSource, store: store, root: root, options: options)
         }
 
         let full = try IndexedPhotoSource(store: store, originals: folderSource)
@@ -62,9 +62,11 @@ enum PhotoSourceFactory {
 
     /// Builds or refreshes the index, printing progress.
     @discardableResult
-    static func buildIndex(folder: FolderPhotoSource, store: PhotoIndexStore, root: String) throws -> IndexManifest {
+    static func buildIndex(
+        folder: FolderPhotoSource, store: PhotoIndexStore, root: String, options: Options
+    ) throws -> IndexManifest {
         let started = Date()
-        let builder = PhotoIndexBuilder()
+        let builder = PhotoIndexBuilder(thumbnailWidth: options.thumbnailWidth, signatureSide: options.signatureSide)
         let reported = Reported()
 
         let manifest = try builder.build(

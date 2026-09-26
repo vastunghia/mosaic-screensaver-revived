@@ -26,7 +26,8 @@ do {
         try PhotoSourceFactory.buildIndex(
             folder: source,
             store: PhotoIndexStore(directory: options.resolvedIndexDirectory),
-            root: source.root.path
+            root: source.root.path,
+            options: options
         )
         exit(0)
     }

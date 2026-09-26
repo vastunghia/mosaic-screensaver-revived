@@ -2,6 +2,7 @@ import Foundation
 import MosaicCore
 import MosaicPhotos
 import MosaicSolver
+import PhotoIndex
 
 /// Command line options. Deliberately tiny: this is a development harness, and
 /// anything worth keeping ends up in the preferences of the real app instead.
@@ -23,6 +24,12 @@ struct Options {
     var folder: URL?
     var indexDirectory: URL?
     var buildIndex = false
+
+    /// The shape of the index. Not preferences: an index is built for one of
+    /// each, and these exist so an experiment can build a second index beside
+    /// the real one (with `--index`) instead of replacing it.
+    var thumbnailWidth = PhotoIndexBuilder.defaultThumbnailWidth
+    var signatureSide = PhotoIndexBuilder.defaultSignatureSide
 
     var tileWidth = 256
     var exportMosaic: URL?
@@ -113,6 +120,8 @@ struct Options {
             case "--folder": options.folder = path()
             case "--index": options.indexDirectory = path()
             case "--build-index": options.buildIndex = true
+            case "--thumbnail-width": options.thumbnailWidth = next().flatMap(Int.init) ?? options.thumbnailWidth
+            case "--signature-side": options.signatureSide = next().flatMap(Int.init) ?? options.signatureSide
             case "--tile-width": options.tileWidth = next().flatMap(Int.init) ?? options.tileWidth
             case "--export-mosaic": options.exportMosaic = path()
             case "--subject": options.subject = next()
@@ -164,7 +173,10 @@ struct Options {
                 maximumUses.map(String.init) ?? (tolerance == nil ? "derived" : "none"),
                 lightnessWeight, chromaWeight
             ))
-            lines.append("  index: \(resolvedIndexDirectory.path)")
+            lines.append(String(
+                format: "  index: %@ · thumbnails %d px · signatures %d×%d",
+                resolvedIndexDirectory.path, thumbnailWidth, signatureSide, signatureSide
+            ))
         }
         if exportBatch != nil {
             lines.append(String(
