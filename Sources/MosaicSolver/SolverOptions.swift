@@ -52,9 +52,9 @@ public struct SolverOptions: Equatable, Sendable {
         detail: Int = 1,
         weights: LabWeights = .neutral,
         repetitionSpacing: Int = 3,
-        repetitionPenalty: Double = 2,
+        repetitionPenalty: Double = 1,
         maximumUses: Int? = nil,
-        tolerance: Double? = nil
+        tolerance: Double? = SolverOptions.defaultTolerance
     ) {
         precondition(detail >= 1 && detail & (detail - 1) == 0, "detail has to be a power of two")
         precondition(repetitionSpacing >= 0, "a spacing cannot be negative")
@@ -67,6 +67,11 @@ public struct SolverOptions: Equatable, Sendable {
         self.maximumUses = maximumUses
         self.tolerance = tolerance
     }
+
+    /// Chosen by looking, on 20 subjects of a real 2048-photograph corpus at
+    /// `R` = 60 and 90, between 6, 10 and 14: 10 and 14 were both acceptable,
+    /// and 12 is between them. `nil` in `init` goes back to the penalty.
+    public static let defaultTolerance = 12.0
 
     /// How far past the nearest candidate a cell's band reaches when nothing
     /// is within the tolerance. A guess, about one just noticeable difference

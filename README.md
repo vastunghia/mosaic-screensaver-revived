@@ -46,9 +46,9 @@ APP=.build/bundle/Mosaic.app/Contents/MacOS/Mosaic
 
 Tile choice has knobs, because how good a mosaic looks is not something to settle by
 argument: `--k 1|2|4` weighs average colour against structure, `--spacing` and
-`--repeat-penalty` trade colour accuracy for variety, `--max-uses` caps how many cells one
-photograph may hold, `--tolerance` replaces the penalty with a per-cell delta E within
-which the least used photograph wins, and `--subject <name>` pins the target so two settings can be compared
+`--tolerance` (12 by default) trade colour accuracy for variety — each cell takes the least
+used photograph within that delta E of it — `--tolerance none --repeat-penalty <p>` prices
+each repetition instead, `--max-uses` caps how many cells one photograph may hold, and `--subject <name>` pins the target so two settings can be compared
 on the same photograph.
 
 The error map shades every cell by its delta E on a fixed 0–40 scale, so two maps compare.

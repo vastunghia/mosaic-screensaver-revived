@@ -70,7 +70,7 @@ struct MosaicSolverTests {
     }
 
     private var unconstrained: SolverOptions {
-        SolverOptions(repetitionSpacing: 0, repetitionPenalty: 0, maximumUses: .max)
+        SolverOptions(repetitionSpacing: 0, repetitionPenalty: 0, maximumUses: .max, tolerance: nil)
     }
 
     // MARK: - Structure
@@ -301,7 +301,9 @@ struct MosaicSolverTests {
                 subject: PhotoID("C"),
                 previousSubject: nil,
                 pool: pool,
-                options: SolverOptions(repetitionSpacing: 3, repetitionPenalty: penalty, maximumUses: .max),
+                options: SolverOptions(
+                    repetitionSpacing: 3, repetitionPenalty: penalty, maximumUses: .max, tolerance: nil
+                ),
                 seed: 2
             ).statistics.distinctPhotos
         }
@@ -441,7 +443,8 @@ struct MosaicSolverTests {
                 previousSubject: nil,
                 pool: pool,
                 options: SolverOptions(
-                    detail: detail, repetitionSpacing: 0, repetitionPenalty: 0, maximumUses: .max
+                    detail: detail, repetitionSpacing: 0, repetitionPenalty: 0, maximumUses: .max,
+                    tolerance: nil
                 ),
                 seed: 4
             ).layout

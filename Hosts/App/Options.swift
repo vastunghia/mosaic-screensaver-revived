@@ -33,9 +33,10 @@ struct Options {
     // exists to settle them by looking at exports.
     var detail = 1
     var spacing = 3
-    var repeatPenalty: Double = 2
+    var repeatPenalty: Double = 1
     var maximumUses: Int?
-    var tolerance: Double?
+    /// `--tolerance none` goes back to the penalty.
+    var tolerance: Double? = SolverOptions.defaultTolerance
     var lightnessWeight: Double = 1
     var chromaWeight: Double = 1
 
@@ -124,7 +125,9 @@ struct Options {
             case "--chroma-weight": options.chromaWeight = next().flatMap(Double.init) ?? options.chromaWeight
             case "--export-batch": options.exportBatch = path()
             case "--subjects": options.batchSubjects = next().flatMap(Int.init) ?? options.batchSubjects
-            case "--tolerance": options.tolerance = next().flatMap(Double.init)
+            case "--tolerance":
+                let value = next()
+                options.tolerance = value == "none" ? nil : value.flatMap(Double.init) ?? options.tolerance
             case "--penalties":
                 // An empty list is allowed, for a batch of tolerances alone.
                 options.batchPenalties = next()?.split(separator: ",").compactMap { Double($0) } ?? []
