@@ -22,7 +22,7 @@ public final class SolvedMosaicPlanner: MosaicPlanner, @unchecked Sendable {
         let detail: Int
     }
 
-    public init(catalog: any TileCatalog, options: SolverOptions = SolverOptions(), seed: UInt64 = 0x4D05_A1C0) {
+    public init(catalog: any TileCatalog, options: SolverOptions = .standard, seed: UInt64 = 0x4D05_A1C0) {
         self.catalog = catalog
         self.options = options
         self.seed = seed

@@ -43,7 +43,11 @@ private func lattice(perAxis: Int) -> FakeCatalog {
                     g: Double(g) / Double(perAxis - 1),
                     b: Double(b) / Double(perAxis - 1)
                 )
-                signatures["tile-\(r)\(g)\(b)"] = TileSignature(mean: colour)
+                // As fine as the index stores them, so the planner's standard
+                // detail can reduce them.
+                signatures["tile-\(r)\(g)\(b)"] = TileSignature(
+                    side: 4, cells: Array(repeating: colour, count: 16)
+                )
             }
         }
     }

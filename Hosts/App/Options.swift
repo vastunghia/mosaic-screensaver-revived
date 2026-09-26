@@ -38,12 +38,12 @@ struct Options {
 
     // The quality knobs. They are options and not constants because milestone 2
     // exists to settle them by looking at exports.
-    var detail = 1
-    var spacing = 3
+    var detail = SolverOptions.standard.detail
+    var spacing = SolverOptions.standard.repetitionSpacing
     var repeatPenalty: Double = 1
     var maximumUses: Int?
     /// `--tolerance none` goes back to the penalty.
-    var tolerance: Double? = SolverOptions.defaultTolerance
+    var tolerance: Double? = SolverOptions.standard.tolerance
     var lightnessWeight: Double = 1
     var chromaWeight: Double = 1
 

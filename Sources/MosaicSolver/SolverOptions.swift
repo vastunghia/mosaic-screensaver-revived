@@ -54,7 +54,7 @@ public struct SolverOptions: Equatable, Sendable {
         repetitionSpacing: Int = 3,
         repetitionPenalty: Double = 1,
         maximumUses: Int? = nil,
-        tolerance: Double? = SolverOptions.defaultTolerance
+        tolerance: Double? = nil
     ) {
         precondition(detail >= 1 && detail & (detail - 1) == 0, "detail has to be a power of two")
         precondition(repetitionSpacing >= 0, "a spacing cannot be negative")
@@ -68,10 +68,18 @@ public struct SolverOptions: Equatable, Sendable {
         self.tolerance = tolerance
     }
 
-    /// Chosen by looking, on 20 subjects of a real 2048-photograph corpus at
-    /// `R` = 60 and 90, between 6, 10 and 14: 10 and 14 were both acceptable,
-    /// and 12 is between them. `nil` in `init` goes back to the penalty.
-    public static let defaultTolerance = 12.0
+    /// The settings SPEC § 5 decided, by looking at twenty subjects of a real
+    /// 2048-photograph corpus side by side (2026-09-26). The initialiser's own
+    /// defaults are the plain mechanism, for tests; this is what a mosaic uses.
+    ///
+    /// - `k` = 4: clearly better than 1, and 8 was not visibly better than 4
+    ///   for four times the solve.
+    /// - Tolerance 16: chosen at `k` = 4, and only meaningful there. The
+    ///   distance is a root mean square over `k²` sub-cells, which grows with
+    ///   `k`: at `k` = 4 a tolerance of 8 and one of 12 give the same mosaic.
+    ///   Change `k` and the tolerance has to be chosen again.
+    /// - Spacing 3, confirmed on the same corpus.
+    public static let standard = SolverOptions(detail: 4, repetitionSpacing: 3, tolerance: 16)
 
     /// How far past the nearest candidate a cell's band reaches when nothing
     /// is within the tolerance. A guess, about one just noticeable difference
