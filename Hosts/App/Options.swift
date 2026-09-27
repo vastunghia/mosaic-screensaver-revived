@@ -41,13 +41,9 @@ struct Options {
         case originals, thumbnails, off
     }
     var closeUps = CloseUps.originals
-    /// How far from the anchor, in cells, close-ups are made. 0 is the anchor
-    /// alone.
-    var closeUpRing = 0
-    /// Caps, in pixels across, on the close-ups of the anchor and of the ring.
-    /// Unset is as wide as the tile gets on screen.
-    var closeUpAnchorWidth: Int?
-    var closeUpRingWidth: Int?
+    /// Ring radius and the widths of anchor and ring. `--close-up-anchor-width 0`
+    /// or `--close-up-ring-width 0` lifts a cap: as wide as the tile gets.
+    var closeUpOptions = CloseUpOptions.standard
     var exportMosaic: URL?
     var randomTiles = false
     var subject: String?
@@ -162,9 +158,16 @@ struct Options {
                 } else {
                     options.unknown.append("--close-ups \(value ?? "")")
                 }
-            case "--close-up-anchor-width": options.closeUpAnchorWidth = next().flatMap(Int.init)
-            case "--close-up-ring-width": options.closeUpRingWidth = next().flatMap(Int.init)
-            case "--close-up-ring": options.closeUpRing = max(0, next().flatMap(Int.init) ?? options.closeUpRing)
+            case "--close-up-anchor-width":
+                if let width = next().flatMap(Int.init) {
+                    options.closeUpOptions.anchorWidth = width > 0 ? width : nil
+                }
+            case "--close-up-ring-width":
+                if let width = next().flatMap(Int.init) {
+                    options.closeUpOptions.ringWidth = width > 0 ? width : nil
+                }
+            case "--close-up-ring":
+                options.closeUpOptions.ring = max(0, next().flatMap(Int.init) ?? options.closeUpOptions.ring)
             case "--export-mosaic": options.exportMosaic = path()
             case "--subject": options.subject = next()
             case "--random-tiles": options.randomTiles = true
@@ -222,9 +225,9 @@ struct Options {
         lines.append(
             closeUps == .off
                 ? "  close-ups off: every tile from the atlas"
-                : "  close-ups from the \(closeUps.rawValue), ring \(closeUpRing)"
-                    + " · anchor at most \(closeUpAnchorWidth.map { "\($0) px" } ?? "screen width")"
-                    + " · ring at most \(closeUpRingWidth.map { "\($0) px" } ?? "screen width")"
+                : "  close-ups from the \(closeUps.rawValue), ring \(closeUpOptions.ring)"
+                    + " · anchor at most \(closeUpOptions.anchorWidth.map { "\($0) px" } ?? "screen width")"
+                    + " · ring at most \(closeUpOptions.ringWidth.map { "\($0) px" } ?? "screen width")"
         )
         if folder != nil {
             lines.append(String(

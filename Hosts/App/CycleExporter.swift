@@ -28,9 +28,7 @@ enum CycleExporter {
         tileWidth: Int,
         seed: UInt64,
         closeUpSource: (any PhotoSource)?,
-        closeUpRing: Int,
-        closeUpAnchorWidth: Int?,
-        closeUpRingWidth: Int?
+        closeUpOptions: CloseUpOptions
     ) throws {
         let height = CanonicalAspect.height(forWidth: width)
         let engine = try MosaicEngine(
@@ -42,9 +40,7 @@ enum CycleExporter {
             seed: seed,
             tilePixelWidth: tileWidth,
             closeUpSource: closeUpSource,
-            closeUpRing: closeUpRing,
-            closeUpAnchorWidth: closeUpAnchorWidth,
-            closeUpRingWidth: closeUpRingWidth
+            closeUpOptions: closeUpOptions
         )
 
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

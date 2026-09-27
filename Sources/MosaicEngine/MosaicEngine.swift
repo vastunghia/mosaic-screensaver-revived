@@ -33,9 +33,7 @@ public final class MosaicEngine {
     /// Close-up misses of the GPU resources already thrown away, so the count
     /// survives a rebuild.
     private var earlierCloseUpMisses = 0
-    private let closeUpRing: Int
-    private let closeUpAnchorWidth: Int?
-    private let closeUpRingWidth: Int?
+    private let closeUpOptions: CloseUpOptions
     private let tilePixelWidth: Int
 
     private var cycle: CycleEngine
@@ -73,14 +71,10 @@ public final class MosaicEngine {
     ///     get their pixels. Nil draws everything from the atlas. The app passes
     ///     a source with originals behind it; the index alone is exactly what
     ///     the .saver has.
-    ///   - closeUpRing: how far from the anchor, in cells, close-ups are made.
-    ///     0 is the anchor alone.
-    ///   - closeUpAnchorWidth, closeUpRingWidth: the most pixels across a
-    ///     close-up of the anchor, and of the ring around it, may have; nil is
-    ///     as wide as it gets on screen. The anchor fills the screen at the start
-    ///     of a cycle, the ring never quite does, and they need not come from the
-    ///     same pixels: a ring capped at the index's thumbnail width is served
-    ///     by the thumbnails alone.
+    ///   - closeUpOptions: which tiles get close-ups and how wide. The anchor
+    ///     fills the screen at the start of a cycle, the ring never quite does,
+    ///     and they need not come from the same pixels: a ring capped at the
+    ///     index's thumbnail width is served by the thumbnails alone.
     public init(
         device: MTLDevice,
         settings: MosaicSettings = MosaicSettings(),
@@ -90,9 +84,7 @@ public final class MosaicEngine {
         seed: UInt64 = 0x4D05_A1C0,
         tilePixelWidth: Int = 256,
         closeUpSource: (any PhotoSource)? = nil,
-        closeUpRing: Int = 0,
-        closeUpAnchorWidth: Int? = nil,
-        closeUpRingWidth: Int? = nil
+        closeUpOptions: CloseUpOptions = .standard
     ) throws {
         let descriptors = try source.photos()
         guard !descriptors.isEmpty else {
@@ -113,9 +105,7 @@ public final class MosaicEngine {
         )
         self.gpu = try GPUResources(device: device, library: library, recipe: recipe)
         self.currentDeviceID = device.registryID
-        self.closeUpRing = max(0, closeUpRing)
-        self.closeUpAnchorWidth = closeUpAnchorWidth
-        self.closeUpRingWidth = closeUpRingWidth
+        self.closeUpOptions = closeUpOptions
         self.tilePixelWidth = tilePixelWidth
         statisticsBox.update { $0.deviceName = device.name }
 
@@ -481,7 +471,7 @@ public final class MosaicEngine {
     }
 
     /// The photographs of a cycle that get bigger on screen than an atlas slice,
-    /// within `closeUpRing` cells of the anchor, each with the width in pixels
+    /// within `closeUpOptions.ring` cells of the anchor, each with the width in pixels
     /// it reaches at its largest.
     private func closeUpWidths(of layout: MosaicLayout, screenWidth: Int) -> [PhotoID: Int] {
         let geometry = layout.geometry
@@ -490,8 +480,9 @@ public final class MosaicEngine {
             curve: ZoomCurve(zoomFactor: Double(layout.rows)),
             anchorCenter: geometry.center(of: anchor)
         )
-        let rows = max(0, anchor.row - closeUpRing)...min(layout.rows - 1, anchor.row + closeUpRing)
-        let columns = max(0, anchor.column - closeUpRing)...min(layout.rows - 1, anchor.column + closeUpRing)
+        let ring = closeUpOptions.ring
+        let rows = max(0, anchor.row - ring)...min(layout.rows - 1, anchor.row + ring)
+        let columns = max(0, anchor.column - ring)...min(layout.rows - 1, anchor.column + ring)
 
         var widths: [PhotoID: Int] = [:]
         for row in rows {
@@ -499,7 +490,7 @@ public final class MosaicEngine {
                 let cell = GridCell(column: column, row: row)
                 let largest = path.largestOnScreenWidth(of: geometry.rect(of: cell))
                 var pixels = Int((largest * Double(screenWidth)).rounded(.up))
-                if let cap = cell == anchor ? closeUpAnchorWidth : closeUpRingWidth {
+                if let cap = cell == anchor ? closeUpOptions.anchorWidth : closeUpOptions.ringWidth {
                     pixels = min(pixels, cap)
                 }
                 guard pixels > tilePixelWidth else { continue }

@@ -87,9 +87,7 @@ do {
             tileWidth: options.tileWidth,
             seed: options.seed,
             closeUpSource: PhotoSourceFactory.closeUpSource(options.closeUps, photos: photos),
-            closeUpRing: options.closeUpRing,
-            closeUpAnchorWidth: options.closeUpAnchorWidth,
-            closeUpRingWidth: options.closeUpRingWidth
+            closeUpOptions: options.closeUpOptions
         )
         exit(0)
     }
@@ -103,9 +101,7 @@ do {
         seed: options.seed,
         tilePixelWidth: options.tileWidth,
         closeUpSource: PhotoSourceFactory.closeUpSource(options.closeUps, photos: photos),
-        closeUpRing: options.closeUpRing,
-        closeUpAnchorWidth: options.closeUpAnchorWidth,
-        closeUpRingWidth: options.closeUpRingWidth
+        closeUpOptions: options.closeUpOptions
     )
 
     let application = NSApplication.shared
