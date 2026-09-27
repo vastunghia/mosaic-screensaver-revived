@@ -34,6 +34,8 @@ public final class MosaicEngine {
     /// survives a rebuild.
     private var earlierCloseUpMisses = 0
     private let closeUpRing: Int
+    private let closeUpAnchorWidth: Int?
+    private let closeUpRingWidth: Int?
     private let tilePixelWidth: Int
 
     private var cycle: CycleEngine
@@ -73,6 +75,12 @@ public final class MosaicEngine {
     ///     the .saver has.
     ///   - closeUpRing: how far from the anchor, in cells, close-ups are made.
     ///     0 is the anchor alone.
+    ///   - closeUpAnchorWidth, closeUpRingWidth: the most pixels across a
+    ///     close-up of the anchor, and of the ring around it, may have; nil is
+    ///     as wide as it gets on screen. The anchor fills the screen at the start
+    ///     of a cycle, the ring never quite does, and they need not come from the
+    ///     same pixels: a ring capped at the index's thumbnail width is served
+    ///     by the thumbnails alone.
     public init(
         device: MTLDevice,
         settings: MosaicSettings = MosaicSettings(),
@@ -82,7 +90,9 @@ public final class MosaicEngine {
         seed: UInt64 = 0x4D05_A1C0,
         tilePixelWidth: Int = 256,
         closeUpSource: (any PhotoSource)? = nil,
-        closeUpRing: Int = 0
+        closeUpRing: Int = 0,
+        closeUpAnchorWidth: Int? = nil,
+        closeUpRingWidth: Int? = nil
     ) throws {
         let descriptors = try source.photos()
         guard !descriptors.isEmpty else {
@@ -104,6 +114,8 @@ public final class MosaicEngine {
         self.gpu = try GPUResources(device: device, library: library, recipe: recipe)
         self.currentDeviceID = device.registryID
         self.closeUpRing = max(0, closeUpRing)
+        self.closeUpAnchorWidth = closeUpAnchorWidth
+        self.closeUpRingWidth = closeUpRingWidth
         self.tilePixelWidth = tilePixelWidth
         statisticsBox.update { $0.deviceName = device.name }
 
@@ -486,7 +498,10 @@ public final class MosaicEngine {
             for column in columns {
                 let cell = GridCell(column: column, row: row)
                 let largest = path.largestOnScreenWidth(of: geometry.rect(of: cell))
-                let pixels = Int((largest * Double(screenWidth)).rounded(.up))
+                var pixels = Int((largest * Double(screenWidth)).rounded(.up))
+                if let cap = cell == anchor ? closeUpAnchorWidth : closeUpRingWidth {
+                    pixels = min(pixels, cap)
+                }
                 guard pixels > tilePixelWidth else { continue }
                 let photo = layout[cell].photo
                 widths[photo] = max(widths[photo] ?? 0, pixels)
