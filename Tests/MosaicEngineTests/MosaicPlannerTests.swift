@@ -90,10 +90,10 @@ struct MosaicPlannerTests {
         let planner = SolvedMosaicPlanner(catalog: lattice(perAxis: 4))
         for index in 1..<6 {
             let previous = planner.subject(ofCycle: index - 1)
-            let layout = try planner.layout(
+            let layout = try planner.plan(
                 rows: 8, subject: planner.subject(ofCycle: index),
                 previousSubject: previous, seed: UInt64(index)
-            )
+            ).layout
             // This is exactly what CycleEngine.frame asserts on every frame.
             #expect(layout.anchoredPhoto == previous, "cycle \(index)")
             #expect(layout.tiles.count == 64)
@@ -104,31 +104,27 @@ struct MosaicPlannerTests {
     func determinism() throws {
         let catalog = lattice(perAxis: 4)
         func plan() throws -> MosaicLayout {
-            try SolvedMosaicPlanner(catalog: catalog).layout(
+            try SolvedMosaicPlanner(catalog: catalog).plan(
                 rows: 10, subject: PhotoID("tile-000"), previousSubject: PhotoID("tile-333"), seed: 9
-            )
+            ).layout
         }
         #expect(try plan() == (try plan()))
     }
 
-    @Test("a planner remembers only its last solve, which is why the engine keys them by cycle")
-    func statisticsAreOfTheLastSolve() throws {
-        // Written down because it caused a real wrong answer. The lookahead
-        // builds cycle n+1 before cycle n-1, so whatever the planner last solved
-        // is not the mosaic on screen. Reading "the last statistics" gave
-        // plausible numbers for another picture — the worst kind of wrong, since
-        // the numbers exist precisely to be compared between settings.
+    @Test("statistics travel with the mosaic they describe")
+    func statisticsTravelWithTheirMosaic() throws {
+        // Written down because it caused a real wrong answer. The planner used
+        // to keep "its last solve" on the side, and the lookahead builds cycle
+        // n+1 before cycle n-1, so that value described another picture — the
+        // worst kind of wrong, since the numbers exist to be compared.
         let catalog = lattice(perAxis: 4)
         let planner = SolvedMosaicPlanner(catalog: catalog)
 
-        _ = try planner.layout(rows: 20, subject: PhotoID("tile-000"), previousSubject: nil, seed: 1)
-        let wide = planner.lastStatistics?.cellCount
+        let wide = try planner.plan(rows: 20, subject: PhotoID("tile-000"), previousSubject: nil, seed: 1)
+        let narrow = try planner.plan(rows: 4, subject: PhotoID("tile-111"), previousSubject: nil, seed: 1)
 
-        _ = try planner.layout(rows: 4, subject: PhotoID("tile-111"), previousSubject: nil, seed: 1)
-        let narrow = planner.lastStatistics?.cellCount
-
-        #expect(wide == 400)
-        #expect(narrow == 16, "the planner reports the most recent solve, not a chosen one")
+        #expect(wide.statistics?.cellCount == 400, "still its own after a later solve")
+        #expect(narrow.statistics?.cellCount == 16)
     }
 
     @Test("a catalogue with nothing to match on says so instead of pretending")
@@ -141,7 +137,7 @@ struct MosaicPlannerTests {
         // before the app has ever built an index.
         #expect(empty.subject(ofCycle: 7) == PhotoID(""))
         #expect(throws: MosaicSolverError.self) {
-            _ = try empty.layout(rows: 8, subject: PhotoID("x"), previousSubject: nil, seed: 1)
+            _ = try empty.plan(rows: 8, subject: PhotoID("x"), previousSubject: nil, seed: 1)
         }
 
         // A photograph without a signature is left out of the pool rather than

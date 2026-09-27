@@ -201,13 +201,13 @@ enum BatchExporter {
         guard let planner = PlannerFactory.make(options: unconstrained, photos: photos).planner else {
             throw BatchError.noSolver
         }
-        _ = try planner.layout(
+        let planned = try planner.plan(
             rows: options.rows,
             subject: photo,
             previousSubject: cycle > 0 ? sequence.subject(ofCycle: cycle - 1) : nil,
             seed: UInt64(cycle)
         )
-        guard let statistics = planner.lastStatistics else {
+        guard let statistics = planned.statistics else {
             throw BatchError.solverFailed(cycle: cycle, reason: "no statistics for the floor")
         }
         return statistics

@@ -13,7 +13,6 @@ public final class SolvedMosaicPlanner: MosaicPlanner, @unchecked Sendable {
     private let subjects: [PhotoID]
     private let sequence: SubjectSequence
     private let lock = NSLock()
-    private var statistics: SolveStatistics?
     private var grids: [GridKey: TargetGrid] = [:]
 
     private struct GridKey: Hashable {
@@ -55,13 +54,6 @@ public final class SolvedMosaicPlanner: MosaicPlanner, @unchecked Sendable {
     public var isUsable: Bool { !pool.isEmpty }
     public var poolSize: Int { pool.count }
 
-    /// The numbers from the last mosaic built. Milestone 2's whole deliverable is
-    /// a judgement, so the judgement is instrumented.
-    public var lastStatistics: SolveStatistics? {
-        lock.lock(); defer { lock.unlock() }
-        return statistics
-    }
-
     public func subject(ofCycle index: Int) -> PhotoID {
         // An index with nothing usable in it is a state M10 has to survive, not
         // a programming error: the saver may be started before the app has ever
@@ -71,12 +63,12 @@ public final class SolvedMosaicPlanner: MosaicPlanner, @unchecked Sendable {
         return subjects[sequence.index(ofCycle: index)]
     }
 
-    public func layout(
+    public func plan(
         rows: Int,
         subject: PhotoID,
         previousSubject: PhotoID?,
         seed layoutSeed: UInt64
-    ) throws -> MosaicLayout {
+    ) throws -> PlannedMosaic {
         let key = GridKey(photo: subject.rawValue, rows: rows, detail: options.detail)
 
         lock.lock()
@@ -84,9 +76,8 @@ public final class SolvedMosaicPlanner: MosaicPlanner, @unchecked Sendable {
         lock.unlock()
 
         if grid == nil {
-            // Decoding, on the thread that asked. Milestone 1 built layouts
-            // synchronously one cycle ahead and this keeps doing that; moving the
-            // work to the background is M8's job proper, in milestone 3.
+            // Decoding, on the thread that asked — the engine's lookahead
+            // thread, never the render thread.
             let decoded = try catalog.targetGrid(for: subject, rows: rows, detail: options.detail)
             lock.lock()
             // Two live layers at a time (SPEC § 6), so a handful of grids is
@@ -106,10 +97,8 @@ public final class SolvedMosaicPlanner: MosaicPlanner, @unchecked Sendable {
             seed: layoutSeed
         )
 
-        lock.lock()
-        statistics = result.statistics
-        lock.unlock()
-
-        return result.layout
+        // Milestone 2's whole deliverable was a judgement, so the judgement is
+        // instrumented, and the numbers go out with the mosaic they describe.
+        return PlannedMosaic(layout: result.layout, statistics: result.statistics)
     }
 }

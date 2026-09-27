@@ -14,6 +14,7 @@ final class MosaicMetalView: NSView {
     private var lastTimestamp: CFTimeInterval?
     private var smoothedFPS: Double = 0
     private var lastReadoutUpdate: CFTimeInterval = 0
+    private var lastLoggedCycle = -1
 
     init(engine: MosaicEngine, clock: HarnessClock, readout: HarnessReadout) {
         self.engine = engine
@@ -92,6 +93,19 @@ final class MosaicMetalView: NSView {
             if now - lastReadoutUpdate > 0.25 {
                 lastReadoutUpdate = now
                 readout.publish(framesPerSecond: smoothedFPS, statistics: engine.statistics)
+            }
+
+            // One line per cycle on stdout, so a run can be read back without
+            // anyone watching the overlay: a stall count that grows while the
+            // effect simply runs means the lookahead is late.
+            let statistics = engine.statistics
+            if statistics.cycleIndex != lastLoggedCycle {
+                lastLoggedCycle = statistics.cycleIndex
+                print(String(
+                    format: "cycle %d · %d stalls · %.0f fps · %@",
+                    statistics.cycleIndex, statistics.stalls, smoothedFPS, statistics.deviceName
+                ))
+                fflush(stdout)
             }
         }
     }

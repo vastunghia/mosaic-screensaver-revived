@@ -25,19 +25,31 @@ public protocol MosaicPlanner: Sendable {
     ///     occupy the anchor cell — the constraint of SPEC § 5, step 4.
     ///   - seed: makes a given cycle reproducible, which is what lets the
     ///     harness scrub backwards and see the same thing twice.
-    func layout(
+    ///
+    /// Called from a background thread, and possibly from more than one.
+    func plan(
         rows: Int,
         subject: PhotoID,
         previousSubject: PhotoID?,
         seed: UInt64
-    ) throws -> MosaicLayout
-
-    /// How the last mosaic scored, when the planner is the sort that can say.
-    var lastStatistics: SolveStatistics? { get }
+    ) throws -> PlannedMosaic
 }
 
-extension MosaicPlanner {
-    public var lastStatistics: SolveStatistics? { nil }
+/// A mosaic and, when the planner is the sort that can say, how it scored.
+///
+/// The two travel together because they used not to. A planner used to keep
+/// "the statistics of its last solve" on the side, and the lookahead builds
+/// cycle n+1 before cycle n-1, so that value described another picture. Once
+/// solves moved to a background thread it would not even have been the same
+/// picture from one read to the next.
+public struct PlannedMosaic: Sendable {
+    public let layout: MosaicLayout
+    public let statistics: SolveStatistics?
+
+    public init(layout: MosaicLayout, statistics: SolveStatistics? = nil) {
+        self.layout = layout
+        self.statistics = statistics
+    }
 }
 
 /// Assigns tiles at random. It is not a photomosaic and does not pretend to be.
@@ -61,12 +73,12 @@ public struct RandomMosaicPlanner: MosaicPlanner {
         pool[sequence.index(ofCycle: index)]
     }
 
-    public func layout(
+    public func plan(
         rows: Int,
         subject: PhotoID,
         previousSubject: PhotoID?,
         seed: UInt64
-    ) -> MosaicLayout {
+    ) -> PlannedMosaic {
         var rng = SplitMix64(seed: seed)
 
         var tiles = (0..<(rows * rows)).map { _ in
@@ -81,6 +93,8 @@ public struct RandomMosaicPlanner: MosaicPlanner {
             tiles[anchor.row * rows + anchor.column] = TileAssignment(photo: previousSubject)
         }
 
-        return MosaicLayout(rows: rows, subject: subject, anchor: anchor, tiles: tiles)
+        return PlannedMosaic(
+            layout: MosaicLayout(rows: rows, subject: subject, anchor: anchor, tiles: tiles)
+        )
     }
 }

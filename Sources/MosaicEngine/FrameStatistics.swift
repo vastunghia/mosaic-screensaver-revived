@@ -22,6 +22,11 @@ public struct FrameStatistics: Sendable {
     /// this is what turns "that one looks worse" into "that one is worse".
     public var solve: SolveStatistics?
 
+    /// How many times a mosaic needed on screen was not ready and had to be
+    /// built on the render thread. The first cycle, a scrub and a change of R
+    /// account for some; in steady state it must not move.
+    public var stalls: Int = 0
+
     /// Why the last mosaic fell back to random tiles, if it did.
     public var lastError: String?
 

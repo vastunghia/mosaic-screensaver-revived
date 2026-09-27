@@ -47,7 +47,10 @@ struct HarnessView: View {
                 format: "%.0f fps · %.2f ms GPU · %d tiles",
                 readout.framesPerSecond, stats.gpuMilliseconds, stats.tileCount
             ))
-            Text(String(format: "cycle %d · u = %.3f", stats.cycleIndex, stats.u))
+            // Stalls are mosaics the render thread had to build itself. The
+            // first cycle, a scrub and a change of R cause some; if the number
+            // moves while the effect just runs, the lookahead is late.
+            Text(String(format: "cycle %d · u = %.3f · %d stalls", stats.cycleIndex, stats.u, stats.stalls))
 
             // Which photograph, and how well the tiles match it. Judging two
             // solver settings against each other is meaningless unless it is

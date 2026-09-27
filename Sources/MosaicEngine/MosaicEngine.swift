@@ -26,20 +26,9 @@ public final class MosaicEngine {
     private let queue: MTLCommandQueue
     private let renderer: Renderer
     private let atlas: TileAtlas
-    private let planner: any MosaicPlanner
-    private let fallback: RandomMosaicPlanner
-    private let seed: UInt64
+    private let lookahead: Lookahead
 
     private var cycle: CycleEngine
-    private var layouts: [Int: MosaicLayout] = [:]
-
-    /// Keyed by cycle, and that is the whole point. A planner only remembers its
-    /// most recent solve, and the lookahead builds cycle n+1 before cycle n-1, so
-    /// reading "the last statistics" reports a mosaic that is not the one on
-    /// screen. It looks plausible, which is what makes it dangerous: the numbers
-    /// exist to be compared between settings, and these were quietly of another
-    /// picture.
-    private var solves: [Int: SolveStatistics] = [:]
 
     private var layer: CAMetalLayer?
     private let inFlight: DispatchSemaphore
@@ -80,9 +69,10 @@ public final class MosaicEngine {
         self.queue = queue
         self.settings = settings
         self.cycle = CycleEngine(settings: settings)
-        self.seed = seed
-        self.fallback = RandomMosaicPlanner(pool: descriptors.map(\.id), seed: seed)
-        self.planner = planner ?? self.fallback
+        let fallback = RandomMosaicPlanner(pool: descriptors.map(\.id), seed: seed)
+        self.lookahead = Lookahead(
+            planner: planner ?? fallback, fallback: fallback, seed: seed, rows: settings.rows
+        )
         self.renderer = try library.map { try Renderer(device: device, library: $0) }
             ?? Renderer(device: device)
         self.atlas = try StaticTileAtlas(
@@ -93,6 +83,11 @@ public final class MosaicEngine {
         )
         self.inFlight = DispatchSemaphore(value: Renderer.inFlightFrameCount)
         statisticsBox.update { $0.deviceName = device.name }
+
+        // The first cycle a host normally shows, started now so that it is
+        // likely to be ready by the first frame.
+        lookahead.prefetch(0)
+        lookahead.prefetch(1)
     }
 
     // MARK: - Host API
@@ -119,7 +114,7 @@ public final class MosaicEngine {
         let rowsChanged = settings.rows != self.settings.rows
         self.settings = settings
         self.cycle = CycleEngine(settings: settings)
-        if rowsChanged { layouts.removeAll(keepingCapacity: true) }
+        if rowsChanged { lookahead.reset(rows: settings.rows) }
     }
 
     /// Draws the frame for an absolute time. There is no internal clock: the
@@ -127,7 +122,7 @@ public final class MosaicEngine {
     public func advance(to time: TimeInterval) {
         guard let layer, let drawable = layer.nextDrawable() else { return }
 
-        let frame = frameState(at: time)
+        let frame = frameState(at: time, onScreen: true)
 
         inFlight.wait()
         guard let commands = queue.makeCommandBuffer() else {
@@ -164,7 +159,7 @@ public final class MosaicEngine {
     /// what makes everything else verifiable: a cycle can be exported frame by
     /// frame and looked at cold.
     public func renderFrame(at time: TimeInterval, into texture: MTLTexture) {
-        render(frameState(at: time), into: texture)
+        render(frameState(at: time, onScreen: false), into: texture)
     }
 
     /// One mosaic, filling the screen, and nothing else drawn.
@@ -179,12 +174,16 @@ public final class MosaicEngine {
     /// too, which for a still doubles the work for nothing.
     @discardableResult
     public func renderMosaic(cycle index: Int, into texture: MTLTexture) -> PhotoID {
-        let current = layout(forCycle: index)
-        let previous = index > 0 ? layout(forCycle: index - 1) : nil
+        lookahead.evict(before: index - 1)
+        let current = mosaic(forCycle: index, onScreen: false)
+        let previous = index > 0 ? mosaic(forCycle: index - 1, onScreen: false).planned.layout : nil
         let time = (Double(index) + 1 - 1e-9) * settings.cycleDuration
-        report(current, cycle: index)
-        render(cycle.frame(at: time, current: current, previous: previous), into: texture)
-        return current.subject
+        report(current)
+        render(
+            cycle.frame(at: time, current: current.planned.layout, previous: previous),
+            into: texture
+        )
+        return current.planned.layout.subject
     }
 
     private func render(_ frame: FrameState, into texture: MTLTexture) {
@@ -232,63 +231,47 @@ public final class MosaicEngine {
 
     // MARK: - Lookahead
 
-    private func frameState(at time: TimeInterval) -> FrameState {
+    /// - Parameter onScreen: whether this frame is on its way to a display. A
+    ///   mosaic missing there is a stall; offscreen rendering waits by design.
+    private func frameState(at time: TimeInterval, onScreen: Bool) -> FrameState {
         let index = cycle.position(at: time).index
+
         // SPEC § 2 wants the tiles to look as though they had always been there,
-        // so nothing may be built while it is on screen. Milestone 1 builds them
-        // one cycle early and synchronously; the background work is M8's job
-        // proper, in milestone 3.
-        for needed in cycle.cyclesNeeded(at: time) {
-            _ = layout(forCycle: needed)
+        // so nothing may be built while it is on screen: the next cycle is
+        // started now, in the background, a whole cycle before it is needed.
+        // Offscreen there is no hurry and no thread to spare the work.
+        if onScreen {
+            for needed in cycle.cyclesNeeded(at: time) where needed != index {
+                lookahead.prefetch(needed)
+            }
         }
+        lookahead.evict(before: index - 1)
+
+        let current = mosaic(forCycle: index, onScreen: onScreen)
+        let previous = index > 0 ? mosaic(forCycle: index - 1, onScreen: onScreen) : nil
         let frame = cycle.frame(
             at: time,
-            current: layout(forCycle: index),
-            previous: index > 0 ? layout(forCycle: index - 1) : nil
+            current: current.planned.layout,
+            previous: previous?.planned.layout
         )
-        report(frame.current, cycle: index)
+        report(current)
         return frame
     }
 
-    private func report(_ layout: MosaicLayout, cycle index: Int) {
-        let solve = solves[index]
-        statisticsBox.update {
-            $0.subject = layout.subject.rawValue
-            $0.solve = solve
+    private func mosaic(forCycle index: Int, onScreen: Bool) -> Lookahead.Built {
+        let built = lookahead.mosaic(forCycle: index, counting: onScreen)
+        if let error = built.error {
+            statisticsBox.update { $0.lastError = error }
         }
+        return built
     }
 
-    private func layout(forCycle index: Int) -> MosaicLayout {
-        if let known = layouts[index] { return known }
-
-        let subject = planner.subject(ofCycle: index)
-        let previous = index > 0 ? planner.subject(ofCycle: index - 1) : nil
-        let layoutSeed = seed &+ UInt64(bitPattern: Int64(index)) &* 0x2545_F491
-
-        var built: MosaicLayout
-        do {
-            built = try planner.layout(
-                rows: settings.rows, subject: subject, previousSubject: previous, seed: layoutSeed
-            )
-        } catch {
-            // Degrading is a requirement, not a kindness: M10 has to survive an
-            // index that is missing, empty or half-built, and showing something
-            // beats showing nothing. The reason goes where it can be read.
-            statisticsBox.update { $0.lastError = "\(error)" }
-            built = fallback.layout(
-                rows: settings.rows,
-                subject: fallback.subject(ofCycle: index),
-                previousSubject: index > 0 ? fallback.subject(ofCycle: index - 1) : nil,
-                seed: layoutSeed
-            )
+    private func report(_ built: Lookahead.Built) {
+        let stalls = lookahead.stalls
+        statisticsBox.update {
+            $0.subject = built.planned.layout.subject.rawValue
+            $0.solve = built.planned.statistics
+            $0.stalls = stalls
         }
-
-        // Two live layers at a time (SPEC § 6), so nothing older than the
-        // previous cycle is worth keeping.
-        layouts = layouts.filter { $0.key >= index - 2 }
-        solves = solves.filter { $0.key >= index - 2 }
-        layouts[index] = built
-        solves[index] = planner.lastStatistics
-        return built
     }
 }

@@ -68,14 +68,12 @@ struct PinnedSubjectPlanner: MosaicPlanner {
         index == cycle ? subject : inner.subject(ofCycle: index)
     }
 
-    func layout(
+    func plan(
         rows: Int,
         subject: PhotoID,
         previousSubject: PhotoID?,
         seed: UInt64
-    ) throws -> MosaicLayout {
-        try inner.layout(rows: rows, subject: subject, previousSubject: previousSubject, seed: seed)
+    ) throws -> PlannedMosaic {
+        try inner.plan(rows: rows, subject: subject, previousSubject: previousSubject, seed: seed)
     }
-
-    var lastStatistics: SolveStatistics? { inner.lastStatistics }
 }
