@@ -90,7 +90,7 @@ struct HarnessView: View {
                         get: { Double(clock.settings.rows) },
                         set: { clock.settings.rows = Int($0.rounded()) }
                     ),
-                    in: 30...90,
+                    in: 60...120,
                     step: 1
                 )
             }

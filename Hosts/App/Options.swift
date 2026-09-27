@@ -8,9 +8,9 @@ import PhotoIndex
 /// Command line options. Deliberately tiny: this is a development harness, and
 /// anything worth keeping ends up in the preferences of the real app instead.
 struct Options {
-    var rows = 60
+    var rows = 90
     var cycleDuration: Double = 25
-    var crossfadeDuration: Double = 0.30
+    var crossfadeDuration: Double = 0.20
 
     /// How many photographs the mosaic may draw from. Also the size of the tile
     /// atlas, because the solver may pick any of them.
