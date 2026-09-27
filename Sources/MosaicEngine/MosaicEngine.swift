@@ -11,6 +11,7 @@ import TileStore
 public enum MosaicEngineError: Error {
     case noCommandQueue
     case emptyPhotoSource
+    case noDevice
 }
 
 /// M8: the only class a host instantiates, and the public boundary of the whole
@@ -23,20 +24,42 @@ public enum MosaicEngineError: Error {
 public final class MosaicEngine {
     public private(set) var settings: MosaicSettings
 
-    public let device: MTLDevice
-    private let queue: MTLCommandQueue
-    private let renderer: Renderer
-    private let atlas: TileAtlas
+    /// Everything that belongs to the current MTLDevice. Replaced whole when
+    /// that device goes away; read and swapped on the host's thread only.
+    private var gpu: GPUResources
+    private let recipe: GPUResources.Recipe
+
     private let lookahead: Lookahead
-    private let closeUps: CloseUpStore?
+    /// Close-up misses of the GPU resources already thrown away, so the count
+    /// survives a rebuild.
+    private var earlierCloseUpMisses = 0
     private let closeUpRing: Int
     private let tilePixelWidth: Int
 
     private var cycle: CycleEngine
 
     private var layer: CAMetalLayer?
-    private let inFlight: DispatchSemaphore
     private let statisticsBox = StatisticsBox()
+
+    /// The rebuild in progress, shared with the thread that does it and with
+    /// whichever thread Metal reports a device removal on.
+    private let rebuildLock = NSLock()
+    private var rebuilding = false
+    private var replacement: GPUResources?
+    private var currentDeviceID: UInt64
+    private var deviceObserver: NSObjectProtocol?
+
+    /// Which device to rebuild on when the current one goes away, given the one
+    /// lost (nil for a rebuild asked for by hand). A host that knows which
+    /// display it draws on answers with the GPU driving that display
+    /// (`CGDirectDisplayCopyCurrentMetalDevice`); nil, or the lost device
+    /// itself, falls back to any device still attached. Called off the main
+    /// thread.
+    public var deviceProvider: (@Sendable (MTLDevice?) -> MTLDevice?)? {
+        get { rebuildLock.lock(); defer { rebuildLock.unlock() }; return provider }
+        set { rebuildLock.lock(); provider = newValue; rebuildLock.unlock() }
+    }
+    private var provider: (@Sendable (MTLDevice?) -> MTLDevice?)?
 
     /// - Parameter library: normally nil, and then the engine resolves
     ///   default.metallib from the bundle its own code lives in — the app or the
@@ -61,40 +84,38 @@ public final class MosaicEngine {
         closeUpSource: (any PhotoSource)? = nil,
         closeUpRing: Int = 0
     ) throws {
-        guard let queue = device.makeCommandQueue() else {
-            throw MosaicEngineError.noCommandQueue
-        }
-
         let descriptors = try source.photos()
         guard !descriptors.isEmpty else {
             throw MosaicEngineError.emptyPhotoSource
         }
 
-        self.device = device
-        self.queue = queue
         self.settings = settings
         self.cycle = CycleEngine(settings: settings)
         let fallback = RandomMosaicPlanner(pool: descriptors.map(\.id), seed: seed)
         self.lookahead = Lookahead(
             planner: planner ?? fallback, fallback: fallback, seed: seed, rows: settings.rows
         )
-        self.renderer = try library.map { try Renderer(device: device, library: $0) }
-            ?? Renderer(device: device)
-        // Built up front, and the host waits for it. Decoding runs on every
-        // core; the atlas is still one array, whole and blocking, and making it
-        // incremental is left for when a pool outgrows 2048 slices.
-        self.atlas = try StaticTileAtlas(
-            device: device,
-            queue: queue,
+        self.recipe = GPUResources.Recipe(
             source: source,
             photos: descriptors.map(\.id),
-            tileWidth: tilePixelWidth
+            tileWidth: tilePixelWidth,
+            closeUpSource: closeUpSource
         )
-        self.closeUps = try closeUpSource.map { try CloseUpStore(device: device, source: $0) }
+        self.gpu = try GPUResources(device: device, library: library, recipe: recipe)
+        self.currentDeviceID = device.registryID
         self.closeUpRing = max(0, closeUpRing)
         self.tilePixelWidth = tilePixelWidth
-        self.inFlight = DispatchSemaphore(value: Renderer.inFlightFrameCount)
         statisticsBox.update { $0.deviceName = device.name }
+
+        // An eGPU can be unplugged while the effect runs. Metal says so, on a
+        // thread of its choosing, both when removal is requested (the eject
+        // item in the menu bar, which waits for us to let go) and when the
+        // device is simply gone.
+        let (_, observer) = MTLCopyAllDevicesWithObserver { [weak self] device, notification in
+            guard notification == .removalRequested || notification == .wasRemoved else { return }
+            self?.deviceWentAway(device)
+        }
+        self.deviceObserver = observer
 
         // The first cycle a host normally shows, started now so that it is
         // likely to be ready by the first frame.
@@ -102,10 +123,17 @@ public final class MosaicEngine {
         lookahead.prefetch(1)
     }
 
+    deinit {
+        if let deviceObserver { MTLRemoveDeviceObserver(deviceObserver) }
+    }
+
     // MARK: - Host API
 
+    /// The MTLDevice drawing now. It changes if that one goes away.
+    public var device: MTLDevice { gpu.device }
+
     public func attach(to layer: CAMetalLayer, size: CGSize) {
-        layer.device = device
+        layer.device = gpu.device
         layer.pixelFormat = .bgra8Unorm_srgb
         layer.framebufferOnly = true
         layer.isOpaque = true
@@ -129,7 +157,7 @@ public final class MosaicEngine {
         if rowsChanged {
             lookahead.reset(rows: settings.rows)
             // Close-ups belong to a cycle's layout, and those just changed.
-            closeUps?.evict(before: .max)
+            gpu.closeUps?.evict(before: .max)
         }
     }
 
@@ -140,14 +168,20 @@ public final class MosaicEngine {
     /// says yes. Drawing earlier is not wrong, only worse: a cycle fixes its
     /// close-ups the first time it is drawn, so a first frame drawn too soon
     /// leaves the whole first cycle to the atlas.
+    ///
+    /// It also says no while the engine is rebuilding itself on another GPU,
+    /// so a host that asks every frame holds its clock through that too, and
+    /// the effect resumes where it stopped rather than further on.
     public func isReady(at time: TimeInterval) -> Bool {
+        guard adoptReplacement() else { return false }
         let index = cycle.position(at: time).index
         lookahead.prefetch(index)
         if index > 0 { lookahead.prefetch(index - 1) }
         guard lookahead.isReady(index), index == 0 || lookahead.isReady(index - 1) else {
             return false
         }
-        guard let store = closeUps else { return true }
+        guard let store = gpu.closeUps else { return true }
+        if store.isLatched(index) { return true }
         guard let layer, layer.drawableSize.width > 0 else { return false }
         if !store.isRequested(index) {
             let layout = lookahead.mosaic(forCycle: index, counting: false).planned.layout
@@ -162,18 +196,21 @@ public final class MosaicEngine {
     /// Draws the frame for an absolute time. There is no internal clock: the
     /// host owns time, which is what lets the harness scrub it.
     public func advance(to time: TimeInterval) {
-        guard let layer, let drawable = layer.nextDrawable() else { return }
+        guard adoptReplacement(), let layer, let drawable = layer.nextDrawable() else { return }
+        let gpu = gpu
 
         let (frame, closeUps) = frameState(
             at: time, onScreen: true, screenWidth: Int(layer.drawableSize.width)
         )
 
-        inFlight.wait()
-        guard let commands = queue.makeCommandBuffer() else {
-            inFlight.signal()
+        // Bounded, because a frame in flight on a device that has just been
+        // unplugged may never complete; the frame is skipped instead.
+        guard gpu.inFlight.wait(timeout: .now() + 0.25) == .success else { return }
+        guard let commands = gpu.queue.makeCommandBuffer() else {
+            gpu.inFlight.signal()
             return
         }
-        commands.addCompletedHandler { [inFlight, statisticsBox] buffer in
+        commands.addCompletedHandler { [inFlight = gpu.inFlight, statisticsBox] buffer in
             let milliseconds = (buffer.gpuEndTime - buffer.gpuStartTime) * 1000
             statisticsBox.update { $0.gpuMilliseconds = milliseconds }
             inFlight.signal()
@@ -186,7 +223,7 @@ public final class MosaicEngine {
         pass.colorAttachments[0].clearColor = Renderer.clearColor
 
         if let encoder = commands.makeRenderCommandEncoder(descriptor: pass) {
-            let drawn = renderer.encode(frame, atlas: atlas, closeUps: closeUps, into: encoder)
+            let drawn = gpu.renderer.encode(frame, atlas: gpu.atlas, closeUps: closeUps, into: encoder)
             encoder.endEncoding()
             statisticsBox.update {
                 $0.tileCount = drawn
@@ -236,7 +273,7 @@ public final class MosaicEngine {
         closeUps: [PhotoID: MTLTexture] = [:],
         into texture: MTLTexture
     ) {
-        guard let commands = queue.makeCommandBuffer() else { return }
+        guard let commands = gpu.queue.makeCommandBuffer() else { return }
 
         let pass = MTLRenderPassDescriptor()
         pass.colorAttachments[0].texture = texture
@@ -245,7 +282,7 @@ public final class MosaicEngine {
         pass.colorAttachments[0].clearColor = Renderer.clearColor
 
         if let encoder = commands.makeRenderCommandEncoder(descriptor: pass) {
-            renderer.encode(frame, atlas: atlas, closeUps: closeUps, into: encoder)
+            gpu.renderer.encode(frame, atlas: gpu.atlas, closeUps: closeUps, into: encoder)
             encoder.endEncoding()
         }
 
@@ -268,15 +305,100 @@ public final class MosaicEngine {
         )
         descriptor.usage = [.renderTarget, .shaderRead]
         descriptor.storageMode = .managed
-        return device.makeTexture(descriptor: descriptor)
+        return gpu.device.makeTexture(descriptor: descriptor)
     }
 
     /// The MTLDevice actually in use, so measurements can be labelled with it.
     /// A Radeon Pro 560X and an RX 6800 are far too different for an unlabelled
     /// frame time to mean anything.
-    public var deviceName: String { device.name }
+    public var deviceName: String { gpu.device.name }
 
     public var statistics: FrameStatistics { statisticsBox.current }
+
+    // MARK: - Another GPU
+
+    /// Throws away every GPU resource and makes it again, on the device the
+    /// provider names — the same one, when asked by hand, which exercises the
+    /// whole path without unplugging anything. The host sees `isReady` say no
+    /// until it is done.
+    public func rebuild() {
+        startRebuild(avoiding: nil)
+    }
+
+    private func deviceWentAway(_ lost: MTLDevice) {
+        rebuildLock.lock()
+        let ours = lost.registryID == currentDeviceID
+        rebuildLock.unlock()
+        if ours { startRebuild(avoiding: lost) }
+    }
+
+    private func startRebuild(avoiding lost: MTLDevice?) {
+        rebuildLock.lock()
+        guard !rebuilding else {
+            rebuildLock.unlock()
+            return
+        }
+        rebuilding = true
+        let provider = provider
+        rebuildLock.unlock()
+
+        let recipe = recipe
+        let statisticsBox = statisticsBox
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let started = Date()
+            var device = provider?(lost)
+            if device == nil || device?.registryID == lost?.registryID {
+                device = GPUResources.survivingDevice(avoiding: lost)
+            }
+
+            var fresh: GPUResources?
+            do {
+                guard let device else { throw MosaicEngineError.noDevice }
+                fresh = try GPUResources(device: device, library: nil, recipe: recipe)
+            } catch {
+                statisticsBox.update { $0.lastError = "could not rebuild on another GPU: \(error)" }
+            }
+
+            guard let self else { return }
+            let seconds = Date().timeIntervalSince(started)
+            self.rebuildLock.lock()
+            self.replacement = fresh
+            if fresh == nil { self.rebuilding = false }
+            self.rebuildLock.unlock()
+            if let fresh {
+                statisticsBox.update {
+                    $0.rebuilds += 1
+                    $0.lastRebuildSeconds = seconds
+                    $0.deviceName = fresh.device.name
+                }
+            }
+        }
+    }
+
+    /// Swaps in a rebuilt set of GPU resources, on the host's thread, which is
+    /// the only one that touches `gpu`.
+    ///
+    /// - Returns: false while a rebuild is still running, when nothing may be
+    ///   drawn: the old device may already be gone.
+    private func adoptReplacement() -> Bool {
+        rebuildLock.lock()
+        let fresh = replacement
+        let busy = rebuilding
+        if let fresh {
+            replacement = nil
+            rebuilding = false
+            currentDeviceID = fresh.device.registryID
+        }
+        rebuildLock.unlock()
+
+        if let fresh {
+            earlierCloseUpMisses += gpu.closeUps?.misses ?? 0
+            gpu = fresh
+            layer?.device = fresh.device
+            return true
+        }
+        return !busy
+    }
 
     // MARK: - Lookahead
 
@@ -320,7 +442,7 @@ public final class MosaicEngine {
     private func closeUps(
         forCycle index: Int, layout: MosaicLayout, onScreen: Bool, screenWidth: Int
     ) -> [PhotoID: MTLTexture] {
-        guard let store = closeUps, screenWidth > 0 else { return [:] }
+        guard let store = gpu.closeUps, screenWidth > 0 else { return [:] }
         store.evict(before: index)
 
         if !store.isRequested(index) {
@@ -337,7 +459,7 @@ public final class MosaicEngine {
         }
 
         let latched = store.latch(cycle: index)
-        let misses = store.misses
+        let misses = earlierCloseUpMisses + store.misses
         let bytes = store.residentBytes
         statisticsBox.update {
             $0.closeUpMisses = misses

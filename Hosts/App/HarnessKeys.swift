@@ -1,4 +1,5 @@
 import AppKit
+import MosaicEngine
 
 /// A window that reads the keyboard before its contents do.
 ///
@@ -11,6 +12,7 @@ import AppKit
 final class HarnessWindow: NSWindow {
     var clock: HarnessClock?
     var ui: HarnessUIState?
+    var engine: MosaicEngine?
 
     override func sendEvent(_ event: NSEvent) {
         if event.type == .keyDown, handle(event) { return }
@@ -32,6 +34,9 @@ final class HarnessWindow: NSWindow {
             case "f": toggleFullScreen(nil)
             case "h": ui.showsControls.toggle()
             case "r": clock.reset()
+            // Throws away every GPU resource and makes it again: the path an
+            // unplugged eGPU takes, exercised without unplugging anything.
+            case "g": engine?.rebuild()
             default: return false
             }
         }

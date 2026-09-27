@@ -34,6 +34,11 @@ public struct FrameStatistics: Sendable {
     /// GPU memory held by close-ups, mip pyramids included.
     public var closeUpBytes: Int = 0
 
+    /// Times the engine rebuilt itself on a GPU, and how long the last one took
+    /// — the gap on screen when an eGPU is unplugged.
+    public var rebuilds: Int = 0
+    public var lastRebuildSeconds: Double = 0
+
     /// Why the last mosaic fell back to random tiles, if it did.
     public var lastError: String?
 

@@ -84,6 +84,10 @@ struct Options {
     var exportCycle = 1
     var fullScreen = false
 
+    /// Rebuilds every GPU resource every so many seconds: the path an unplugged
+    /// eGPU takes, exercised over and over without unplugging anything.
+    var rebuildEvery: Double?
+
     /// Flags that were not understood. They used to be dropped in silence, and
     /// with this many options a mistyped `--foler` would hand back a synthetic
     /// mosaic and cost an evening of judging the wrong thing.
@@ -185,6 +189,7 @@ struct Options {
             case "--width": options.exportWidth = next().flatMap(Int.init) ?? options.exportWidth
             case "--cycle": options.exportCycle = next().flatMap(Int.init) ?? options.exportCycle
             case "--full-screen": options.fullScreen = true
+            case "--rebuild-every": options.rebuildEvery = next().flatMap(Double.init)
             default:
                 if argument.hasPrefix("-") { options.unknown.append(argument) }
             }

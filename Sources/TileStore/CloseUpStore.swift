@@ -97,6 +97,12 @@ public final class CloseUpStore: @unchecked Sendable {
         return group?.wait(timeout: .now()) == .success
     }
 
+    /// Whether `cycle` has already fixed its close-ups by being drawn.
+    public func isLatched(_ cycle: Int) -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        return latched[cycle] != nil
+    }
+
     /// The close-ups `cycle` draws with, fixed the first time it is asked.
     public func latch(cycle: Int) -> [PhotoID: MTLTexture] {
         lock.lock(); defer { lock.unlock() }

@@ -40,9 +40,16 @@ final class HarnessDelegate: NSObject, NSApplicationDelegate {
         }
         window.clock = clock
         window.ui = ui
+        window.engine = engine
         self.window = window
 
         NSApp.activate(ignoringOtherApps: true)
+
+        if let interval = options.rebuildEvery {
+            Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [engine] _ in
+                engine.rebuild()
+            }
+        }
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
