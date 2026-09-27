@@ -88,15 +88,37 @@ public struct PhotoIndexStore: Sendable {
         }
     }
 
+    /// The thumbnail, at most `maxPixelWidth` across.
+    ///
+    /// Asked for less than is stored — the atlas wants 256 of 854 — the JPEG is
+    /// decoded already reduced, which is most of the atlas's startup: decoding
+    /// every thumbnail whole and then shrinking it cost three seconds more once
+    /// the thumbnails grew to 854. Asked for all of it, the full decode is kept
+    /// exactly as it was, because that is what targets are sampled from.
     public func readThumbnail(named name: String, maxPixelWidth: Int) throws -> CGImage {
         let url = url(forThumbnail: name)
-        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
-              let image = CGImageSourceCreateImageAtIndex(source, 0, [
-                  kCGImageSourceShouldCacheImmediately: true,
-              ] as CFDictionary)
-        else {
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else {
             throw PhotoIndexError.couldNotReadThumbnail(name)
         }
+
+        let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
+        let width = properties?[kCGImagePropertyPixelWidth] as? Int ?? 0
+
+        let image: CGImage?
+        if maxPixelWidth < width {
+            // A thumbnail is already the canonical 16:9 crop, landscape, so its
+            // longest side is its width.
+            image = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+                kCGImageSourceCreateThumbnailFromImageAlways: true,
+                kCGImageSourceThumbnailMaxPixelSize: maxPixelWidth,
+                kCGImageSourceShouldCacheImmediately: true,
+            ] as CFDictionary)
+        } else {
+            image = CGImageSourceCreateImageAtIndex(source, 0, [
+                kCGImageSourceShouldCacheImmediately: true,
+            ] as CFDictionary)
+        }
+        guard let image else { throw PhotoIndexError.couldNotReadThumbnail(name) }
         return image
     }
 

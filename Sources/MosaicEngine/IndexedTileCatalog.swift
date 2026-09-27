@@ -26,8 +26,8 @@ public struct IndexedTileCatalog: TileCatalog {
         // saver build different mosaics from the same index and the same seed,
         // and the symptom would not appear until milestone 5.
         //
-        // The thumbnail is 640x360 because of this: the grid is R·k cells across
-        // the crop, and the most that ever is comes to 90 · 4 = 360 rows.
+        // The thumbnail is 854x480 because of this: the grid is R·k cells across
+        // the crop, and the most that ever is comes to 120 · 4 = 480 rows.
         let image = try source.canonicalImage(
             for: photo, maxPixelWidth: source.manifest.thumbnailWidth
         )

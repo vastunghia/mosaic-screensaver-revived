@@ -10,9 +10,10 @@ import Foundation
 ///   for every photograph in the pool;
 /// - **a ring of 3** around it, because the cells three away are still three
 ///   to four atlas slices wide when they come on screen;
-/// - **the ring at 640**, the index's thumbnail width: the originals were
-///   judged more than the ring needs, and the thumbnails make it identical in
-///   the app and the .saver at no cost on disk.
+/// - **the ring at 640**, what the index's thumbnails were when it was judged:
+///   the originals were more than the ring needs. It stays within the
+///   thumbnails, now 854 across, so the ring is still served by the index
+///   alone, identical in the app and the .saver at no cost on disk.
 public struct CloseUpOptions: Equatable, Sendable {
     /// How far from the anchor, in cells. 0 is the anchor alone.
     public var ring: Int

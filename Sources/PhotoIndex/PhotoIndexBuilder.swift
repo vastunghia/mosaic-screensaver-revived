@@ -26,12 +26,16 @@ public struct IndexProgress: Equatable, Sendable {
 /// resumed. Nothing here uses CoreImage — see `ImageSampling` for why the
 /// averaging is done by hand instead.
 public struct PhotoIndexBuilder: Sendable {
-    /// 640x360, and the number is derived rather than chosen: the target grid of
+    /// 854x480, and the number is derived rather than chosen: the target grid of
     /// a cycle is sampled at `R · k` cells across the crop, and the largest those
-    /// go is `R` = 90 with `k` = 4, which is 360 rows. A smaller thumbnail would
-    /// force `k` down as the rows slider passed 72, and the character of the
-    /// mosaic would change at a threshold set by a storage constant.
-    public static let defaultThumbnailWidth = 640
+    /// go is `R` = 120 with `k` = 4, which is 480 rows. A smaller thumbnail does
+    /// not fail, which is the trouble: past its height each sub-cell averages
+    /// less than a pixel, and the detail `k` = 4 exists to capture fades quietly
+    /// towards a lower `k` at a threshold set by a storage constant.
+    ///
+    /// It was 640x360 while `R` topped out at 90. Measured on 2048 photographs,
+    /// the index grew from 172 to 276 MB.
+    public static let defaultThumbnailWidth = 854
 
     /// 4x4. The solver may only use its 1x1 reduction — that is the average
     /// colour of SPEC § 5 — but storing the finer grid costs sixteen floats and
