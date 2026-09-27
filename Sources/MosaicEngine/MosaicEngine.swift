@@ -6,6 +6,7 @@ import MosaicPhotos
 import MosaicRender
 import MosaicSolver
 import QuartzCore
+import TileStore
 
 public enum MosaicEngineError: Error {
     case noCommandQueue
@@ -27,6 +28,9 @@ public final class MosaicEngine {
     private let renderer: Renderer
     private let atlas: TileAtlas
     private let lookahead: Lookahead
+    private let closeUps: CloseUpStore?
+    private let closeUpRing: Int
+    private let tilePixelWidth: Int
 
     private var cycle: CycleEngine
 
@@ -39,6 +43,13 @@ public final class MosaicEngine {
     ///   .saver, without either having to say which. A host passes one in only
     ///   when it has compiled the shaders some other way, which is what the
     ///   development harness does when it runs outside a bundle.
+    /// - Parameters:
+    ///   - closeUpSource: where the tiles that grow bigger than an atlas slice
+    ///     get their pixels. Nil draws everything from the atlas. The app passes
+    ///     a source with originals behind it; the index alone is exactly what
+    ///     the .saver has.
+    ///   - closeUpRing: how far from the anchor, in cells, close-ups are made.
+    ///     0 is the anchor alone.
     public init(
         device: MTLDevice,
         settings: MosaicSettings = MosaicSettings(),
@@ -46,7 +57,9 @@ public final class MosaicEngine {
         planner: (any MosaicPlanner)? = nil,
         library: MTLLibrary? = nil,
         seed: UInt64 = 0x4D05_A1C0,
-        tilePixelWidth: Int = 256
+        tilePixelWidth: Int = 256,
+        closeUpSource: (any PhotoSource)? = nil,
+        closeUpRing: Int = 0
     ) throws {
         guard let queue = device.makeCommandQueue() else {
             throw MosaicEngineError.noCommandQueue
@@ -55,14 +68,6 @@ public final class MosaicEngine {
         let descriptors = try source.photos()
         guard !descriptors.isEmpty else {
             throw MosaicEngineError.emptyPhotoSource
-        }
-
-        // Milestone 1 builds the whole atlas up front and blocks while it does.
-        // That is only acceptable because the photographs are synthetic and
-        // there are a few hundred of them; M6 is where this becomes incremental,
-        // asynchronous and bounded by a memory budget.
-        let images = try descriptors.map {
-            ($0.id, try source.canonicalImage(for: $0.id, maxPixelWidth: tilePixelWidth))
         }
 
         self.device = device
@@ -75,12 +80,19 @@ public final class MosaicEngine {
         )
         self.renderer = try library.map { try Renderer(device: device, library: $0) }
             ?? Renderer(device: device)
+        // Built up front, and the host waits for it. Decoding runs on every
+        // core; the atlas is still one array, whole and blocking, and making it
+        // incremental is left for when a pool outgrows 2048 slices.
         self.atlas = try StaticTileAtlas(
             device: device,
             queue: queue,
-            images: images,
-            tileSize: (tilePixelWidth, CanonicalAspect.height(forWidth: tilePixelWidth))
+            source: source,
+            photos: descriptors.map(\.id),
+            tileWidth: tilePixelWidth
         )
+        self.closeUps = try closeUpSource.map { try CloseUpStore(device: device, source: $0) }
+        self.closeUpRing = max(0, closeUpRing)
+        self.tilePixelWidth = tilePixelWidth
         self.inFlight = DispatchSemaphore(value: Renderer.inFlightFrameCount)
         statisticsBox.update { $0.deviceName = device.name }
 
@@ -114,7 +126,37 @@ public final class MosaicEngine {
         let rowsChanged = settings.rows != self.settings.rows
         self.settings = settings
         self.cycle = CycleEngine(settings: settings)
-        if rowsChanged { lookahead.reset(rows: settings.rows) }
+        if rowsChanged {
+            lookahead.reset(rows: settings.rows)
+            // Close-ups belong to a cycle's layout, and those just changed.
+            closeUps?.evict(before: .max)
+        }
+    }
+
+    /// Whether the frame at `time` can be drawn as it should be: its mosaics
+    /// built and its close-ups loaded. Asking starts whatever is missing.
+    ///
+    /// A host calls this before its first frame and holds its clock until it
+    /// says yes. Drawing earlier is not wrong, only worse: a cycle fixes its
+    /// close-ups the first time it is drawn, so a first frame drawn too soon
+    /// leaves the whole first cycle to the atlas.
+    public func isReady(at time: TimeInterval) -> Bool {
+        let index = cycle.position(at: time).index
+        lookahead.prefetch(index)
+        if index > 0 { lookahead.prefetch(index - 1) }
+        guard lookahead.isReady(index), index == 0 || lookahead.isReady(index - 1) else {
+            return false
+        }
+        guard let store = closeUps else { return true }
+        guard let layer, layer.drawableSize.width > 0 else { return false }
+        if !store.isRequested(index) {
+            let layout = lookahead.mosaic(forCycle: index, counting: false).planned.layout
+            store.request(
+                cycle: index,
+                widths: closeUpWidths(of: layout, screenWidth: Int(layer.drawableSize.width))
+            )
+        }
+        return store.isComplete(index)
     }
 
     /// Draws the frame for an absolute time. There is no internal clock: the
@@ -122,7 +164,9 @@ public final class MosaicEngine {
     public func advance(to time: TimeInterval) {
         guard let layer, let drawable = layer.nextDrawable() else { return }
 
-        let frame = frameState(at: time, onScreen: true)
+        let (frame, closeUps) = frameState(
+            at: time, onScreen: true, screenWidth: Int(layer.drawableSize.width)
+        )
 
         inFlight.wait()
         guard let commands = queue.makeCommandBuffer() else {
@@ -142,7 +186,7 @@ public final class MosaicEngine {
         pass.colorAttachments[0].clearColor = Renderer.clearColor
 
         if let encoder = commands.makeRenderCommandEncoder(descriptor: pass) {
-            let drawn = renderer.encode(frame, atlas: atlas, into: encoder)
+            let drawn = renderer.encode(frame, atlas: atlas, closeUps: closeUps, into: encoder)
             encoder.endEncoding()
             statisticsBox.update {
                 $0.tileCount = drawn
@@ -159,7 +203,8 @@ public final class MosaicEngine {
     /// what makes everything else verifiable: a cycle can be exported frame by
     /// frame and looked at cold.
     public func renderFrame(at time: TimeInterval, into texture: MTLTexture) {
-        render(frameState(at: time, onScreen: false), into: texture)
+        let (frame, closeUps) = frameState(at: time, onScreen: false, screenWidth: texture.width)
+        render(frame, closeUps: closeUps, into: texture)
     }
 
     /// One mosaic, filling the screen, and nothing else drawn.
@@ -186,7 +231,11 @@ public final class MosaicEngine {
         return current.planned.layout.subject
     }
 
-    private func render(_ frame: FrameState, into texture: MTLTexture) {
+    private func render(
+        _ frame: FrameState,
+        closeUps: [PhotoID: MTLTexture] = [:],
+        into texture: MTLTexture
+    ) {
         guard let commands = queue.makeCommandBuffer() else { return }
 
         let pass = MTLRenderPassDescriptor()
@@ -196,7 +245,7 @@ public final class MosaicEngine {
         pass.colorAttachments[0].clearColor = Renderer.clearColor
 
         if let encoder = commands.makeRenderCommandEncoder(descriptor: pass) {
-            renderer.encode(frame, atlas: atlas, into: encoder)
+            renderer.encode(frame, atlas: atlas, closeUps: closeUps, into: encoder)
             encoder.endEncoding()
         }
 
@@ -233,7 +282,11 @@ public final class MosaicEngine {
 
     /// - Parameter onScreen: whether this frame is on its way to a display. A
     ///   mosaic missing there is a stall; offscreen rendering waits by design.
-    private func frameState(at time: TimeInterval, onScreen: Bool) -> FrameState {
+    private func frameState(
+        at time: TimeInterval,
+        onScreen: Bool,
+        screenWidth: Int
+    ) -> (FrameState, [PhotoID: MTLTexture]) {
         let index = cycle.position(at: time).index
 
         // SPEC § 2 wants the tiles to look as though they had always been there,
@@ -255,7 +308,69 @@ public final class MosaicEngine {
             previous: previous?.planned.layout
         )
         report(current)
-        return frame
+        return (frame, closeUps(forCycle: index, layout: current.planned.layout, onScreen: onScreen, screenWidth: screenWidth))
+    }
+
+    /// The close-ups the frame draws with, and the next cycle's, started.
+    ///
+    /// The next cycle's are asked for as soon as its layout exists, which the
+    /// lookahead makes a whole cycle ahead of time. On screen, whatever is not
+    /// ready when a cycle begins stays an atlas slice for all of that cycle;
+    /// offscreen, the frame waits for them.
+    private func closeUps(
+        forCycle index: Int, layout: MosaicLayout, onScreen: Bool, screenWidth: Int
+    ) -> [PhotoID: MTLTexture] {
+        guard let store = closeUps, screenWidth > 0 else { return [:] }
+        store.evict(before: index)
+
+        if !store.isRequested(index) {
+            store.request(cycle: index, widths: closeUpWidths(of: layout, screenWidth: screenWidth))
+        }
+        if onScreen {
+            let next = index + 1
+            if lookahead.isReady(next), !store.isRequested(next) {
+                let layout = lookahead.mosaic(forCycle: next, counting: false).planned.layout
+                store.request(cycle: next, widths: closeUpWidths(of: layout, screenWidth: screenWidth))
+            }
+        } else {
+            store.wait(for: index)
+        }
+
+        let latched = store.latch(cycle: index)
+        let misses = store.misses
+        let bytes = store.residentBytes
+        statisticsBox.update {
+            $0.closeUpMisses = misses
+            $0.closeUpBytes = bytes
+        }
+        return latched
+    }
+
+    /// The photographs of a cycle that get bigger on screen than an atlas slice,
+    /// within `closeUpRing` cells of the anchor, each with the width in pixels
+    /// it reaches at its largest.
+    private func closeUpWidths(of layout: MosaicLayout, screenWidth: Int) -> [PhotoID: Int] {
+        let geometry = layout.geometry
+        let anchor = layout.anchor
+        let path = CameraPath(
+            curve: ZoomCurve(zoomFactor: Double(layout.rows)),
+            anchorCenter: geometry.center(of: anchor)
+        )
+        let rows = max(0, anchor.row - closeUpRing)...min(layout.rows - 1, anchor.row + closeUpRing)
+        let columns = max(0, anchor.column - closeUpRing)...min(layout.rows - 1, anchor.column + closeUpRing)
+
+        var widths: [PhotoID: Int] = [:]
+        for row in rows {
+            for column in columns {
+                let cell = GridCell(column: column, row: row)
+                let largest = path.largestOnScreenWidth(of: geometry.rect(of: cell))
+                let pixels = Int((largest * Double(screenWidth)).rounded(.up))
+                guard pixels > tilePixelWidth else { continue }
+                let photo = layout[cell].photo
+                widths[photo] = max(widths[photo] ?? 0, pixels)
+            }
+        }
+        return widths
     }
 
     private func mosaic(forCycle index: Int, onScreen: Bool) -> Lookahead.Built {

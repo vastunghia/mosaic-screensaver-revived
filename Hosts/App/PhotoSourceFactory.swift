@@ -17,6 +17,21 @@ enum PhotoSourceFactory {
         let indexed: IndexedPhotoSource?
     }
 
+    /// Where close-ups come from, for `--close-ups`.
+    static func closeUpSource(_ mode: Options.CloseUps, photos: Resolved) -> (any PhotoSource)? {
+        switch mode {
+        case .off:
+            return nil
+        case .originals:
+            return photos.source
+        case .thumbnails:
+            // The same index with no originals behind it: what the .saver
+            // reads, and all it reads.
+            guard let indexed = photos.indexed else { return photos.source }
+            return IndexedPhotoSource(store: indexed.store, manifest: indexed.manifest)
+        }
+    }
+
     /// Metal's 2D texture arrays top out here, and the atlas is one array with a
     /// slice per photograph. Past it `makeTexture` returns nil and the only
     /// symptom is a failure to allocate, with nothing to say why.

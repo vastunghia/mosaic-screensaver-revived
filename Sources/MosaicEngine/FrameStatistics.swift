@@ -27,6 +27,13 @@ public struct FrameStatistics: Sendable {
     /// account for some; in steady state it must not move.
     public var stalls: Int = 0
 
+    /// Close-ups asked for and not ready when their cycle began, so the tile
+    /// stayed an atlas slice for that whole cycle. Must not move once running.
+    public var closeUpMisses: Int = 0
+
+    /// GPU memory held by close-ups, mip pyramids included.
+    public var closeUpBytes: Int = 0
+
     /// Why the last mosaic fell back to random tiles, if it did.
     public var lastError: String?
 

@@ -15,6 +15,7 @@ final class MosaicMetalView: NSView {
     private var smoothedFPS: Double = 0
     private var lastReadoutUpdate: CFTimeInterval = 0
     private var lastLoggedCycle = -1
+    private var started = false
 
     init(engine: MosaicEngine, clock: HarnessClock, readout: HarnessReadout) {
         self.engine = engine
@@ -74,6 +75,12 @@ final class MosaicMetalView: NSView {
     @objc private func tick(_ link: CADisplayLink) {
         let now = link.timestamp
         MainActor.assumeIsolated {
+            // Nothing is drawn, and the clock does not move, until the engine
+            // has the first cycle ready — exactly what the .saver will do.
+            if !started {
+                guard engine.isReady(at: clock.time) else { return }
+                started = true
+            }
             if let last = lastTimestamp {
                 let delta = now - last
                 if delta > 0 {
@@ -102,8 +109,9 @@ final class MosaicMetalView: NSView {
             if statistics.cycleIndex != lastLoggedCycle {
                 lastLoggedCycle = statistics.cycleIndex
                 print(String(
-                    format: "cycle %d · %d stalls · %.0f fps · %@",
-                    statistics.cycleIndex, statistics.stalls, smoothedFPS, statistics.deviceName
+                    format: "cycle %d · %d stalls · %d close-up misses · %.0f MB close-ups · %.0f fps · %@",
+                    statistics.cycleIndex, statistics.stalls, statistics.closeUpMisses,
+                    Double(statistics.closeUpBytes) / 1_048_576, smoothedFPS, statistics.deviceName
                 ))
                 fflush(stdout)
             }

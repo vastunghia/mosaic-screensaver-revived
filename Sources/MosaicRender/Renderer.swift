@@ -22,12 +22,14 @@ public final class Renderer {
 
     public let device: MTLDevice
     private let pipeline: MTLRenderPipelineState
+    private let closeUpPipeline: MTLRenderPipelineState
     private let sampler: MTLSamplerState
 
     private var instanceBuffers: [MTLBuffer?]
     private var instanceCapacity: Int = 0
     private var frameSlot = 0
     private var instances: [TileInstance] = []
+    private var closeUpTextures: [MTLTexture] = []
 
     /// The real initialiser: the library comes from outside, so tests and the
     /// development harness can supply one compiled however they like.
@@ -41,6 +43,9 @@ public final class Renderer {
         }
         guard let fragmentFunction = library.makeFunction(name: "tile_fragment") else {
             throw RendererError.missingShaderFunction("tile_fragment")
+        }
+        guard let closeUpFunction = library.makeFunction(name: "close_up_fragment") else {
+            throw RendererError.missingShaderFunction("close_up_fragment")
         }
 
         let descriptor = MTLRenderPipelineDescriptor()
@@ -72,6 +77,8 @@ public final class Renderer {
 
         self.device = device
         self.pipeline = try device.makeRenderPipelineState(descriptor: descriptor)
+        descriptor.fragmentFunction = closeUpFunction
+        self.closeUpPipeline = try device.makeRenderPipelineState(descriptor: descriptor)
         self.sampler = sampler
         self.instanceBuffers = Array(repeating: nil, count: Self.inFlightFrameCount)
     }
@@ -94,16 +101,32 @@ public final class Renderer {
     /// cannot supply should read as absence rather than as a colour choice.
     public static let clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
 
+    /// - Parameters:
+    ///   - closeUps: photographs of the current mosaic to draw from a texture of
+    ///     their own rather than from the atlas. The previous mosaic never uses
+    ///     them: by the time it is on screen its tiles are small.
     /// - Returns: how many tiles were drawn, which is the one number that says
     ///   whether culling is doing its job.
     @discardableResult
     public func encode(
         _ frame: FrameState,
         atlas: TileAtlas,
+        closeUps: [PhotoID: MTLTexture] = [:],
         into encoder: MTLRenderCommandEncoder
     ) -> Int {
         instances.removeAll(keepingCapacity: true)
-        appendTiles(of: frame, using: atlas)
+        closeUpTextures.removeAll(keepingCapacity: true)
+
+        // Three runs in one buffer, drawn in this order so that the previous
+        // mosaic lies over the close-up in its anchor cell: the current tiles
+        // from the atlas, the current tiles that have close-ups, the previous
+        // mosaic.
+        var closeUpInstances: [TileInstance] = []
+        appendCurrent(of: frame, using: atlas, closeUps: closeUps, into: &closeUpInstances)
+        let currentCount = instances.count
+        appendPrevious(of: frame, using: atlas)
+        let previousCount = instances.count - currentCount
+        instances.append(contentsOf: closeUpInstances)
         guard !instances.isEmpty else { return 0 }
 
         guard let buffer = buffer(for: instances.count) else { return 0 }
@@ -117,36 +140,64 @@ public final class Renderer {
             halfSpan: Float(frame.camera.visibleWidth / 2)
         )
 
-        encoder.setRenderPipelineState(pipeline)
         encoder.setVertexBuffer(buffer, offset: 0, index: 0)
         encoder.setVertexBytes(&camera, length: MemoryLayout<CameraUniforms>.stride, index: 1)
-        encoder.setFragmentTexture(atlas.texture, index: 0)
         encoder.setFragmentSamplerState(sampler, index: 0)
-        encoder.drawPrimitives(
-            type: .triangleStrip,
-            vertexStart: 0,
-            vertexCount: 4,
-            instanceCount: instances.count
-        )
+
+        func drawAtlas(from first: Int, count: Int) {
+            guard count > 0 else { return }
+            encoder.setRenderPipelineState(pipeline)
+            encoder.setFragmentTexture(atlas.texture, index: 0)
+            encoder.drawPrimitives(
+                type: .triangleStrip, vertexStart: 0, vertexCount: 4,
+                instanceCount: count, baseInstance: first
+            )
+        }
+
+        drawAtlas(from: 0, count: currentCount)
+        if !closeUpTextures.isEmpty {
+            encoder.setRenderPipelineState(closeUpPipeline)
+            for (offset, texture) in closeUpTextures.enumerated() {
+                encoder.setFragmentTexture(texture, index: 0)
+                encoder.drawPrimitives(
+                    type: .triangleStrip, vertexStart: 0, vertexCount: 4,
+                    instanceCount: 1, baseInstance: currentCount + previousCount + offset
+                )
+            }
+        }
+        drawAtlas(from: currentCount, count: previousCount)
         return instances.count
     }
 
-    /// Builds the instance list for one frame: the current mosaic, then the
-    /// previous one on top of it while it is still a grid.
+    /// The current mosaic's visible tiles. The previous one goes on top of it
+    /// while it is still a grid, in `appendPrevious`.
     ///
     /// The previous mosaic's flat photograph needs no draw of its own. It is
     /// already there: the tile the current mosaic puts in its anchor cell *is*
     /// that photograph (SPEC § 5, step 4). So the crossfade is one layer fading
     /// out to reveal what was underneath all along.
-    private func appendTiles(of frame: FrameState, using atlas: TileAtlas) {
-        let visible = frame.camera.visibleRect
+    private func appendCurrent(
+        of frame: FrameState,
+        using atlas: TileAtlas,
+        closeUps: [PhotoID: MTLTexture],
+        into closeUpInstances: inout [TileInstance]
+    ) {
         let geometry = frame.current.geometry
 
-        geometry.cells(intersecting: visible).forEach { cell in
-            guard let slice = atlas.slice(for: frame.current[cell].photo) else { return }
-            append(rect: geometry.rect(of: cell), slice: slice, alpha: 1)
+        geometry.cells(intersecting: frame.camera.visibleRect).forEach { cell in
+            let photo = frame.current[cell].photo
+            if let texture = closeUps[photo] {
+                closeUpInstances.append(instance(rect: geometry.rect(of: cell), slice: 0, alpha: 1))
+                closeUpTextures.append(texture)
+                return
+            }
+            guard let slice = atlas.slice(for: photo) else { return }
+            instances.append(instance(rect: geometry.rect(of: cell), slice: slice, alpha: 1))
         }
+    }
 
+    private func appendPrevious(of frame: FrameState, using atlas: TileAtlas) {
+        let visible = frame.camera.visibleRect
         guard let previous = frame.previous, previous.mosaicAlpha > 0.001 else { return }
 
         // The previous mosaic lives inside one cell of the current one, so its
@@ -170,18 +221,16 @@ public final class Renderer {
                 width: local.width * host.width,
                 height: local.height * host.height
             )
-            append(rect: mapped, slice: slice, alpha: alpha)
+            instances.append(instance(rect: mapped, slice: slice, alpha: alpha))
         }
     }
 
-    private func append(rect: NormalizedRect, slice: Int, alpha: Float) {
-        instances.append(
-            TileInstance(
-                origin: SIMD2<Float>(Float(rect.minX), Float(rect.minY)),
-                size: SIMD2<Float>(Float(rect.width), Float(rect.height)),
-                slice: Float(slice),
-                alpha: alpha
-            )
+    private func instance(rect: NormalizedRect, slice: Int, alpha: Float) -> TileInstance {
+        TileInstance(
+            origin: SIMD2<Float>(Float(rect.minX), Float(rect.minY)),
+            size: SIMD2<Float>(Float(rect.width), Float(rect.height)),
+            slice: Float(slice),
+            alpha: alpha
         )
     }
 

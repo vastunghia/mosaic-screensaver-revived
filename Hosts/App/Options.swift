@@ -33,6 +33,17 @@ struct Options {
     var signatureSide = PhotoIndexBuilder.defaultSignatureSide
 
     var tileWidth = 256
+
+    /// Where the tiles that outgrow an atlas slice get their pixels: the
+    /// originals, the index's thumbnails (exactly what the .saver has today),
+    /// or nowhere, which draws everything from the atlas.
+    enum CloseUps: String {
+        case originals, thumbnails, off
+    }
+    var closeUps = CloseUps.originals
+    /// How far from the anchor, in cells, close-ups are made. 0 is the anchor
+    /// alone.
+    var closeUpRing = 0
     var exportMosaic: URL?
     var randomTiles = false
     var subject: String?
@@ -136,6 +147,14 @@ struct Options {
             case "--thumbnail-width": options.thumbnailWidth = next().flatMap(Int.init) ?? options.thumbnailWidth
             case "--signature-side": options.signatureSide = next().flatMap(Int.init) ?? options.signatureSide
             case "--tile-width": options.tileWidth = next().flatMap(Int.init) ?? options.tileWidth
+            case "--close-ups":
+                let value = next()
+                if let mode = value.flatMap(CloseUps.init(rawValue:)) {
+                    options.closeUps = mode
+                } else {
+                    options.unknown.append("--close-ups \(value ?? "")")
+                }
+            case "--close-up-ring": options.closeUpRing = max(0, next().flatMap(Int.init) ?? options.closeUpRing)
             case "--export-mosaic": options.exportMosaic = path()
             case "--subject": options.subject = next()
             case "--random-tiles": options.randomTiles = true
@@ -189,6 +208,11 @@ struct Options {
             format: "  R = %d · T = %.0f s · crossfade %.2f u · tiles %d px",
             rows, cycleDuration, crossfadeDuration, tileWidth
         ))
+        lines.append(
+            closeUps == .off
+                ? "  close-ups off: every tile from the atlas"
+                : "  close-ups from the \(closeUps.rawValue), ring \(closeUpRing)"
+        )
         if folder != nil {
             lines.append(String(
                 format: "  k = %d · spacing %d · %@ · max uses %@ · weights L %.2f C %.2f",

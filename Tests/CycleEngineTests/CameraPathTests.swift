@@ -73,4 +73,33 @@ struct CameraPathTests {
             #expect(abs(second.y - first.y) / h < 1e-4)
         }
     }
+
+    @Test("the largest a cell gets on screen is its width when it first appears")
+    func largestOnScreenWidth() {
+        // Checked against brute force: sample the cycle finely, and for every
+        // instant the cell is on screen take its width in screen widths.
+        let rows = 12
+        let anchor = GridCell(column: 4, row: 7)
+        let path = path(rows: rows, anchor: anchor)
+        let geometry = GridGeometry(rows: rows)
+
+        #expect(path.largestOnScreenWidth(of: geometry.rect(of: anchor)) == 1)
+
+        for row in 0..<rows {
+            for column in 0..<rows {
+                let rect = geometry.rect(of: GridCell(column: column, row: row))
+                var sampled = 0.0
+                for step in 0...20_000 {
+                    let camera = path.camera(at: Double(step) / 20_000)
+                    let seen = camera.visibleRect
+                    let overlaps = rect.minX < seen.maxX && seen.minX < rect.maxX
+                        && rect.minY < seen.maxY && seen.minY < rect.maxY
+                    if overlaps { sampled = max(sampled, rect.width / camera.visibleWidth) }
+                }
+                let computed = path.largestOnScreenWidth(of: rect)
+                #expect(computed >= sampled - 1e-9, "(\(column), \(row)): never below what was seen")
+                #expect(computed <= sampled * 1.002 + 1e-9, "(\(column), \(row)): computed \(computed), sampled \(sampled)")
+            }
+        }
+    }
 }

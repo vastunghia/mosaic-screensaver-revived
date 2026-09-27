@@ -51,6 +51,10 @@ struct HarnessView: View {
             // first cycle, a scrub and a change of R cause some; if the number
             // moves while the effect just runs, the lookahead is late.
             Text(String(format: "cycle %d · u = %.3f · %d stalls", stats.cycleIndex, stats.u, stats.stalls))
+            Text(String(
+                format: "close-ups %.0f MB · %d missed",
+                Double(stats.closeUpBytes) / 1_048_576, stats.closeUpMisses
+            ))
 
             // Which photograph, and how well the tiles match it. Judging two
             // solver settings against each other is meaningless unless it is

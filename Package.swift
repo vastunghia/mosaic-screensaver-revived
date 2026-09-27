@@ -8,8 +8,8 @@ import PackageDescription
 // enforces exactly the same boundaries for a single-author repository, and the
 // decision is recorded there.
 //
-// Modules are created when they are needed, not in advance: TileStore (M6) and
-// SharedStore (M11) do not exist yet.
+// Modules are created when they are needed, not in advance: SharedStore (M11)
+// does not exist yet.
 let package = Package(
     name: "Mosaic",
     platforms: [.macOS(.v15)],
@@ -48,6 +48,15 @@ let package = Package(
             exclude: ["Shaders.metal"]
         ),
 
+        // M6 — the textures behind the renderer: the atlas of every tile and the
+        // close-ups of the few that grow bigger than a slice. GPU and volatile,
+        // where M5 is CPU, disk and persistent. It implements the contract M7
+        // consumes, which is why it sits beside the renderer and not below it.
+        .target(
+            name: "TileStore",
+            dependencies: ["MosaicCore", "MosaicPhotos", "MosaicRender"]
+        ),
+
         // M8 — the only class a host instantiates, and the public boundary of
         // the whole library. It exists from the first day even though PLAN.md
         // schedules it for milestone 3: if the harness did the orchestrating,
@@ -56,7 +65,7 @@ let package = Package(
             name: "MosaicEngine",
             dependencies: [
                 "MosaicCore", "CycleEngine", "MosaicPhotos", "MosaicRender",
-                "MosaicSolver", "PhotoIndex",
+                "MosaicSolver", "PhotoIndex", "TileStore",
             ]
         ),
 

@@ -66,3 +66,14 @@ fragment float4 tile_fragment(VertexOut in [[stage_in]],
     const float4 colour = tiles.sample(tileSampler, in.uv, uint(in.slice));
     return float4(colour.rgb * in.alpha, in.alpha);
 }
+
+// A close-up: one photograph in a texture of its own, at the size it reaches on
+// screen, instead of its slice of the atlas. Same quad, same alpha, same absence
+// of any colour correction.
+fragment float4 close_up_fragment(VertexOut in [[stage_in]],
+                                  texture2d<float> photo [[texture(0)]],
+                                  sampler tileSampler [[sampler(0)]])
+{
+    const float4 colour = photo.sample(tileSampler, in.uv);
+    return float4(colour.rgb * in.alpha, in.alpha);
+}

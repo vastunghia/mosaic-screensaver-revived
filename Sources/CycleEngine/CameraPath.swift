@@ -78,6 +78,40 @@ public struct CameraPath: Equatable, Sendable {
         )
     }
 
+    /// The largest a rectangle of mosaic space ever appears on screen during the
+    /// cycle, as a fraction of the screen width — 1 for the anchor cell, which
+    /// fills the screen at `u = 0`.
+    ///
+    /// This is how many pixels a tile needs, and it is not "only the anchor":
+    /// on a 4096-pixel screen at R = 60 the anchor's neighbours come on screen
+    /// at once, some 4000 pixels wide, and are still wider than a 256-pixel
+    /// atlas slice two thirds of the way through the cycle.
+    ///
+    /// Zooming out about a point of the screen only ever grows the part of
+    /// mosaic space that is visible, so a rectangle on screen stays on screen,
+    /// and it is largest at the first instant it appears. That instant is found
+    /// by bisection. A rectangle never on screen before `u = 1` — impossible
+    /// for one inside the mosaic — would give 0.
+    public func largestOnScreenWidth(of rect: NormalizedRect) -> Double {
+        func visible(_ u: Double) -> Bool {
+            let seen = camera(at: u).visibleRect
+            return rect.minX < seen.maxX && seen.minX < rect.maxX
+                && rect.minY < seen.maxY && seen.minY < rect.maxY
+        }
+        guard visible(1) else { return 0 }
+
+        var first = 0.0
+        if !visible(0) {
+            var hidden = 0.0, shown = 1.0
+            for _ in 0..<60 {
+                let middle = (hidden + shown) / 2
+                if visible(middle) { shown = middle } else { hidden = middle }
+            }
+            first = shown
+        }
+        return min(1, rect.width / curve.visibleWidth(at: first))
+    }
+
     /// The point of mosaic space that stays put on screen for the whole cycle.
     /// Exposed so a test can assert that it really does.
     public var invariantPoint: NormalizedPoint { fixedPoint }

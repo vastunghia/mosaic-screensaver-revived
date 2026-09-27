@@ -85,7 +85,9 @@ do {
             source: photos.source,
             planner: planning.planner,
             tileWidth: options.tileWidth,
-            seed: options.seed
+            seed: options.seed,
+            closeUpSource: PhotoSourceFactory.closeUpSource(options.closeUps, photos: photos),
+            closeUpRing: options.closeUpRing
         )
         exit(0)
     }
@@ -97,7 +99,9 @@ do {
         planner: planning.planner,
         library: library,
         seed: options.seed,
-        tilePixelWidth: options.tileWidth
+        tilePixelWidth: options.tileWidth,
+        closeUpSource: PhotoSourceFactory.closeUpSource(options.closeUps, photos: photos),
+        closeUpRing: options.closeUpRing
     )
 
     let application = NSApplication.shared
