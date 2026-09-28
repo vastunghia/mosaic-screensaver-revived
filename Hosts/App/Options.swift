@@ -38,11 +38,11 @@ struct Options {
     /// Download photographs kept only in iCloud (SPEC § 5, off by default).
     var allowsDownloads = false
 
-    /// Which photographs of the library get indexed (SPEC § 5). `random` until
-    /// the `subset` specimen decides; the size is the pool's ceiling. The seed
-    /// is fixed, not per launch: a subset that changed every session would be
-    /// indexed again every session.
-    var subsetRule = SubsetRule.random
+    /// Which photographs of the library get indexed (SPEC § 5): spread over
+    /// time, chosen by looking at the `subset` specimen; the size is the pool's
+    /// ceiling. The seed is fixed, not per launch: a subset that changed every
+    /// session would be indexed again every session.
+    var subsetRule = SubsetRule.uniformInTime
     var subsetSize = 2048
     var subsetSeed: UInt64 = 0x5B5E_7000
 

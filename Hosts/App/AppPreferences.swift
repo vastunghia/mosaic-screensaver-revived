@@ -17,7 +17,7 @@ struct AppPreferences {
     /// Empty is the whole library (SPEC § 5).
     var albumIdentifiers: [String] = []
     var allowsDownloads = false
-    var subsetRule = SubsetRule.random
+    var subsetRule = SubsetRule.uniformInTime
     var subsetSize = 2048
     /// Fixed once, at the first launch, and kept: the indexed subset has to
     /// stay the same from one session to the next.
