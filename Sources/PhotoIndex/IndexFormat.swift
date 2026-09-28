@@ -107,7 +107,8 @@ public struct IndexManifest: Codable, Equatable, Sendable {
 
     public var formatVersion: Int
 
-    /// The resolved folder these identifiers are relative to.
+    /// The resolved folder these identifiers are relative to — or, for a source
+    /// whose identifiers are global, the name of that source (`photos-library`).
     ///
     /// Identifiers are paths relative to a root, which makes them portable — and
     /// means two different folders with the same internal shape produce the same
@@ -128,6 +129,16 @@ public struct IndexManifest: Codable, Equatable, Sendable {
     /// retried on every run, and so a caller can say how many there were.
     public var skipped: [String]
 
+    /// Photographs whose pixels were not on this Mac — iCloud, with downloads
+    /// off. Unlike `skipped` these are asked for again on every build, because
+    /// the answer changes when the user allows downloads; they are written down
+    /// only so a caller can say how many are missing and why.
+    ///
+    /// Added after the first format, and read with a default rather than by
+    /// bumping `formatVersion`: an older manifest simply had none, and a bump
+    /// would throw away an index that is still exactly right.
+    public var unavailable: [String]
+
     public init(
         formatVersion: Int = IndexManifest.currentFormatVersion,
         root: String,
@@ -135,7 +146,8 @@ public struct IndexManifest: Codable, Equatable, Sendable {
         thumbnailHeight: Int,
         signatureSide: Int,
         entries: [IndexEntry] = [],
-        skipped: [String] = []
+        skipped: [String] = [],
+        unavailable: [String] = []
     ) {
         self.formatVersion = formatVersion
         self.root = root
@@ -144,6 +156,24 @@ public struct IndexManifest: Codable, Equatable, Sendable {
         self.signatureSide = signatureSide
         self.entries = entries
         self.skipped = skipped
+        self.unavailable = unavailable
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case formatVersion, root, thumbnailWidth, thumbnailHeight, signatureSide
+        case entries, skipped, unavailable
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        formatVersion = try container.decode(Int.self, forKey: .formatVersion)
+        root = try container.decode(String.self, forKey: .root)
+        thumbnailWidth = try container.decode(Int.self, forKey: .thumbnailWidth)
+        thumbnailHeight = try container.decode(Int.self, forKey: .thumbnailHeight)
+        signatureSide = try container.decode(Int.self, forKey: .signatureSide)
+        entries = try container.decode([IndexEntry].self, forKey: .entries)
+        skipped = try container.decode([String].self, forKey: .skipped)
+        unavailable = try container.decodeIfPresent([String].self, forKey: .unavailable) ?? []
     }
 
     /// Whether an index on disk can be continued rather than rebuilt.

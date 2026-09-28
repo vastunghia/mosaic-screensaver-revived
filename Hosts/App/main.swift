@@ -13,23 +13,37 @@ import SwiftUI
 // shortcut the .saver could not take, that is an architecture bug, not a
 // convenience.
 
+if !MosaicApplication.wantsHarness(CommandLine.arguments) {
+    MosaicApplication.run()
+}
+
 let options = Options.parse(Array(CommandLine.arguments.dropFirst()))
 
 do {
     // Indexing needs no GPU, so it happens before we go looking for one.
     if options.buildIndex {
-        guard let folder = options.folder else {
+        guard let indexable = try PhotoSourceFactory.indexable(options: options) else {
             throw HarnessError.indexingWithoutAFolder
         }
-        let source = try FolderPhotoSource(root: folder)
-        print("mosaic: indexing \(source.root.path)")
+        print("mosaic: indexing \(indexable.root)")
         try PhotoSourceFactory.buildIndex(
-            folder: source,
+            source: indexable.source,
             store: PhotoIndexStore(directory: options.resolvedIndexDirectory),
-            root: source.root.path,
+            root: indexable.root,
             options: options
         )
         exit(0)
+    }
+
+    if let count = options.verifyCanonical {
+        guard let indexable = try PhotoSourceFactory.indexable(options: options) else {
+            throw HarnessError.verifyingWithoutPhotographs
+        }
+        let passed = try CanonicalVerifier.verify(
+            indexable.source, name: indexable.name, count: count,
+            width: options.thumbnailWidth, seed: options.seed
+        )
+        exit(passed ? 0 : 1)
     }
 
     guard let device = MTLCreateSystemDefaultDevice() else {

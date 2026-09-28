@@ -34,6 +34,41 @@ private final class CountingSource: PhotoSource, @unchecked Sendable {
     }
 }
 
+/// A folder in which some photographs behave like iCloud ones with downloads
+/// off, and which remembers what it was asked to decode.
+private final class ElsewhereSource: PhotoSource, @unchecked Sendable {
+    let inner: FolderPhotoSource
+    private let lock = NSLock()
+    private var _away: Set<String>
+    private var _asked: Set<String> = []
+
+    init(root: URL, away: Set<String>) throws {
+        inner = try FolderPhotoSource(root: root)
+        _away = away
+    }
+
+    var away: Set<String> {
+        get { lock.lock(); defer { lock.unlock() }; return _away }
+        set { lock.lock(); _away = newValue; lock.unlock() }
+    }
+
+    var asked: Set<String> {
+        get { lock.lock(); defer { lock.unlock() }; return _asked }
+        set { lock.lock(); _asked = newValue; lock.unlock() }
+    }
+
+    func photos() throws -> [PhotoDescriptor] { try inner.photos() }
+
+    func canonicalImage(for id: PhotoID, maxPixelWidth: Int) throws -> CGImage {
+        lock.lock()
+        _asked.insert(id.rawValue)
+        let elsewhere = _away.contains(id.rawValue)
+        lock.unlock()
+        if elsewhere { throw PhotoSourceError.unavailable(id) }
+        return try inner.canonicalImage(for: id, maxPixelWidth: maxPixelWidth)
+    }
+}
+
 @Suite("Photo index")
 struct PhotoIndexTests {
 
@@ -267,6 +302,52 @@ struct PhotoIndexTests {
         #expect(try store.load() == nil, "another format version")
     }
 
+    @Test("a photograph that is elsewhere is counted apart and asked for again next time")
+    func unavailablePhotographs() throws {
+        let folder = try HostileFolder()
+        defer { folder.remove() }
+        let index = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: index) }
+        let store = PhotoIndexStore(directory: index)
+
+        let away = try #require(HostileFolder.images.first)
+        let source = try ElsewhereSource(root: folder.root, away: [away])
+        let last = LastProgress()
+        let manifest = try builder().build(
+            from: source, into: store, root: folder.root.path, progress: { last.record($0) }
+        )
+
+        #expect(manifest.unavailable == [away])
+        #expect(!manifest.skipped.contains(away), "not broken, so not remembered as broken")
+        #expect(!manifest.entries.map(\.id).contains(away))
+        #expect(last.value?.unavailable == 1)
+        #expect(last.value?.completed == last.value?.total)
+
+        // Downloads allowed now: the one photograph is read, and nothing else.
+        source.away = []
+        source.asked = []
+        let second = try builder().build(from: source, into: store, root: folder.root.path)
+        #expect(source.asked == [away])
+        #expect(second.unavailable.isEmpty)
+        #expect(second.entries.map(\.id).contains(away))
+    }
+
+    @Test("a manifest written before `unavailable` existed still loads")
+    func manifestWithoutUnavailable() throws {
+        let index = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: index) }
+        let store = PhotoIndexStore(directory: index)
+        try FileManager.default.createDirectory(at: index, withIntermediateDirectories: true)
+
+        let old = #"{"entries":[],"formatVersion":1,"root":"/somewhere","signatureSide":4,"#
+            + #""skipped":["a.jpg"],"thumbnailHeight":480,"thumbnailWidth":854}"#
+        try Data(old.utf8).write(to: store.manifestURL)
+
+        let manifest = try #require(try store.load())
+        #expect(manifest.skipped == ["a.jpg"])
+        #expect(manifest.unavailable.isEmpty)
+    }
+
     @Test("the manifest is replaced atomically, so a reader never sees half of one")
     func atomicReplacement() throws {
         // There is no lock between the app and the saver, and the app may rewrite
@@ -413,5 +494,20 @@ private final class Failures: @unchecked Sendable {
     func record() {
         lock.lock(); defer { lock.unlock() }
         value += 1
+    }
+}
+
+/// The last progress report, from whichever thread sent it.
+private final class LastProgress: @unchecked Sendable {
+    private let lock = NSLock()
+    private var last: IndexProgress?
+
+    func record(_ progress: IndexProgress) {
+        lock.lock(); last = progress; lock.unlock()
+    }
+
+    var value: IndexProgress? {
+        lock.lock(); defer { lock.unlock() }
+        return last
     }
 }

@@ -7,12 +7,15 @@ public struct IndexProgress: Equatable, Sendable {
     public var completed: Int
     public var reused: Int
     public var skipped: Int
+    /// Not on this Mac, and not allowed to be fetched: see `PhotoSourceError.unavailable`.
+    public var unavailable: Int
     public var total: Int
 
-    public init(completed: Int = 0, reused: Int = 0, skipped: Int = 0, total: Int = 0) {
+    public init(completed: Int = 0, reused: Int = 0, skipped: Int = 0, unavailable: Int = 0, total: Int = 0) {
         self.completed = completed
         self.reused = reused
         self.skipped = skipped
+        self.unavailable = unavailable
         self.total = total
     }
 }
@@ -96,6 +99,7 @@ public struct PhotoIndexBuilder: Sendable {
         var kept: [String: IndexEntry] = [:]
         var outstanding: [PhotoDescriptor] = []
         var skipped: [String] = []
+        var unavailable: [String] = []
 
         for descriptor in descriptors {
             let id = descriptor.id.rawValue
@@ -143,6 +147,10 @@ public struct PhotoIndexBuilder: Sendable {
                         pixelWidth: image.width,
                         pixelHeight: image.height
                     ))
+                } catch PhotoSourceError.unavailable {
+                    // Not broken, only elsewhere: counted, and asked for again
+                    // next time.
+                    collector.unavailable(id)
                 } catch {
                     // A folder of three thousand files that dies on the corrupt
                     // one is unusable. A failure is a recorded skip.
@@ -150,25 +158,30 @@ public struct PhotoIndexBuilder: Sendable {
                 }
             }
 
-            let (fresh, failed) = collector.drain()
+            let (fresh, failed, elsewhere) = collector.drain()
             for entry in fresh { kept[entry.id] = entry }
             skipped.append(contentsOf: failed)
+            unavailable.append(contentsOf: elsewhere)
 
-            state.completed = kept.count + skipped.count
+            state.completed = kept.count + skipped.count + unavailable.count
             state.skipped = skipped.count
+            state.unavailable = unavailable.count
             progress?(state)
 
             // The thumbnail is on disk before the manifest names it, so a
             // checkpoint never promises pixels that are not there.
             manifest.entries = Array(kept.values)
             manifest.skipped = skipped
+            manifest.unavailable = unavailable
             try store.save(manifest)
         }
 
         manifest.entries = Array(kept.values)
         manifest.skipped = skipped
+        manifest.unavailable = unavailable
         manifest.entries.sort { $0.id < $1.id }
         manifest.skipped.sort()
+        manifest.unavailable.sort()
         try store.save(manifest)
 
         // Only once the manifest is the truth on disk.
@@ -183,6 +196,7 @@ private final class Collector: @unchecked Sendable {
     private let lock = NSLock()
     private var entries: [IndexEntry] = []
     private var failures: [String] = []
+    private var elsewhere: [String] = []
 
     func add(_ entry: IndexEntry) {
         lock.lock(); defer { lock.unlock() }
@@ -194,9 +208,14 @@ private final class Collector: @unchecked Sendable {
         failures.append(id)
     }
 
-    func drain() -> ([IndexEntry], [String]) {
+    func unavailable(_ id: String) {
         lock.lock(); defer { lock.unlock() }
-        defer { entries = []; failures = [] }
-        return (entries, failures)
+        elsewhere.append(id)
+    }
+
+    func drain() -> ([IndexEntry], [String], [String]) {
+        lock.lock(); defer { lock.unlock() }
+        defer { entries = []; failures = []; elsewhere = [] }
+        return (entries, failures, elsewhere)
     }
 }

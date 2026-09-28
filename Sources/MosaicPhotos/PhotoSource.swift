@@ -10,9 +10,14 @@ public struct PhotoDescriptor: Equatable, Sendable {
     /// be invalidated without re-reading the pixels.
     public let versionToken: String
 
-    public init(id: PhotoID, versionToken: String) {
+    /// When the photograph was taken, if the source knows. Only the choice of
+    /// a subset reads it (SPEC § 5); nothing about a photograph's pixels does.
+    public let creationDate: Date?
+
+    public init(id: PhotoID, versionToken: String, creationDate: Date? = nil) {
         self.id = id
         self.versionToken = versionToken
+        self.creationDate = creationDate
     }
 }
 
@@ -20,7 +25,8 @@ public struct PhotoDescriptor: Equatable, Sendable {
 ///
 /// The point of this protocol is that nothing downstream of it can tell whether
 /// the photographs live in the Photos library, in a folder, or nowhere at all.
-/// PhotoKit will implement it one day, in the app and never in the saver.
+/// PhotoKit implements it in `MosaicPhotoKit`, which only the app links and the
+/// saver never does.
 public protocol PhotoSource: Sendable {
     func photos() throws -> [PhotoDescriptor]
 
@@ -49,11 +55,18 @@ public enum PhotoSourceError: Error, CustomStringConvertible {
     case couldNotRender(PhotoID)
     case couldNotReadFolder(URL)
 
+    /// The photograph exists but its pixels are not on this Mac, and fetching
+    /// them was not allowed — an iCloud photograph with downloads turned off
+    /// (SPEC § 5). Not a failure of the photograph: it is worth asking again
+    /// once downloads are allowed, so an index must not remember it as broken.
+    case unavailable(PhotoID)
+
     public var description: String {
         switch self {
         case .unknownPhoto(let id): return "no photograph called \(id.rawValue)"
         case .couldNotRender(let id): return "could not render \(id.rawValue)"
         case .couldNotReadFolder(let url): return "could not read the folder \(url.path)"
+        case .unavailable(let id): return "\(id.rawValue) is not on this Mac"
         }
     }
 }

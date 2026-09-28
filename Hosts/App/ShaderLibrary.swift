@@ -1,5 +1,6 @@
 import Foundation
 import Metal
+import MosaicPhotoKit
 
 /// Finds default.metallib.
 ///
@@ -36,11 +37,24 @@ enum HarnessError: Error, CustomStringConvertible {
     case noMetalDevice
     case noShaderLibrary(tried: [String])
     case indexingWithoutAFolder
+    case photosNotAuthorized(PhotoLibraryAccess.Status)
+    case unknownAlbums([String], known: [String])
+    case verifyingWithoutPhotographs
 
     var description: String {
         switch self {
         case .indexingWithoutAFolder:
-            return "--build-index needs a --folder to index"
+            return "--build-index needs a --folder or --photos-library to index"
+        case .photosNotAuthorized(let status):
+            return """
+                no access to the Photos library (\(status)). Grant it in System Settings › \
+                Privacy & Security › Photos, and launch with `open Mosaic.app --args …` so the \
+                grant is the app's and not the terminal's.
+                """
+        case .unknownAlbums(let missing, let known):
+            return "no album called \(missing.joined(separator: ", ")). Albums: \(known.joined(separator: ", "))"
+        case .verifyingWithoutPhotographs:
+            return "--verify-canonical needs a --folder or --photos-library"
         case .noMetalDevice:
             return "no MTLDevice available"
         case .noShaderLibrary(let tried):

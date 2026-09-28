@@ -28,8 +28,12 @@ let package = Package(
         // no CoreGraphics, no knowledge of where the colours were measured.
         .target(name: "MosaicSolver", dependencies: ["MosaicCore"]),
 
-        // M4 — where images come from. Only the synthetic source for now.
+        // M4 — where images come from: synthetic, and a folder on disk.
         .target(name: "MosaicPhotos", dependencies: ["MosaicCore"]),
+
+        // M4 — the Photos library. A target of its own so that nothing the
+        // saver links can reach PhotoKit: only the app depends on it.
+        .target(name: "MosaicPhotoKit", dependencies: ["MosaicCore", "MosaicPhotos"]),
 
         // M5 — the persistent index: the "Creating photo database" of the
         // original, made incremental. Depends on MosaicPhotos because it reads
@@ -75,7 +79,7 @@ let package = Package(
             // The host picks the settings (M1) and where the photographs come
             // from (M4), and drives the engine (M8). It has no business knowing
             // that there is a renderer behind it.
-            dependencies: ["MosaicEngine", "MosaicCore", "MosaicPhotos", "PhotoIndex"],
+            dependencies: ["MosaicEngine", "MosaicCore", "MosaicPhotos", "MosaicPhotoKit", "PhotoIndex"],
             path: "Hosts/App",
             // build.sh lives next to the sources it builds; SwiftPM only needs
             // telling that it is not one of them.
@@ -85,6 +89,7 @@ let package = Package(
         .testTarget(name: "MosaicCoreTests", dependencies: ["MosaicCore"]),
         .testTarget(name: "MosaicSolverTests", dependencies: ["MosaicSolver", "MosaicCore"]),
         .testTarget(name: "MosaicPhotosTests", dependencies: ["MosaicPhotos", "MosaicCore"]),
+        .testTarget(name: "MosaicPhotoKitTests", dependencies: ["MosaicPhotoKit", "MosaicPhotos", "MosaicCore"]),
         .testTarget(name: "PhotoIndexTests", dependencies: ["PhotoIndex", "MosaicPhotos", "MosaicCore"]),
         .testTarget(name: "MosaicEngineTests", dependencies: ["MosaicEngine", "MosaicSolver", "MosaicCore"]),
         .testTarget(name: "CycleEngineTests", dependencies: ["CycleEngine", "MosaicCore"]),

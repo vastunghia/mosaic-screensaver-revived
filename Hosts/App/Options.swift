@@ -26,6 +26,34 @@ struct Options {
     var indexDirectory: URL?
     var buildIndex = false
 
+    /// The Photos library instead of a folder, optionally narrowed to albums
+    /// by title (SPEC § 5: no albums is the whole library). The app must be
+    /// launched as an app — `open Mosaic.app --args …` — or TCC hands the grant
+    /// to the terminal instead.
+    var photosLibrary = false
+    var albums: [String] = []
+    /// The same, by identifier: what the app's preferences hold, since a title
+    /// can be shared or renamed.
+    var albumIdentifiers: [String] = []
+    /// Download photographs kept only in iCloud (SPEC § 5, off by default).
+    var allowsDownloads = false
+
+    /// Which photographs of the library get indexed (SPEC § 5). `random` until
+    /// the `subset` specimen decides; the size is the pool's ceiling. The seed
+    /// is fixed, not per launch: a subset that changed every session would be
+    /// indexed again every session.
+    var subsetRule = SubsetRule.random
+    var subsetSize = 2048
+    var subsetSeed: UInt64 = 0x5B5E_7000
+
+    /// Checks the canonical-crop postcondition on this many photographs of the
+    /// source and times it, instead of running anything.
+    var verifyCanonical: Int?
+
+    /// Whether the photographs are real, which is when there is an index, a
+    /// solver and something to say about them.
+    var usesRealPhotos: Bool { folder != nil || photosLibrary }
+
     /// The shape of the index. Not preferences: an index is built for one of
     /// each, and these exist so an experiment can build a second index beside
     /// the real one (with `--index`) instead of replacing it.
@@ -148,6 +176,22 @@ struct Options {
             case "--folder": options.folder = path()
             case "--index": options.indexDirectory = path()
             case "--build-index": options.buildIndex = true
+            // The harness with nothing else changed: without any flag the app
+            // opens its own window instead (see main.swift).
+            case "--harness": break
+            case "--photos-library": options.photosLibrary = true
+            case "--album": if let title = next() { options.albums.append(title) }
+            case "--icloud": options.allowsDownloads = true
+            case "--subset":
+                let value = next()
+                if let rule = value.flatMap(SubsetRule.init(rawValue:)) {
+                    options.subsetRule = rule
+                } else {
+                    options.unknown.append("--subset \(value ?? "") (recent, random or uniformInTime)")
+                }
+            case "--subset-size": options.subsetSize = next().flatMap(Int.init) ?? options.subsetSize
+            case "--subset-seed": options.subsetSeed = next().flatMap(UInt64.init) ?? options.subsetSeed
+            case "--verify-canonical": options.verifyCanonical = next().flatMap(Int.init)
             case "--thumbnail-width": options.thumbnailWidth = next().flatMap(Int.init) ?? options.thumbnailWidth
             case "--signature-side": options.signatureSide = next().flatMap(Int.init) ?? options.signatureSide
             case "--tile-width": options.tileWidth = next().flatMap(Int.init) ?? options.tileWidth
@@ -206,7 +250,7 @@ struct Options {
         }
 
         let exporting = options.exportMosaic != nil || options.exportBatch != nil
-            || options.exportDirectory != nil || options.buildIndex
+            || options.exportDirectory != nil || options.buildIndex || options.verifyCanonical != nil
         if !options.seedGiven && !exporting {
             options.seed = UInt64.random(in: .min ... .max)
             options.seedIsPerLaunch = true
@@ -229,7 +273,15 @@ struct Options {
                     + " · anchor at most \(closeUpOptions.anchorWidth.map { "\($0) px" } ?? "screen width")"
                     + " · ring at most \(closeUpOptions.ringWidth.map { "\($0) px" } ?? "screen width")"
         )
-        if folder != nil {
+        if photosLibrary {
+            lines.append(
+                "  Photos library · "
+                    + (albums.isEmpty ? "all of it" : "albums \(albums.joined(separator: ", "))")
+                    + (allowsDownloads ? " · iCloud downloads on" : " · iCloud-only photographs skipped")
+            )
+            lines.append("  indexed subset: \(subsetRule.rawValue), \(subsetSize) photographs, seed \(subsetSeed)")
+        }
+        if usesRealPhotos {
             lines.append(String(
                 format: "  k = %d · spacing %d · %@ · max uses %@ · weights L %.2f C %.2f",
                 detail, spacing,
