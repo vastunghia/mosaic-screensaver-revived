@@ -21,9 +21,17 @@ public enum SubsetRule: String, CaseIterable, Sendable {
     /// shuffle: a new photograph displaces at most one other, where a shuffle
     /// would move everything.
     case random
-    /// Evenly spread over the time the library covers — a photograph near each
-    /// of `N` equally spaced moments. Less stable than the other two: a new
-    /// photograph that extends the span moves every moment a little.
+    /// Evenly spread over the time the library covers: every calendar month
+    /// that has photographs gets the same share, a month with fewer than its
+    /// share gives all it has, and what it could not give is shared among the
+    /// others. Within a month the choice is `random`'s, so a new photograph
+    /// disturbs at most its own month.
+    ///
+    /// The first version aimed at `N` equally spaced moments and took the
+    /// nearest photograph to each. On a real library of 54,000 it gave a
+    /// quarter of the subset to 2004: the library starts in 1982 with a few
+    /// dozen scans, and every moment of those twenty near-empty years fell to
+    /// the first year with photographs in it.
     case uniformInTime
 
     /// `count` of `photos`, sorted by identifier. All of them when there are
@@ -79,54 +87,46 @@ public enum SubsetRule: String, CaseIterable, Sendable {
         return rng.next()
     }
 
-    /// For each of `count` equally spaced moments, the nearest photograph not
-    /// already taken. Where the library has a gap — a year without photographs
-    /// — the moments inside it fall to the photographs at its edges, so a gap
-    /// thickens its borders rather than going unrepresented. Undated
-    /// photographs are drawn on only if the dated ones run out, by `random`.
+    /// Equal shares per calendar month (UTC, so the answer does not depend on
+    /// the Mac's time zone), filled like water: every month gives at most what
+    /// it has, and the share is the level at which the months together reach
+    /// `count`. Undated photographs are drawn on only if the dated ones run
+    /// out, by `random`.
     static func spreadOverTime(_ photos: [PhotoDescriptor], count: Int, seed: UInt64) -> [PhotoDescriptor] {
-        let dated = photos
-            .filter { $0.creationDate != nil }
-            .sorted { a, b in
-                a.creationDate! != b.creationDate! ? a.creationDate! < b.creationDate! : byIdentifier(a, b)
-            }
         let undated = photos.filter { $0.creationDate == nil }
-
-        guard dated.count > count else {
-            let rest = SubsetRule.random.choose(from: undated, count: count - dated.count, seed: seed)
-            return dated + rest
+        let datedCount = photos.count - undated.count
+        guard datedCount > count else {
+            let dated = photos.filter { $0.creationDate != nil }
+            return dated + SubsetRule.random.choose(from: undated, count: count - datedCount, seed: seed)
         }
 
-        let times = dated.map { $0.creationDate!.timeIntervalSinceReferenceDate }
-        let first = times.first!, last = times.last!
-        let step = (last - first) / Double(count)
-        var taken = [Bool](repeating: false, count: dated.count)
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        var months: [Int: [PhotoDescriptor]] = [:]
+        for photo in photos {
+            guard let date = photo.creationDate else { continue }
+            let parts = calendar.dateComponents([.year, .month], from: date)
+            months[parts.year! * 12 + parts.month!, default: []].append(photo)
+        }
+        let keys = months.keys.sorted()
+        let sizes = keys.map { months[$0]!.count }
+
+        // The smallest level that reaches `count`; then one below it
+        // everywhere, and the remainder handed out one each, spread evenly
+        // across the months that have that many.
+        var level = 0
+        while sizes.reduce(0, { $0 + min($1, level) }) < count { level += 1 }
+        var shares = sizes.map { min($0, level - 1) }
+        let eligible = sizes.indices.filter { sizes[$0] >= level }
+        let remainder = count - shares.reduce(0, +)
+        for step in 0..<remainder {
+            shares[eligible[step * eligible.count / remainder]] += 1
+        }
+
         var chosen: [PhotoDescriptor] = []
         chosen.reserveCapacity(count)
-
-        for moment in 0..<count {
-            let target = first + (Double(moment) + 0.5) * step
-            // The first photograph at or after the target…
-            var low = 0, high = times.count
-            while low < high {
-                let middle = (low + high) / 2
-                if times[middle] < target { low = middle + 1 } else { high = middle }
-            }
-            // …then outwards to the nearest one still free. Ties go earlier.
-            // There is always one: fewer moments than photographs.
-            var before = low - 1, after = low
-            while before >= 0, taken[before] { before -= 1 }
-            while after < times.count, taken[after] { after += 1 }
-            let pick: Int
-            if before < 0 {
-                pick = after
-            } else if after >= times.count {
-                pick = before
-            } else {
-                pick = target - times[before] <= times[after] - target ? before : after
-            }
-            taken[pick] = true
-            chosen.append(dated[pick])
+        for (index, key) in keys.enumerated() where shares[index] > 0 {
+            chosen += SubsetRule.random.choose(from: months[key]!, count: shares[index], seed: seed)
         }
         return chosen
     }

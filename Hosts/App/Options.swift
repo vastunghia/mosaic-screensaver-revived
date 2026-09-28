@@ -50,6 +50,10 @@ struct Options {
     /// source and times it, instead of running anything.
     var verifyCanonical: Int?
 
+    /// Writes the source's photographs — after the subset rule — with their
+    /// dates to a CSV, instead of running anything.
+    var listPhotos: URL?
+
     /// Whether the photographs are real, which is when there is an index, a
     /// solver and something to say about them.
     var usesRealPhotos: Bool { folder != nil || photosLibrary }
@@ -192,6 +196,7 @@ struct Options {
             case "--subset-size": options.subsetSize = next().flatMap(Int.init) ?? options.subsetSize
             case "--subset-seed": options.subsetSeed = next().flatMap(UInt64.init) ?? options.subsetSeed
             case "--verify-canonical": options.verifyCanonical = next().flatMap(Int.init)
+            case "--list-photos": options.listPhotos = path()
             case "--thumbnail-width": options.thumbnailWidth = next().flatMap(Int.init) ?? options.thumbnailWidth
             case "--signature-side": options.signatureSide = next().flatMap(Int.init) ?? options.signatureSide
             case "--tile-width": options.tileWidth = next().flatMap(Int.init) ?? options.tileWidth
@@ -251,6 +256,7 @@ struct Options {
 
         let exporting = options.exportMosaic != nil || options.exportBatch != nil
             || options.exportDirectory != nil || options.buildIndex || options.verifyCanonical != nil
+            || options.listPhotos != nil
         if !options.seedGiven && !exporting {
             options.seed = UInt64.random(in: .min ... .max)
             options.seedIsPerLaunch = true

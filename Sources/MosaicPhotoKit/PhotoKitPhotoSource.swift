@@ -129,12 +129,16 @@ public final class PhotoKitPhotoSource: PhotoSource, @unchecked Sendable {
     /// `kCGImageSourceThumbnailMaxPixelSize`. So the whole photograph is scaled
     /// by the factor that makes its crop the right width. Never upwards: a small
     /// photograph comes back at its own size.
+    ///
+    /// One pixel more than needed, because PhotoKit rounds down: asked for
+    /// exactly enough, it delivered 853 of 854 and 232 of 233 (measured with
+    /// `--verify-canonical`). The crop then trims the extra pixel.
     public static func targetSize(pixelWidth: Int, pixelHeight: Int, cropWidth: Int) -> CGSize {
         guard pixelWidth > 0, pixelHeight > 0 else {
             return CGSize(width: cropWidth, height: CanonicalAspect.height(forWidth: cropWidth))
         }
         let crop = CanonicalCrop.rect(width: pixelWidth, height: pixelHeight)
-        let scale = min(1, Double(cropWidth) / Double(crop.width))
+        let scale = min(1, Double(cropWidth + 1) / Double(crop.width))
         return CGSize(
             width: (Double(pixelWidth) * scale).rounded(.up),
             height: (Double(pixelHeight) * scale).rounded(.up)
@@ -148,6 +152,12 @@ public final class PhotoKitPhotoSource: PhotoSource, @unchecked Sendable {
     static func versionToken(of asset: PHAsset) -> String {
         let modified = asset.modificationDate?.timeIntervalSince1970 ?? 0
         return "\(modified.bitPattern)-\(asset.pixelWidth)x\(asset.pixelHeight)"
+    }
+
+    /// The photograph's own size as PhotoKit reports it, for diagnostics: a
+    /// canonical image narrower than asked is fine when this is small too.
+    public func pixelSize(of id: PhotoID) -> (width: Int, height: Int)? {
+        asset(for: id).map { ($0.pixelWidth, $0.pixelHeight) }
     }
 
     private func asset(for id: PhotoID) -> PHAsset? {

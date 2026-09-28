@@ -67,16 +67,44 @@ struct SubsetRuleTests {
                             creationDate: start.addingTimeInterval(729 * 86_400 + Double($0)))
         }
 
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        func month(_ photo: PhotoDescriptor) -> Int {
+            let parts = calendar.dateComponents([.year, .month], from: photo.creationDate!)
+            return parts.year! * 12 + parts.month!
+        }
+
         let chosen = SubsetRule.uniformInTime.choose(from: photos, count: 73, seed: 0)
+        let perMonth = Dictionary(grouping: chosen, by: month).mapValues(\.count)
+        let monthsWithPhotographs = Set(photos.map(month))
+
+        // Every month with photographs gets a share, and the shares differ by
+        // at most one: the burst's month is one month like the others, not the
+        // 57% that the burst is of the library, and the gap is not handed to
+        // its borders.
+        #expect(Set(perMonth.keys) == monthsWithPhotographs)
+        #expect(perMonth.values.max()! - perMonth.values.min()! <= 1)
         let burst = chosen.filter { $0.id.rawValue.hasPrefix("burst-") }.count
-        // Evenly in time, the last day is 1/730 of the span: a photograph or two,
-        // not the 57% that the burst is of the library.
-        #expect(burst <= 2)
-        // One moment every 10 days. The 18 before the gap stay there; the 18
-        // inside it split between its two borders, and the far border is in
-        // the second year: 18 + 9.
-        let firstYear = chosen.filter { $0.creationDate!.timeIntervalSince(start) < 365 * 86_400 }.count
-        #expect((25...29).contains(firstYear))
+        #expect(burst <= perMonth.values.max()!)
+    }
+
+    @Test("uniform in time gives a sparse month everything it has, and the rest to the others")
+    func uniformInTimeWaterFills() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        // January: 2 photographs. February and March: 100 each.
+        let photos = (0..<202).map { index in
+            let month = index < 2 ? 1 : (index < 102 ? 2 : 3)
+            let date = calendar.date(from: DateComponents(
+                year: 2020, month: month, day: 1 + index % 28, second: index
+            ))!
+            return PhotoDescriptor(id: PhotoID("p\(index)"), versionToken: "1", creationDate: date)
+        }
+        let chosen = SubsetRule.uniformInTime.choose(from: photos, count: 60, seed: 3)
+        let ids = Set(chosen.map(\.id.rawValue))
+        #expect(ids.contains("p0") && ids.contains("p1"))
+        let february = chosen.filter { (2..<102).contains(Int($0.id.rawValue.dropFirst())!) }.count
+        #expect(february == 29)
     }
 
     @Test("the subset source passes only the chosen photographs")

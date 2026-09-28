@@ -35,6 +35,22 @@ do {
         exit(0)
     }
 
+    if let file = options.listPhotos {
+        guard let indexable = try PhotoSourceFactory.indexable(options: options) else {
+            throw HarnessError.verifyingWithoutPhotographs
+        }
+        // What a subset rule chose, with dates: a specimen of rules is judged
+        // on which years it draws from as much as on its mosaics.
+        let dates = ISO8601DateFormatter()
+        let lines = try indexable.source.photos().map { photo in
+            "\"\(photo.id.rawValue)\",\(photo.creationDate.map(dates.string(from:)) ?? "")"
+        }
+        try (["id,created"] + lines).joined(separator: "\n").appending("\n")
+            .write(to: file, atomically: true, encoding: .utf8)
+        print("mosaic: \(lines.count) photographs of \(indexable.name) listed in \(file.path)")
+        exit(0)
+    }
+
     if let count = options.verifyCanonical {
         guard let indexable = try PhotoSourceFactory.indexable(options: options) else {
             throw HarnessError.verifyingWithoutPhotographs

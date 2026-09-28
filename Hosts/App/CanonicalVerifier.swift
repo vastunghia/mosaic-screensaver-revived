@@ -1,6 +1,7 @@
 import CoreGraphics
 import Foundation
 import MosaicCore
+import MosaicPhotoKit
 import MosaicPhotos
 
 /// `--verify-canonical N`: the postcondition of `PhotoSource.canonicalImage`,
@@ -49,6 +50,23 @@ enum CanonicalVerifier {
         let widths = report.widths.sorted { $0.key > $1.key }.prefix(8)
             .map { "\($0.key) px ×\($0.value)" }.joined(separator: ", ")
         print("  widths: \(widths)")
+        // Narrower than asked is right only when the original's crop is
+        // narrower too; anything else is PhotoKit handing back a derivative.
+        let library = (source as? SubsetPhotoSource<PhotoKitPhotoSource>)?.base ?? source as? PhotoKitPhotoSource
+        for (id, got) in report.narrowerOnes.sorted(by: { $0.1 < $1.1 }).prefix(30) {
+            let original = library?.pixelSize(of: id)
+            let cropWidth = original.map { Int(CanonicalCrop.rect(width: $0.width, height: $0.height).width) }
+            // One pixel short is PhotoKit's rounding, seen on originals of every
+            // size; more than that would be a derivative smaller than asked for.
+            let verdict = cropWidth.map {
+                $0 <= got ? "original is that small"
+                    : min($0, width) - got <= 1 ? "a pixel short (PhotoKit rounding)"
+                    : "SMALLER THAN THE ORIGINAL ALLOWS"
+            } ?? ""
+            print("  narrower \(id.rawValue): \(got) px; original "
+                  + (original.map { "\($0.width)×\($0.height), crop \(cropWidth!) px" } ?? "unknown")
+                  + " — \(verdict)")
+        }
         for (id, problems) in report.broken.prefix(20) {
             print("  BROKEN \(id.rawValue): \(problems.joined(separator: "; "))")
         }
@@ -81,6 +99,7 @@ private final class Results: @unchecked Sendable {
     struct Report {
         var passed = 0
         var narrower = 0
+        var narrowerOnes: [(PhotoID, Int)] = []
         var unavailable = 0
         var broken: [(PhotoID, [String])] = []
         var failures: [(PhotoID, Error)] = []
@@ -102,6 +121,7 @@ private final class Results: @unchecked Sendable {
             current.broken.append((id, problems))
         } else if width < asked {
             current.narrower += 1
+            current.narrowerOnes.append((id, width))
         } else {
             current.passed += 1
         }

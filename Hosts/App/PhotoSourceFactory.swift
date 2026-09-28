@@ -95,6 +95,13 @@ enum PhotoSourceFactory {
         if !usable {
             print("no usable index for \(root) — building one")
             try buildIndex(source: indexable.source, store: store, root: root, options: options)
+        } else if options.photosLibrary {
+            // The root says "the library" whatever the albums and the subset
+            // rule are, so a usable index may still be of another subset. An
+            // incremental pass settles it, and reads nothing when nothing
+            // changed. A folder's root pins its contents, and exports from it
+            // stay exactly as they were.
+            try buildIndex(source: indexable.source, store: store, root: root, options: options)
         }
 
         let full = try IndexedPhotoSource(store: store, originals: indexable.source)
