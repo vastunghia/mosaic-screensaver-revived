@@ -11,8 +11,13 @@ enum Player {
     private static var window: PlayerWindow?
 
     static func play(preferences: AppPreferences, on screen: NSScreen?) throws {
+        try play(options: preferences.options(), on: screen)
+    }
+
+    /// Also the harness's `--play`, which is how the effect is measured as a
+    /// user sees it.
+    static func play(options: Options, on screen: NSScreen?, onEnd: (() -> Void)? = nil) throws {
         guard window == nil else { return }
-        let options = preferences.options()
         let screen = screen ?? NSScreen.main
 
         // The GPU that drives the display it will be shown on: on a machine
@@ -51,7 +56,7 @@ enum Player {
             defer: false
         )
         player.contentView = NSHostingView(
-            rootView: MosaicView(engine: engine, clock: clock, readout: HarnessReadout())
+            rootView: MosaicView(engine: engine, clock: clock, readout: HarnessReadout(), drawableScale: options.drawableScale)
                 .ignoresSafeArea()
                 .background(.black)
         )
@@ -62,6 +67,7 @@ enum Player {
             NSCursor.unhide()
             window?.orderOut(nil)
             window = nil
+            onEnd?()
         }
         if let screen { player.setFrame(screen.frame, display: true) }
         player.makeKeyAndOrderFront(nil)

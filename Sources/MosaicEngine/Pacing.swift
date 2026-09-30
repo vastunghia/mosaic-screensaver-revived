@@ -166,13 +166,36 @@ struct PacingTracker {
 }
 
 /// How smoothly one cycle ran, for a line in the log at its end.
+///
+/// Besides the totals, the cycle is cut in `CyclePacing.binCount` stretches
+/// of `u`: a stutter of single missed refreshes, too short to be a freeze,
+/// shows up as frames missed in some stretches and not others, next to what
+/// the GPU and the compositor were doing there.
 struct CyclePacing {
+    static let binCount = 10
+
+    struct Bin {
+        var frames = 0
+        /// Gaps past one and a half refreshes at 60 Hz: at least one refresh
+        /// showed the same frame twice.
+        var missed = 0
+        var drawableWaitTotal: TimeInterval = 0
+        var drawableWaitMax: TimeInterval = 0
+        var frameMax: TimeInterval = 0
+        var tilesMax = 0
+    }
+
     var frames = 0
     var over50 = 0
     var over100 = 0
     var worst: TimeInterval = 0
     var worstU: Double = 0
     var freezes = 0
+    var bins = [Bin](repeating: Bin(), count: binCount)
+    var wallStart: TimeInterval?
+    var wallEnd: TimeInterval = 0
+
+    static func bin(_ u: Double) -> Int { min(max(Int(u * Double(binCount)), 0), binCount - 1) }
 
     mutating func add(_ gap: TimeInterval, u: Double) {
         frames += 1
@@ -182,6 +205,97 @@ struct CyclePacing {
             worst = gap
             worstU = u
         }
+        if gap > 1.5 / 60 { bins[Self.bin(u)].missed += 1 }
+    }
+
+    /// Every frame drawn, moving or not.
+    mutating func drew(_ frame: PacingTracker.Frame, u: Double, tiles: Int) {
+        if wallStart == nil { wallStart = frame.wall }
+        wallEnd = frame.wall
+        var bin = bins[Self.bin(u)]
+        bin.frames += 1
+        bin.drawableWaitTotal += frame.drawableWait
+        bin.drawableWaitMax = max(bin.drawableWaitMax, frame.drawableWait)
+        bin.frameMax = max(bin.frameMax, frame.duration)
+        bin.tilesMax = max(bin.tilesMax, tiles)
+        bins[Self.bin(u)] = bin
+    }
+}
+
+/// GPU time of each frame, by stretch of `u`. Written from Metal's completion
+/// handlers, read by the host's thread at the end of a cycle.
+final class GPUTimings: @unchecked Sendable {
+    struct Bin {
+        var frames = 0
+        var total: TimeInterval = 0
+        var max: TimeInterval = 0
+        /// Longer than a refresh at 60 Hz: that frame alone cannot keep up.
+        var overRefresh = 0
+    }
+
+    /// When frames reached the glass, from each drawable's presented handler:
+    /// the only measure of what a viewer sees. Timing the calls to `advance`
+    /// is not — on the iMac's display they came 4 and 29 ms apart in turn at
+    /// a steady 60 fps shown.
+    struct Shown {
+        var frames = 0
+        /// Presented more than one and a half refreshes after the frame before:
+        /// the one before stayed on screen for an extra refresh at least.
+        var late = 0
+        /// Never presented: the compositor dropped it for a newer one.
+        var dropped = 0
+        var longest: TimeInterval = 0
+    }
+
+    private let lock = NSLock()
+    private var bins: [Int: [Bin]] = [:]
+    private var shown: [Int: [Shown]] = [:]
+    private var lastPresented: CFTimeInterval = 0
+
+    func presented(cycle: Int, bin: Int, at time: CFTimeInterval, refresh: TimeInterval) {
+        lock.lock()
+        defer { lock.unlock() }
+        var cycleBins = shown[cycle] ?? [Shown](repeating: Shown(), count: CyclePacing.binCount)
+        if time == 0 {
+            cycleBins[bin].dropped += 1
+        } else {
+            cycleBins[bin].frames += 1
+            if lastPresented > 0, time > lastPresented {
+                let interval = time - lastPresented
+                if interval > 1.5 * refresh { cycleBins[bin].late += 1 }
+                cycleBins[bin].longest = Swift.max(cycleBins[bin].longest, interval)
+            }
+            lastPresented = time
+        }
+        shown[cycle] = cycleBins
+    }
+
+    func takeShown(cycle: Int) -> [Shown] {
+        lock.lock()
+        defer { lock.unlock() }
+        let taken = shown[cycle] ?? [Shown](repeating: Shown(), count: CyclePacing.binCount)
+        shown = shown.filter { $0.key > cycle }
+        return taken
+    }
+
+    func record(cycle: Int, bin: Int, seconds: TimeInterval) {
+        lock.lock()
+        defer { lock.unlock() }
+        var cycleBins = bins[cycle] ?? [Bin](repeating: Bin(), count: CyclePacing.binCount)
+        cycleBins[bin].frames += 1
+        cycleBins[bin].total += seconds
+        cycleBins[bin].max = Swift.max(cycleBins[bin].max, seconds)
+        if seconds > 1.0 / 60 { cycleBins[bin].overRefresh += 1 }
+        bins[cycle] = cycleBins
+    }
+
+    /// The cycle's bins, forgetting them and any older cycle.
+    func take(cycle: Int) -> [Bin] {
+        lock.lock()
+        defer { lock.unlock() }
+        let taken = bins[cycle] ?? [Bin](repeating: Bin(), count: CyclePacing.binCount)
+        bins = bins.filter { $0.key > cycle }
+        return taken
     }
 }
 

@@ -62,6 +62,27 @@ do {
         exit(passed ? 0 : 1)
     }
 
+    if options.play {
+        let application = NSApplication.shared
+        application.setActivationPolicy(.regular)
+        let screen = options.screen.flatMap { name in
+            NSScreen.screens.first { $0.localizedName.localizedCaseInsensitiveContains(name) }
+        }
+        if let name = options.screen, screen == nil {
+            throw HarnessError.unknownScreen(name, known: NSScreen.screens.map(\.localizedName))
+        }
+        try MainActor.assumeIsolated {
+            try Player.play(options: options, on: screen) { NSApp.terminate(nil) }
+        }
+        if let seconds = options.quitAfter {
+            Timer.scheduledTimer(withTimeInterval: seconds, repeats: false) { _ in
+                MainActor.assumeIsolated { NSApp.terminate(nil) }
+            }
+        }
+        application.activate(ignoringOtherApps: true)
+        application.run()
+    }
+
     guard let device = MTLCreateSystemDefaultDevice() else {
         throw HarnessError.noMetalDevice
     }

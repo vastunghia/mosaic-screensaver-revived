@@ -126,6 +126,16 @@ struct Options {
     /// Quits after so many seconds, for runs nobody is watching.
     var quitAfter: Double?
 
+    /// Plays the effect the way the app's Play button does — borderless, at
+    /// screen-saver level, on the GPU driving the display — instead of the
+    /// harness window: for measuring what a user sees.
+    var play = false
+    /// The display to play on, by part of its name; the main one if nil.
+    var screen: String?
+    /// The drawable's size against the view's backing pixels: 0.75 on a
+    /// "looks like 2560×1440" mode of a 4K panel draws at the panel's 3840×2160.
+    var drawableScale: Double = 1
+
     /// Flags that were not understood. They used to be dropped in silence, and
     /// with this many options a mistyped `--foler` would hand back a synthetic
     /// mosaic and cost an evening of judging the wrong thing.
@@ -256,6 +266,9 @@ struct Options {
             case "--rebuild-every": options.rebuildEvery = next().flatMap(Double.init)
             case "--inject-freeze-every": options.injectFreezeEvery = next().flatMap(Double.init)
             case "--quit-after": options.quitAfter = next().flatMap(Double.init)
+            case "--play": options.play = true
+            case "--screen": options.screen = next()
+            case "--drawable-scale": options.drawableScale = next().flatMap(Double.init) ?? options.drawableScale
             default:
                 if argument.hasPrefix("-") { options.unknown.append(argument) }
             }

@@ -2,6 +2,7 @@ import AppKit
 import Foundation
 import MosaicPhotoKit
 import PhotoIndex
+import os
 
 /// What the app's window shows and does: the permission, the source, the index
 /// being built, the preferences, and the button that plays the effect.
@@ -88,10 +89,24 @@ final class AppModel: ObservableObject {
 
     private func loadAlbums() {
         Task.detached {
+            let started = ProcessInfo.processInfo.systemUptime
             let albums = PhotoLibraryAccess.albums()
-            await MainActor.run { self.albums = albums }
+            let fetched = ProcessInfo.processInfo.systemUptime - started
+            Self.log.notice("\(albums.count, privacy: .public) albums fetched in \(fetched, format: .fixed(precision: 2), privacy: .public) s")
+            await MainActor.run {
+                let shown = ProcessInfo.processInfo.systemUptime
+                self.albums = albums
+                // The window lays the list out on the run loop's next pass;
+                // this block runs after it.
+                DispatchQueue.main.async {
+                    let busy = ProcessInfo.processInfo.systemUptime - shown
+                    Self.log.notice("albums shown, main thread busy \(busy, format: .fixed(precision: 2), privacy: .public) s")
+                }
+            }
         }
     }
+
+    nonisolated private static let log = Logger(subsystem: "com.vastunghia.Mosaic", category: "app")
 
     // MARK: Source
 
@@ -107,13 +122,6 @@ final class AppModel: ObservableObject {
         }
     }
 
-    func toggleAlbum(_ id: String) {
-        if let index = preferences.albumIdentifiers.firstIndex(of: id) {
-            preferences.albumIdentifiers.remove(at: index)
-        } else {
-            preferences.albumIdentifiers.append(id)
-        }
-    }
 
     private func sourceChanged() {
         refreshIndexedCount()
@@ -128,6 +136,7 @@ final class AppModel: ObservableObject {
     }
 
     private func libraryChanged() {
+        Self.log.notice("the Photos library changed")
         guard preferences.source == .photos, access.isGranted else { return }
         if isIndexing { restartWhenDone = true } else { startIndexing() }
     }
@@ -141,6 +150,7 @@ final class AppModel: ObservableObject {
         cancel = flag
         isIndexing = true
         lastError = nil
+        Self.log.notice("indexing started")
         restartWhenDone = false
 
         Task.detached { [weak self] in
@@ -177,6 +187,7 @@ final class AppModel: ObservableObject {
 
     private func finished(error: Error?) {
         isIndexing = false
+        Self.log.notice("indexing finished\(error.map { ": \($0)" } ?? "", privacy: .public)")
         if let error { lastError = "\(error)" }
         refreshIndexedCount()
         if restartWhenDone { startIndexing() }

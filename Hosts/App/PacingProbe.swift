@@ -105,6 +105,21 @@ final class PacingProbe: @unchecked Sendable {
     /// Follows `window`'s occlusion and the displays' sleep, on the main thread.
     @MainActor
     func watch(_ window: NSWindow) {
+        // Which display, at what refresh and scale, and which GPU drives it:
+        // a stutter on one screen means nothing without them.
+        if let screen = window.screen {
+            let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber
+            let gpu = number.flatMap { CGDirectDisplayCopyCurrentMetalDevice(CGDirectDisplayID($0.uint32Value)) }
+            let mode = number.flatMap { CGDisplayCopyDisplayMode(CGDirectDisplayID($0.uint32Value)) }
+            let line = String(
+                format: "window on %@: %.0f×%.0f points at %.0fx, mode %d×%d pixels at %.2f Hz, up to %d fps, driven by %@",
+                screen.localizedName, screen.frame.width, screen.frame.height, screen.backingScaleFactor,
+                mode?.pixelWidth ?? 0, mode?.pixelHeight ?? 0, mode?.refreshRate ?? 0,
+                screen.maximumFramesPerSecond, gpu?.name ?? "an unknown GPU"
+            )
+            Self.log.notice("\(line, privacy: .public)")
+        }
+
         let center = NotificationCenter.default
         let workspace = NSWorkspace.shared.notificationCenter
         observers.forEach { center.removeObserver($0); workspace.removeObserver($0) }

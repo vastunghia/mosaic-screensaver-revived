@@ -8,6 +8,7 @@ import SwiftUI
 struct AppView: View {
     @ObservedObject var model: AppModel
     let play: () -> Void
+    @State private var choosingAlbums = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -79,22 +80,35 @@ struct AppView: View {
         }
         if model.access.isGranted {
             Section {
-                albumRow(title: "All photographs", count: nil,
-                         isOn: model.preferences.albumIdentifiers.isEmpty) {
-                    model.preferences.albumIdentifiers = []
-                }
-                ForEach(model.albums) { album in
-                    albumRow(title: album.title, count: album.count,
-                             isOn: model.preferences.albumIdentifiers.contains(album.id)) {
-                        model.toggleAlbum(album.id)
-                    }
+                HStack {
+                    Text(albumSummary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                    Spacer()
+                    Button("Choose…") { choosingAlbums = true }
+                        .disabled(model.albums.isEmpty)
                 }
             } header: {
                 Text("Albums")
             } footer: {
                 Text("None chosen is the whole library; several are combined.")
             }
+            .sheet(isPresented: $choosingAlbums) {
+                AlbumPicker(model: model)
+            }
         }
+    }
+
+    /// One line, however many albums there are: the list itself lives in a
+    /// sheet. Laid out inline, a Form built one view per album at once, and on
+    /// a library with many albums that held the main thread — and the effect
+    /// drawn on it — for over ten seconds.
+    private var albumSummary: String {
+        let chosen = model.preferences.albumIdentifiers
+        if chosen.isEmpty { return "All photographs" }
+        let titles = model.albums.filter { chosen.contains($0.id) }.map(\.title)
+        if titles.isEmpty { return chosen.count == 1 ? "1 album" : "\(chosen.count) albums" }
+        return titles.joined(separator: ", ")
     }
 
     @ViewBuilder
@@ -122,22 +136,6 @@ struct AppView: View {
                 Button("Open System Settings…") { model.openPrivacySettings() }
             }
         }
-    }
-
-    private func albumRow(title: String, count: Int?, isOn: Bool, toggle: @escaping () -> Void) -> some View {
-        Button(action: toggle) {
-            HStack {
-                Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
-                    .foregroundStyle(isOn ? Color.accentColor : .secondary)
-                Text(title)
-                Spacer()
-                if let count {
-                    Text("\(count)").foregroundStyle(.secondary).monospacedDigit()
-                }
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
     }
 
     private var folderSection: some View {
@@ -213,5 +211,67 @@ struct AppView: View {
         if progress.skipped > 0 { parts.append("\(progress.skipped) unreadable") }
         if progress.unavailable > 0 { parts.append("\(progress.unavailable) only in iCloud") }
         return parts.joined(separator: " · ")
+    }
+}
+
+/// The albums to draw the photographs from, in a sheet.
+///
+/// A `List`, which on macOS is a table view and makes rows only for what is on
+/// screen, so a library with thousands of albums costs no more than one with
+/// ten. The choice is applied on Done, not on every click: each change of
+/// scope restarts the index.
+struct AlbumPicker: View {
+    @ObservedObject var model: AppModel
+    @Environment(\.dismiss) private var dismiss
+    @State private var chosen: Set<String> = []
+    @State private var filter = ""
+
+    var body: some View {
+        VStack(spacing: 0) {
+            TextField("Search", text: $filter)
+                .textFieldStyle(.roundedBorder)
+                .padding()
+            List(shown) { album in
+                Toggle(isOn: Binding(
+                    get: { chosen.contains(album.id) },
+                    set: { if $0 { chosen.insert(album.id) } else { chosen.remove(album.id) } }
+                )) {
+                    HStack {
+                        Text(album.title)
+                        Spacer()
+                        Text("\(album.count)").foregroundStyle(.secondary).monospacedDigit()
+                    }
+                }
+                .toggleStyle(.checkbox)
+            }
+            HStack {
+                Text(chosen.isEmpty ? "All photographs" : chosen.count == 1 ? "1 album" : "\(chosen.count) albums")
+                    .foregroundStyle(.secondary)
+                Button("Clear") { chosen = [] }
+                    .disabled(chosen.isEmpty)
+                Spacer()
+                Button("Cancel", role: .cancel) { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+                Button("Done") {
+                    // In the order the albums are listed, so an unchanged choice
+                    // compares equal and does not restart the index.
+                    let ordered = model.albums.map(\.id).filter(chosen.contains)
+                    if Set(ordered) != Set(model.preferences.albumIdentifiers) {
+                        model.preferences.albumIdentifiers = ordered
+                    }
+                    dismiss()
+                }
+                .keyboardShortcut(.defaultAction)
+            }
+            .padding()
+        }
+        .frame(width: 420, height: 520)
+        .onAppear { chosen = Set(model.preferences.albumIdentifiers) }
+    }
+
+    private var shown: [PhotoLibraryAccess.Album] {
+        let query = filter.trimmingCharacters(in: .whitespaces)
+        guard !query.isEmpty else { return model.albums }
+        return model.albums.filter { $0.title.localizedStandardContains(query) }
     }
 }

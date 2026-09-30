@@ -33,19 +33,28 @@ public enum PhotoLibraryAccess {
     public struct Album: Equatable, Sendable, Identifiable {
         public let id: String
         public let title: String
+        /// Photographs and videos alike, as PhotoKit keeps it: only a guide to
+        /// how big the album is.
         public let count: Int
     }
 
     /// The albums a user can pick as the scope: Favorites first, then their own
     /// albums by title. Shared albums are left out — their photographs are
     /// rarely on this Mac.
+    ///
+    /// The counts are PhotoKit's `estimatedAssetCount`, which it keeps with the
+    /// album. Counting only the images took a fetch per album: 143 s for the
+    /// 2020 albums of a real library, measured 2026-09-30.
     public static func albums() -> [Album] {
         var found: [Album] = []
         let images = PHFetchOptions()
         images.predicate = NSPredicate(format: "mediaType == %d", PHAssetMediaType.image.rawValue)
 
         func add(_ collection: PHAssetCollection) {
-            let count = PHAsset.fetchAssets(in: collection, options: images).count
+            let estimated = collection.estimatedAssetCount
+            let count = estimated != NSNotFound
+                ? estimated
+                : PHAsset.fetchAssets(in: collection, options: images).count
             found.append(Album(
                 id: collection.localIdentifier,
                 title: collection.localizedTitle ?? "Untitled",

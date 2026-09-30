@@ -18,10 +18,13 @@ final class MosaicMetalView: NSView {
     private var lastLoggedCycle = -1
     private var lastLoggedRebuilds = 0
 
-    init(engine: MosaicEngine, clock: HarnessClock, readout: HarnessReadout) {
+    private let drawableScale: Double
+
+    init(engine: MosaicEngine, clock: HarnessClock, readout: HarnessReadout, drawableScale: Double = 1) {
         self.engine = engine
         self.clock = clock
         self.readout = readout
+        self.drawableScale = drawableScale
         super.init(frame: .zero)
         wantsLayer = true
         layerContentsRedrawPolicy = .duringViewResize
@@ -42,6 +45,9 @@ final class MosaicMetalView: NSView {
             engine.attach(to: metalLayer, size: drawableSize())
             PacingProbe.shared.start()
             PacingProbe.shared.watch(window)
+            if let fps = window.screen?.maximumFramesPerSecond, fps > 0 {
+                engine.refreshInterval = 1.0 / Double(fps)
+            }
             engine.onFreeze = { freeze in
                 print(freeze.description)
                 fflush(stdout)
@@ -78,8 +84,8 @@ final class MosaicMetalView: NSView {
     }
 
     private func drawableSize() -> CGSize {
-        let scale = window?.backingScaleFactor ?? 2
-        return CGSize(width: bounds.width * scale, height: bounds.height * scale)
+        let scale = (window?.backingScaleFactor ?? 2) * drawableScale
+        return CGSize(width: (bounds.width * scale).rounded(), height: (bounds.height * scale).rounded())
     }
 
     private func resizeDrawable() {
@@ -150,9 +156,10 @@ struct MosaicView: NSViewRepresentable {
     let engine: MosaicEngine
     let clock: HarnessClock
     let readout: HarnessReadout
+    var drawableScale: Double = 1
 
     func makeNSView(context: Context) -> MosaicMetalView {
-        MosaicMetalView(engine: engine, clock: clock, readout: readout)
+        MosaicMetalView(engine: engine, clock: clock, readout: readout, drawableScale: drawableScale)
     }
 
     func updateNSView(_ view: MosaicMetalView, context: Context) {}

@@ -49,6 +49,8 @@ public final class MosaicEngine {
     private var pacingCycle = -1
     private var loadAtLastFrame = SystemLoad.now()
     private var freezeCount = 0
+    private let gpuTimings = GPUTimings()
+    private var lastTiles = 0
 
     /// Gaps shorter than this are counted in the cycle's summary but are not
     /// freezes. Six frames at 60 Hz: past anything a busy frame explains.
@@ -58,6 +60,10 @@ public final class MosaicEngine {
     /// The host adds what only it can see — whether its thread was blocked,
     /// how busy the GPUs were.
     public var onFreeze: ((Freeze) -> Void)?
+
+    /// The display's refresh, for telling a frame shown late from one shown
+    /// on time. The host knows the screen; the engine does not.
+    public var refreshInterval: TimeInterval = 1.0 / 60
 
     /// The unified log is the only channel a .saver has (spike 1), so this is
     /// where freezes go, from the app and the saver alike.
@@ -169,6 +175,9 @@ public final class MosaicEngine {
 
     public func resize(_ size: CGSize) {
         guard let layer, size.width > 0, size.height > 0 else { return }
+        if layer.drawableSize != size {
+            Self.log.notice("drawing \(Int(size.width), privacy: .public)×\(Int(size.height), privacy: .public) pixels on \(self.gpu.device.name, privacy: .public)")
+        }
         layer.drawableSize = size
     }
 
@@ -261,9 +270,11 @@ public final class MosaicEngine {
             gpu.inFlight.signal()
             return
         }
-        commands.addCompletedHandler { [inFlight = gpu.inFlight, statisticsBox] buffer in
-            let milliseconds = (buffer.gpuEndTime - buffer.gpuStartTime) * 1000
-            statisticsBox.update { $0.gpuMilliseconds = milliseconds }
+        let position = frame.position
+        commands.addCompletedHandler { [inFlight = gpu.inFlight, statisticsBox, gpuTimings] buffer in
+            let seconds = buffer.gpuEndTime - buffer.gpuStartTime
+            statisticsBox.update { $0.gpuMilliseconds = seconds * 1000 }
+            gpuTimings.record(cycle: position.index, bin: CyclePacing.bin(position.u), seconds: seconds)
             inFlight.signal()
         }
 
@@ -276,6 +287,7 @@ public final class MosaicEngine {
         if let encoder = commands.makeRenderCommandEncoder(descriptor: pass) {
             let drawn = gpu.renderer.encode(frame, atlas: gpu.atlas, closeUps: closeUps, into: encoder)
             encoder.endEncoding()
+            lastTiles = drawn
             statisticsBox.update {
                 $0.tileCount = drawn
                 $0.cycleIndex = frame.position.index
@@ -283,6 +295,13 @@ public final class MosaicEngine {
             }
         }
 
+        let refresh = refreshInterval
+        drawable.addPresentedHandler { [gpuTimings] shown in
+            gpuTimings.presented(
+                cycle: position.index, bin: CyclePacing.bin(position.u),
+                at: shown.presentedTime, refresh: refresh
+            )
+        }
         commands.present(drawable)
         commands.commit()
         sample.presented = true
@@ -296,6 +315,9 @@ public final class MosaicEngine {
             if pacingCycle >= 0 { summarize(cycle: pacingCycle) }
             pacingCycle = index
             cyclePacing = CyclePacing()
+        }
+        if frame.presented {
+            cyclePacing.drew(frame, u: cycle.position(at: frame.time).u, tiles: lastTiles)
         }
 
         guard let gap = pacing.frame(frame) else { return }
@@ -378,13 +400,46 @@ public final class MosaicEngine {
                 return String(format: "%d in %.2f s (waited %.2f s)",
                               load.count, finished - started, started - load.requested)
             }
+        let seconds = pace.wallEnd - (pace.wallStart ?? pace.wallEnd)
         let line = String(
-            format: "cycle %d: %d frames, worst gap %.0f ms at u=%.3f, %d over 50 ms, %d over 100 ms, %d freezes · next mosaic %@ · next close-ups %@",
-            index, pace.frames, pace.worst * 1000, pace.worstU, pace.over50, pace.over100, pace.freezes,
+            format: "cycle %d: %d frames in %.2f s (%.1f fps), worst gap %.0f ms at u=%.3f, %d over 50 ms, %d over 100 ms, %d freezes · next mosaic %@ · next close-ups %@",
+            index, pace.frames, seconds, seconds > 0 ? Double(pace.frames) / seconds : 0,
+            pace.worst * 1000, pace.worstU, pace.over50, pace.over100, pace.freezes,
             jobs.isEmpty ? "—" : jobs.joined(separator: ", "),
             loads.isEmpty ? "—" : loads.joined(separator: ", ")
         )
         Self.log.notice("\(line, privacy: .public)")
+
+        // By tenth of the cycle: where the missed refreshes were, and whether
+        // the GPU (its time per frame) or the compositor (the wait for a
+        // drawable) was behind there.
+        let gpuBins = gpuTimings.take(cycle: index)
+        let shownBins = gpuTimings.takeShown(cycle: index)
+        let shownTotal = shownBins.reduce(0) { $0 + $1.frames }
+        let lateTotal = shownBins.reduce(0) { $0 + $1.late }
+        let droppedTotal = shownBins.reduce(0) { $0 + $1.dropped }
+        let longest = shownBins.map(\.longest).max() ?? 0
+        let shownLine = String(
+            format: "cycle %d on screen: %d frames shown, %d late, %d dropped, longest %.0f ms · late by tenth %@ · dropped by tenth %@",
+            index, shownTotal, lateTotal, droppedTotal, longest * 1000,
+            shownBins.map { "\($0.late)" }.joined(separator: " "),
+            shownBins.map { "\($0.dropped)" }.joined(separator: " ")
+        )
+        Self.log.notice("\(shownLine, privacy: .public)")
+        func column(_ values: [String]) -> String { values.joined(separator: " ") }
+        let bins = pace.bins
+        let detail = [
+            "cycle \(index) by tenth of u",
+            "missed " + column(bins.map { "\($0.missed)" }),
+            "gpu ms mean " + column(gpuBins.map { $0.frames > 0 ? String(format: "%.1f", $0.total / Double($0.frames) * 1000) : "-" }),
+            "gpu ms max " + column(gpuBins.map { String(format: "%.1f", $0.max * 1000) }),
+            "gpu over 16.7 ms " + column(gpuBins.map { "\($0.overRefresh)" }),
+            "drawable wait ms mean " + column(bins.map { $0.frames > 0 ? String(format: "%.1f", $0.drawableWaitTotal / Double($0.frames) * 1000) : "-" }),
+            "drawable wait ms max " + column(bins.map { String(format: "%.0f", $0.drawableWaitMax * 1000) }),
+            "frame ms max " + column(bins.map { String(format: "%.0f", $0.frameMax * 1000) }),
+            "tiles max " + column(bins.map { "\($0.tilesMax)" }),
+        ].joined(separator: " · ")
+        Self.log.notice("\(detail, privacy: .public)")
     }
 
     /// The same frame, drawn into a texture instead of onto a screen. This is
