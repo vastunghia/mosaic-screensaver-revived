@@ -40,6 +40,13 @@ final class MosaicMetalView: NSView {
 
         if let window {
             engine.attach(to: metalLayer, size: drawableSize())
+            PacingProbe.shared.start()
+            PacingProbe.shared.watch(window)
+            engine.onFreeze = { freeze in
+                print(freeze.description)
+                fflush(stdout)
+                PacingProbe.shared.describe(freeze)
+            }
             // Should the GPU go away, rebuild on the one driving this window's
             // display: with an eGPU attached, the system default is not
             // necessarily it.
@@ -129,8 +136,8 @@ final class MosaicMetalView: NSView {
             if statistics.cycleIndex != lastLoggedCycle {
                 lastLoggedCycle = statistics.cycleIndex
                 print(String(
-                    format: "cycle %d · %d stalls · %d close-up misses · %.0f MB close-ups · %.0f fps · %@",
-                    statistics.cycleIndex, statistics.stalls, statistics.closeUpMisses,
+                    format: "cycle %d · %d stalls · %d close-up misses · %d freezes · %.0f MB close-ups · %.0f fps · %@",
+                    statistics.cycleIndex, statistics.stalls, statistics.closeUpMisses, statistics.freezes,
                     Double(statistics.closeUpBytes) / 1_048_576, smoothedFPS, statistics.deviceName
                 ))
                 fflush(stdout)

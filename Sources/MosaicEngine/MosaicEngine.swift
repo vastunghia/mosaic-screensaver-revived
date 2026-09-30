@@ -1,6 +1,7 @@
 import CoreGraphics
 import CycleEngine
 import Metal
+import os
 import MosaicCore
 import MosaicPhotos
 import MosaicRender
@@ -41,11 +42,34 @@ public final class MosaicEngine {
     private var layer: CAMetalLayer?
     private let statisticsBox = StatisticsBox()
 
+    /// Watching itself for freezes: see `Freeze`. Touched on the host's thread
+    /// only, like `gpu`.
+    private var pacing = PacingTracker()
+    private var cyclePacing = CyclePacing()
+    private var pacingCycle = -1
+    private var loadAtLastFrame = SystemLoad.now()
+    private var freezeCount = 0
+
+    /// Gaps shorter than this are counted in the cycle's summary but are not
+    /// freezes. Six frames at 60 Hz: past anything a busy frame explains.
+    public static let freezeThreshold: TimeInterval = 0.1
+
+    /// Called on the host's thread for every freeze, after it has been logged.
+    /// The host adds what only it can see — whether its thread was blocked,
+    /// how busy the GPUs were.
+    public var onFreeze: ((Freeze) -> Void)?
+
+    /// The unified log is the only channel a .saver has (spike 1), so this is
+    /// where freezes go, from the app and the saver alike.
+    private static let log = Logger(subsystem: "com.vastunghia.Mosaic", category: "pacing")
+
     /// The rebuild in progress, shared with the thread that does it and with
     /// whichever thread Metal reports a device removal on.
     private let rebuildLock = NSLock()
     private var rebuilding = false
     private var replacement: GPUResources?
+    private var rebuildStarted: TimeInterval?
+    private var rebuildFinished: TimeInterval?
     private var currentDeviceID: UInt64
     private var deviceObserver: NSObjectProtocol?
 
@@ -175,16 +199,28 @@ public final class MosaicEngine {
     /// so a host that asks every frame holds its clock through that too, and
     /// the effect resumes where it stopped rather than further on.
     public func isReady(at time: TimeInterval) -> Bool {
-        guard adoptReplacement() else { return false }
+        let wall = ProcessInfo.processInfo.systemUptime
+        if let reason = unreadiness(at: time) {
+            pacing.notReady(reason, at: wall)
+            return false
+        }
+        pacing.call(at: wall)
+        return true
+    }
+
+    /// Why the frame at `time` cannot be drawn yet, or nil if it can.
+    private func unreadiness(at time: TimeInterval) -> String? {
+        guard adoptReplacement() else { return "rebuilding on another GPU" }
         let index = cycle.position(at: time).index
         lookahead.prefetch(index)
         if index > 0 { lookahead.prefetch(index - 1) }
-        guard lookahead.isReady(index), index == 0 || lookahead.isReady(index - 1) else {
-            return false
+        guard lookahead.isReady(index) else { return "mosaic of cycle \(index) not built" }
+        guard index == 0 || lookahead.isReady(index - 1) else {
+            return "mosaic of cycle \(index - 1) not built"
         }
-        guard let store = gpu.closeUps else { return true }
-        if store.isLatched(index) { return true }
-        guard let layer, layer.drawableSize.width > 0 else { return false }
+        guard let store = gpu.closeUps else { return nil }
+        if store.isLatched(index) { return nil }
+        guard let layer, layer.drawableSize.width > 0 else { return "no drawable size" }
         if !store.isRequested(index) {
             let layout = lookahead.mosaic(forCycle: index, counting: false).planned.layout
             store.request(
@@ -192,13 +228,23 @@ public final class MosaicEngine {
                 widths: closeUpWidths(of: layout, screenWidth: Int(layer.drawableSize.width))
             )
         }
-        return store.isComplete(index)
+        return store.isComplete(index) ? nil : "close-ups of cycle \(index) loading"
     }
 
     /// Draws the frame for an absolute time. There is no internal clock: the
     /// host owns time, which is what lets the harness scrub it.
     public func advance(to time: TimeInterval) {
-        guard adoptReplacement(), let layer, let drawable = layer.nextDrawable() else { return }
+        let wall = ProcessInfo.processInfo.systemUptime
+        var sample = PacingTracker.Frame(wall: wall, time: time, presented: false)
+        defer {
+            sample.duration = ProcessInfo.processInfo.systemUptime - wall
+            watchPacing(sample)
+        }
+
+        guard adoptReplacement(), let layer else { return }
+        let drawable = layer.nextDrawable()
+        sample.drawableWait = ProcessInfo.processInfo.systemUptime - wall
+        guard let drawable else { return }
         let gpu = gpu
 
         let (frame, closeUps) = frameState(
@@ -207,7 +253,10 @@ public final class MosaicEngine {
 
         // Bounded, because a frame in flight on a device that has just been
         // unplugged may never complete; the frame is skipped instead.
-        guard gpu.inFlight.wait(timeout: .now() + 0.25) == .success else { return }
+        let waiting = ProcessInfo.processInfo.systemUptime
+        let slot = gpu.inFlight.wait(timeout: .now() + 0.25)
+        sample.inFlightWait = ProcessInfo.processInfo.systemUptime - waiting
+        guard slot == .success else { return }
         guard let commands = gpu.queue.makeCommandBuffer() else {
             gpu.inFlight.signal()
             return
@@ -236,6 +285,106 @@ public final class MosaicEngine {
 
         commands.present(drawable)
         commands.commit()
+        sample.presented = true
+    }
+
+    // MARK: - Pacing
+
+    private func watchPacing(_ frame: PacingTracker.Frame) {
+        let index = cycle.position(at: frame.time).index
+        if index != pacingCycle {
+            if pacingCycle >= 0 { summarize(cycle: pacingCycle) }
+            pacingCycle = index
+            cyclePacing = CyclePacing()
+        }
+
+        guard let gap = pacing.frame(frame) else { return }
+        let u = cycle.position(at: gap.animationStart).u
+        cyclePacing.add(gap.duration, u: u)
+        let load = SystemLoad.now()
+        defer { loadAtLastFrame = load }
+
+        guard gap.duration >= Self.freezeThreshold,
+              let kind = gap.kind(threshold: Self.freezeThreshold) else { return }
+        let tally = gap.tally
+        let freeze = Freeze(
+            kind: kind,
+            start: gap.start,
+            duration: gap.duration,
+            cycleIndex: cycle.position(at: gap.animationStart).index,
+            u: u,
+            animationStep: gap.animationStep,
+            framesPresented: tally.staticFrames,
+            framesNotPresented: tally.unpresented,
+            longestSilence: tally.longestSilence,
+            notReady: tally.notReady,
+            slowestDrawableWait: tally.slowestDrawableWait,
+            slowestInFlightWait: tally.slowestInFlightWait,
+            slowestFrame: tally.slowestFrame,
+            activities: activities(from: gap.start, to: gap.start + gap.duration),
+            system: load.change(since: loadAtLastFrame, over: gap.duration)
+        )
+        freezeCount += 1
+        cyclePacing.freezes += 1
+        let count = freezeCount
+        statisticsBox.update { $0.freezes = count }
+        Self.log.notice("\(freeze.description, privacy: .public)")
+        onFreeze?(freeze)
+    }
+
+    /// Background work that overlapped `start...end`, each timed from `start`.
+    private func activities(from start: TimeInterval, to end: TimeInterval) -> [String] {
+        func span(_ from: TimeInterval, _ to: TimeInterval?) -> String {
+            let to = to.map { String(format: "%+.2f s", $0 - start) } ?? "still running"
+            return String(format: "from %+.2f s to %@", from - start, to)
+        }
+        func overlaps(_ from: TimeInterval, _ to: TimeInterval?) -> Bool {
+            from <= end && (to ?? .infinity) >= start
+        }
+
+        var lines: [String] = []
+        for job in lookahead.recentJobs where overlaps(job.started, job.finished) {
+            lines.append("mosaic of cycle \(job.cycle)\(job.onCaller ? " on the render thread" : "") \(span(job.started, job.finished))")
+        }
+        for load in gpu.closeUps?.recentLoads ?? [] {
+            let from = load.started ?? load.requested
+            guard overlaps(from, load.finished) else { continue }
+            let queued = load.started == nil ? " (queued)" : ""
+            lines.append(String(
+                format: "%d close-ups of cycle %d%@ %@, slowest %.2f s",
+                load.count, load.cycle, queued, span(from, load.finished), load.slowest
+            ))
+        }
+        rebuildLock.lock()
+        let rebuild = rebuildStarted.map { ($0, rebuildFinished) }
+        rebuildLock.unlock()
+        if let (from, to) = rebuild, overlaps(from, to) {
+            lines.append("rebuild on another GPU \(span(from, to))")
+        }
+        return lines
+    }
+
+    /// One line per cycle: a baseline of how smoothly the effect runs, so a
+    /// freeze can be told from a machine that stutters all the time.
+    private func summarize(cycle index: Int) {
+        let pace = cyclePacing
+        let jobs = lookahead.recentJobs.filter { $0.cycle == index + 1 }
+            .map { String(format: "%.2f s", $0.finished - $0.started) }
+        let loads = (gpu.closeUps?.recentLoads ?? []).filter { $0.cycle == index + 1 }
+            .map { load in
+                guard let started = load.started, let finished = load.finished else {
+                    return "\(load.count) unfinished"
+                }
+                return String(format: "%d in %.2f s (waited %.2f s)",
+                              load.count, finished - started, started - load.requested)
+            }
+        let line = String(
+            format: "cycle %d: %d frames, worst gap %.0f ms at u=%.3f, %d over 50 ms, %d over 100 ms, %d freezes · next mosaic %@ · next close-ups %@",
+            index, pace.frames, pace.worst * 1000, pace.worstU, pace.over50, pace.over100, pace.freezes,
+            jobs.isEmpty ? "—" : jobs.joined(separator: ", "),
+            loads.isEmpty ? "—" : loads.joined(separator: ", ")
+        )
+        Self.log.notice("\(line, privacy: .public)")
     }
 
     /// The same frame, drawn into a texture instead of onto a screen. This is
@@ -341,6 +490,8 @@ public final class MosaicEngine {
             return
         }
         rebuilding = true
+        rebuildStarted = ProcessInfo.processInfo.systemUptime
+        rebuildFinished = nil
         let provider = provider
         rebuildLock.unlock()
 
@@ -389,6 +540,7 @@ public final class MosaicEngine {
         if let fresh {
             replacement = nil
             rebuilding = false
+            rebuildFinished = ProcessInfo.processInfo.systemUptime
             currentDeviceID = fresh.device.registryID
         }
         rebuildLock.unlock()

@@ -120,6 +120,12 @@ struct Options {
     /// eGPU takes, exercised over and over without unplugging anything.
     var rebuildEvery: Double?
 
+    /// Blocks the main thread for 1.5 s every so many seconds: a freeze made on
+    /// purpose, to check that the pacing log and the hang sampler catch one.
+    var injectFreezeEvery: Double?
+    /// Quits after so many seconds, for runs nobody is watching.
+    var quitAfter: Double?
+
     /// Flags that were not understood. They used to be dropped in silence, and
     /// with this many options a mistyped `--foler` would hand back a synthetic
     /// mosaic and cost an evening of judging the wrong thing.
@@ -248,6 +254,8 @@ struct Options {
             case "--cycle": options.exportCycle = next().flatMap(Int.init) ?? options.exportCycle
             case "--full-screen": options.fullScreen = true
             case "--rebuild-every": options.rebuildEvery = next().flatMap(Double.init)
+            case "--inject-freeze-every": options.injectFreezeEvery = next().flatMap(Double.init)
+            case "--quit-after": options.quitAfter = next().flatMap(Double.init)
             default:
                 if argument.hasPrefix("-") { options.unknown.append(argument) }
             }

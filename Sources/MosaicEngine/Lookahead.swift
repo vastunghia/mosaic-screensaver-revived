@@ -20,6 +20,16 @@ final class Lookahead: @unchecked Sendable {
         let error: String?
     }
 
+    /// One mosaic built, and when, on the `systemUptime` clock: a freeze is
+    /// read against what was running at the time.
+    struct Job: Sendable {
+        let cycle: Int
+        let started: TimeInterval
+        let finished: TimeInterval
+        /// Built on the render thread because it was needed and not there.
+        let onCaller: Bool
+    }
+
     private let planner: any MosaicPlanner
     private let fallback: RandomMosaicPlanner
     private let seed: UInt64
@@ -35,6 +45,7 @@ final class Lookahead: @unchecked Sendable {
     private var ready: [Int: Built] = [:]
     private var pending: Set<Int> = []
     private var stallCount = 0
+    private var jobs: [Job] = []
 
     init(planner: any MosaicPlanner, fallback: RandomMosaicPlanner, seed: UInt64, rows: Int) {
         self.planner = planner
@@ -65,7 +76,9 @@ final class Lookahead: @unchecked Sendable {
         lock.unlock()
 
         queue.async { [self] in
+            let started = ProcessInfo.processInfo.systemUptime
             let built = build(cycle: cycle, rows: job.rows)
+            record(Job(cycle: cycle, started: started, finished: ProcessInfo.processInfo.systemUptime, onCaller: false))
             lock.lock()
             if generation == job.generation {
                 pending.remove(cycle)
@@ -94,12 +107,26 @@ final class Lookahead: @unchecked Sendable {
         // the queue may have other cycles ahead of this one. If a background
         // job for the same cycle is also running, it produces the identical
         // mosaic and whichever lands second is ignored.
+        let started = ProcessInfo.processInfo.systemUptime
         let built = build(cycle: cycle, rows: rows)
+        record(Job(cycle: cycle, started: started, finished: ProcessInfo.processInfo.systemUptime, onCaller: true))
 
         lock.lock()
         defer { lock.unlock() }
         if generation == current, ready[cycle] == nil { ready[cycle] = built }
         return ready[cycle] ?? built
+    }
+
+    /// The last few mosaics built, oldest first.
+    var recentJobs: [Job] {
+        lock.lock(); defer { lock.unlock() }
+        return jobs
+    }
+
+    private func record(_ job: Job) {
+        lock.lock(); defer { lock.unlock() }
+        jobs.append(job)
+        if jobs.count > 16 { jobs.removeFirst(jobs.count - 16) }
     }
 
     func isReady(_ cycle: Int) -> Bool {

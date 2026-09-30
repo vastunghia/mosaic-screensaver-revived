@@ -39,6 +39,10 @@ public struct FrameStatistics: Sendable {
     public var rebuilds: Int = 0
     public var lastRebuildSeconds: Double = 0
 
+    /// Stretches of more than `MosaicEngine.freezeThreshold` in which the
+    /// effect stood still when it should have moved. Each is in the log.
+    public var freezes: Int = 0
+
     /// Why the last mosaic fell back to random tiles, if it did.
     public var lastError: String?
 

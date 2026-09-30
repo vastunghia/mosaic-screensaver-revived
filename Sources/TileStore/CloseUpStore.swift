@@ -36,6 +36,19 @@ public final class CloseUpStore: @unchecked Sendable {
     private var wanted: [Int: Int] = [:]
     private var missCount = 0
     private var failureCount = 0
+    private var loads: [Load] = []
+
+    /// One cycle's close-ups being made, timed on the `systemUptime` clock so a
+    /// freeze on screen can be read against them.
+    public struct Load: Sendable {
+        public let cycle: Int
+        public let count: Int
+        public let requested: TimeInterval
+        public var started: TimeInterval?
+        public var finished: TimeInterval?
+        /// The longest a single photograph took, decoding and upload together.
+        public var slowest: TimeInterval = 0
+    }
 
     public init(device: MTLDevice, source: any PhotoSource) throws {
         guard let queue = device.makeCommandQueue() else {
@@ -59,20 +72,31 @@ public final class CloseUpStore: @unchecked Sendable {
         let group = DispatchGroup()
         requested[cycle] = group
         wanted[cycle] = widths.count
+        loads.append(Load(cycle: cycle, count: widths.count, requested: ProcessInfo.processInfo.systemUptime))
+        if loads.count > 8 { loads.removeFirst(loads.count - 8) }
         lock.unlock()
 
         // Sorted, so the order of the work does not depend on a dictionary's.
         let jobs = widths.sorted { $0.key.rawValue < $1.key.rawValue }
         group.enter()
         work.async { [self] in
-            defer { group.leave() }
+            updateLoad(cycle) { $0.started = ProcessInfo.processInfo.systemUptime }
+            defer {
+                updateLoad(cycle) { $0.finished = ProcessInfo.processInfo.systemUptime }
+                group.leave()
+            }
             DispatchQueue.concurrentPerform(iterations: jobs.count) { index in
                 let (photo, width) = jobs[index]
                 guard isStillWanted(cycle) else { return }
                 do {
+                    let started = ProcessInfo.processInfo.systemUptime
                     let texture = try upload(photo, width: width)
+                    let seconds = ProcessInfo.processInfo.systemUptime - started
                     lock.lock()
                     if requested[cycle] != nil { loaded[cycle, default: [:]][photo] = texture }
+                    if let last = loads.lastIndex(where: { $0.cycle == cycle }) {
+                        loads[last].slowest = max(loads[last].slowest, seconds)
+                    }
                     lock.unlock()
                 } catch {
                     lock.lock()
@@ -153,6 +177,17 @@ public final class CloseUpStore: @unchecked Sendable {
         return loaded.values.reduce(0) { sum, textures in
             sum + textures.values.reduce(0) { $0 + $1.allocatedSize }
         }
+    }
+
+    /// The last few cycles' close-ups, oldest first, finished or not.
+    public var recentLoads: [Load] {
+        lock.lock(); defer { lock.unlock() }
+        return loads
+    }
+
+    private func updateLoad(_ cycle: Int, _ change: (inout Load) -> Void) {
+        lock.lock(); defer { lock.unlock() }
+        if let last = loads.lastIndex(where: { $0.cycle == cycle }) { change(&loads[last]) }
     }
 
     private func isStillWanted(_ cycle: Int) -> Bool {

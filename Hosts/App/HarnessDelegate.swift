@@ -50,6 +50,17 @@ final class HarnessDelegate: NSObject, NSApplicationDelegate {
                 engine.rebuild()
             }
         }
+        if let interval = options.injectFreezeEvery {
+            Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
+                print("injecting a freeze: main thread blocked for 1.5 s")
+                Thread.sleep(forTimeInterval: 1.5)
+            }
+        }
+        if let seconds = options.quitAfter {
+            Timer.scheduledTimer(withTimeInterval: seconds, repeats: false) { _ in
+                NSApp.terminate(nil)
+            }
+        }
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
