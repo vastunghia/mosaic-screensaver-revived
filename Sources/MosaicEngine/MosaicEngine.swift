@@ -65,6 +65,12 @@ public final class MosaicEngine {
     /// on time. The host knows the screen; the engine does not.
     public var refreshInterval: TimeInterval = 1.0 / 60
 
+    /// Asks for each frame to stay on screen at least one refresh. On a
+    /// variable-refresh display the frames otherwise come out unevenly spaced:
+    /// 15–31 late frames a cycle on a Dell S2722QC at 40–60 Hz, 0–1 with the
+    /// hold, and none either way at a fixed 60 Hz (measured 2026-10-01).
+    public var holdsEachFrameOneRefresh = true
+
     /// The unified log is the only channel a .saver has (spike 1), so this is
     /// where freezes go, from the app and the saver alike.
     private static let log = Logger(subsystem: "com.vastunghia.Mosaic", category: "pacing")
@@ -302,7 +308,11 @@ public final class MosaicEngine {
                 at: shown.presentedTime, refresh: refresh
             )
         }
-        commands.present(drawable)
+        if holdsEachFrameOneRefresh {
+            commands.present(drawable, afterMinimumDuration: refresh)
+        } else {
+            commands.present(drawable)
+        }
         commands.commit()
         sample.presented = true
     }

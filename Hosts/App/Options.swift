@@ -135,6 +135,7 @@ struct Options {
     /// The drawable's size against the view's backing pixels: 0.75 on a
     /// "looks like 2560×1440" mode of a 4K panel draws at the panel's 3840×2160.
     var drawableScale: Double = 1
+    var holdsEachFrameOneRefresh = true
 
     /// Flags that were not understood. They used to be dropped in silence, and
     /// with this many options a mistyped `--foler` would hand back a synthetic
@@ -268,6 +269,7 @@ struct Options {
             case "--quit-after": options.quitAfter = next().flatMap(Double.init)
             case "--play": options.play = true
             case "--screen": options.screen = next()
+            case "--present-immediately": options.holdsEachFrameOneRefresh = false
             case "--drawable-scale": options.drawableScale = next().flatMap(Double.init) ?? options.drawableScale
             default:
                 if argument.hasPrefix("-") { options.unknown.append(argument) }

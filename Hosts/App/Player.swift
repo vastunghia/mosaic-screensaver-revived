@@ -47,6 +47,7 @@ enum Player {
             closeUpOptions: options.closeUpOptions
         )
 
+        engine.holdsEachFrameOneRefresh = options.holdsEachFrameOneRefresh
         let clock = HarnessClock()
         clock.settings = options.settings
         let player = PlayerWindow(
