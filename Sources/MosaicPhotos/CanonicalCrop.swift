@@ -47,6 +47,39 @@ public enum CanonicalCrop {
         return CGRect(x: (width - w) / 2, y: (height - h) / 2, width: w, height: h)
     }
 
+    /// The 16:9 rectangle whose leading edge is at `start` — a fraction of the
+    /// image's length along the axis the window can slide on, top or left being
+    /// 0 — or the centred one when `start` is nil.
+    ///
+    /// A fraction and not pixels because the window is chosen once, at the
+    /// thumbnail's size, and applied again to originals of any size: the
+    /// full-resolution close-ups, and whatever PhotoKit hands back. Clamped, so
+    /// rounding at another size never pushes it off the photograph.
+    public static func rect(width: Int, height: Int, start: Double?) -> CGRect {
+        let centre = rect(width: width, height: height)
+        guard let start else { return centre }
+        if centre.width < CGFloat(width) {
+            let room = width - Int(centre.width)
+            let x = min(room, max(0, Int((start * Double(width)).rounded())))
+            return CGRect(x: x, y: 0, width: Int(centre.width), height: Int(centre.height))
+        } else {
+            let room = height - Int(centre.height)
+            let y = min(room, max(0, Int((start * Double(height)).rounded())))
+            return CGRect(x: 0, y: y, width: Int(centre.width), height: Int(centre.height))
+        }
+    }
+
+    /// `start` for a rectangle in a `width × height` image: nil when it is the
+    /// centred one, so a photograph whose window did not move is stored — and
+    /// cropped — exactly as before faces were looked for.
+    public static func start(of window: CGRect, width: Int, height: Int) -> Double? {
+        let centre = rect(width: width, height: height)
+        guard window != centre else { return nil }
+        return centre.width < CGFloat(width)
+            ? Double(window.minX) / Double(width)
+            : Double(window.minY) / Double(height)
+    }
+
     /// The canonical crop of a file, at most `maxPixelWidth` across.
     public static func image(at url: URL, maxPixelWidth: Int) throws -> CGImage {
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else {
@@ -56,6 +89,23 @@ public enum CanonicalCrop {
     }
 
     public static func image(from source: CGImageSource, url: URL, maxPixelWidth: Int) throws -> CGImage {
+        try image(uprightImage(from: source, url: url, cropWidth: maxPixelWidth), maxPixelWidth: maxPixelWidth)
+    }
+
+    /// The whole photograph, upright, scaled so that its canonical crop is at
+    /// most `cropWidth` across — what the crop is taken from, before taking it.
+    ///
+    /// Separate because choosing *where* the crop goes needs to see what lies
+    /// outside it: faces are looked for on this, and then the crop is cut from
+    /// the same pixels, so finding them costs no second decode.
+    public static func uprightImage(at url: URL, cropWidth: Int) throws -> CGImage {
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else {
+            throw CanonicalCropError.couldNotOpen(url)
+        }
+        return try uprightImage(from: source, url: url, cropWidth: cropWidth)
+    }
+
+    public static func uprightImage(from source: CGImageSource, url: URL, cropWidth maxPixelWidth: Int) throws -> CGImage {
         precondition(maxPixelWidth > 0)
 
         let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
@@ -94,7 +144,7 @@ public enum CanonicalCrop {
         guard let decoded = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
             throw CanonicalCropError.couldNotDecode(url)
         }
-        return try image(decoded, maxPixelWidth: maxPixelWidth)
+        return decoded
     }
 
     /// The canonical crop of an image already in memory, redrawn into sRGB.
@@ -102,7 +152,12 @@ public enum CanonicalCrop {
     /// The redraw is not waste: it is what makes Display P3, Adobe RGB, grey,
     /// CMYK and 16-bit sources all mean the same thing downstream.
     public static func image(_ image: CGImage, maxPixelWidth: Int) throws -> CGImage {
-        let crop = rect(width: image.width, height: image.height)
+        try self.image(image, cropping: rect(width: image.width, height: image.height), maxPixelWidth: maxPixelWidth)
+    }
+
+    /// The same, with the 16:9 rectangle chosen by the caller — a window moved
+    /// off centre to keep faces whole (`FaceAwareCrop`).
+    public static func image(_ image: CGImage, cropping crop: CGRect, maxPixelWidth: Int) throws -> CGImage {
         guard let cropped = image.cropping(to: crop) else {
             throw CanonicalCropError.couldNotCrop
         }

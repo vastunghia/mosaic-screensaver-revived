@@ -154,4 +154,8 @@ public struct SubsetPhotoSource<Base: PhotoSource>: PhotoSource {
     public func canonicalImage(for id: PhotoID, maxPixelWidth: Int) throws -> CGImage {
         try base.canonicalImage(for: id, maxPixelWidth: maxPixelWidth)
     }
+
+    public func uprightImage(for id: PhotoID, cropWidth: Int) throws -> CGImage {
+        try base.uprightImage(for: id, cropWidth: cropWidth)
+    }
 }

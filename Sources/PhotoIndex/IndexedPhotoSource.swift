@@ -53,15 +53,34 @@ public struct IndexedPhotoSource: PhotoSource {
     }
 
     public func canonicalImage(for id: PhotoID, maxPixelWidth: Int) throws -> CGImage {
-        if maxPixelWidth > manifest.thumbnailWidth, let originals {
-            return try originals.canonicalImage(for: id, maxPixelWidth: maxPixelWidth)
-        }
         guard let entry = byID[id.rawValue] else {
             throw PhotoSourceError.unknownPhoto(id)
+        }
+        if maxPixelWidth > manifest.thumbnailWidth, let originals {
+            // The original's pixels, cut where the thumbnail was: the window is
+            // the index's, and a close-up from anywhere else would jump in the
+            // crossfade.
+            guard entry.cropStart != nil else {
+                return try originals.canonicalImage(for: id, maxPixelWidth: maxPixelWidth)
+            }
+            let upright = try originals.uprightImage(for: id, cropWidth: maxPixelWidth)
+            let window = CanonicalCrop.rect(width: upright.width, height: upright.height, start: entry.cropStart)
+            do {
+                return try CanonicalCrop.image(upright, cropping: window, maxPixelWidth: maxPixelWidth)
+            } catch {
+                throw PhotoSourceError.couldNotRender(id)
+            }
         }
         let image = try store.readThumbnail(named: entry.thumbnail, maxPixelWidth: maxPixelWidth)
         guard maxPixelWidth < image.width else { return image }
         // Already the canonical crop, so this only resizes.
         return try CanonicalCrop.image(image, maxPixelWidth: maxPixelWidth)
+    }
+
+    /// Only the originals have the rest of the photograph; the index keeps the
+    /// crop and nothing around it.
+    public func uprightImage(for id: PhotoID, cropWidth: Int) throws -> CGImage {
+        guard let originals else { return try canonicalImage(for: id, maxPixelWidth: cropWidth) }
+        return try originals.uprightImage(for: id, cropWidth: cropWidth)
     }
 }

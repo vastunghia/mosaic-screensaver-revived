@@ -116,6 +116,17 @@ public struct FolderPhotoSource: PhotoSource {
         }
     }
 
+    public func uprightImage(for id: PhotoID, cropWidth: Int) throws -> CGImage {
+        guard let url = urls[id] else {
+            throw PhotoSourceError.unknownPhoto(id)
+        }
+        do {
+            return try CanonicalCrop.uprightImage(at: url, cropWidth: cropWidth)
+        } catch {
+            throw PhotoSourceError.couldNotRender(id)
+        }
+    }
+
     /// Where a photograph came from. Only an indexer needs this; nothing
     /// downstream of the index does.
     public func url(for id: PhotoID) -> URL? {

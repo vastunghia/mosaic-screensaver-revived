@@ -89,7 +89,8 @@ enum PhotoSourceFactory {
         let usable = try store.load()?.matches(
             root: root,
             thumbnailWidth: options.thumbnailWidth,
-            signatureSide: options.signatureSide
+            signatureSide: options.signatureSide,
+            cropRule: options.cropRule
         ) ?? false
 
         if !usable {
@@ -153,7 +154,9 @@ enum PhotoSourceFactory {
         source: any PhotoSource, store: PhotoIndexStore, root: String, options: Options
     ) throws -> IndexManifest {
         let started = Date()
-        let builder = PhotoIndexBuilder(thumbnailWidth: options.thumbnailWidth, signatureSide: options.signatureSide)
+        let builder = PhotoIndexBuilder(
+            thumbnailWidth: options.thumbnailWidth, signatureSide: options.signatureSide, cropRule: options.cropRule
+        )
         let reported = Reported()
 
         let manifest = try builder.build(

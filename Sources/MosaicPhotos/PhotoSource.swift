@@ -43,11 +43,27 @@ public protocol PhotoSource: Sendable {
     ///
     /// SPEC § 4 gives every photograph one crop used at every scale, because it
     /// appears both as a tile and full screen and the two share an aspect ratio.
-    /// Vertical photographs are centre cropped (§ 8.2, closed).
+    /// Where the window sits is the index's to say (`FaceAwareCrop`, SPEC § 4):
+    /// a source on its own knows no better than the centre, and an
+    /// `IndexedPhotoSource` applies the window it stored.
     ///
     /// **This may block for hundreds of milliseconds** — it decodes a file. It
     /// must never be called from the render thread.
     func canonicalImage(for id: PhotoID, maxPixelWidth: Int) throws -> CGImage
+
+    /// The whole photograph, upright, at a size whose canonical crop is at most
+    /// `cropWidth` across, in whatever colour space it came in.
+    ///
+    /// What the window is chosen on and then cut from: indexing looks for faces
+    /// in this and crops these same pixels, so it decodes once. The default is
+    /// right only for a source whose photographs are already 16:9.
+    func uprightImage(for id: PhotoID, cropWidth: Int) throws -> CGImage
+}
+
+extension PhotoSource {
+    public func uprightImage(for id: PhotoID, cropWidth: Int) throws -> CGImage {
+        try canonicalImage(for: id, maxPixelWidth: cropWidth)
+    }
 }
 
 public enum PhotoSourceError: Error, CustomStringConvertible {

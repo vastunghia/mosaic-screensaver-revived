@@ -157,7 +157,8 @@ final class AppModel: ObservableObject {
             do {
                 guard let indexable = try PhotoSourceFactory.indexable(options: options) else { return }
                 let builder = PhotoIndexBuilder(
-                    thumbnailWidth: options.thumbnailWidth, signatureSide: options.signatureSide
+                    thumbnailWidth: options.thumbnailWidth, signatureSide: options.signatureSide,
+                    cropRule: options.cropRule
                 )
                 _ = try builder.build(
                     from: indexable.source,
@@ -205,7 +206,7 @@ final class AppModel: ObservableObject {
         guard let root,
               let manifest = try? store.load(),
               manifest.matches(root: root, thumbnailWidth: options.thumbnailWidth,
-                               signatureSide: options.signatureSide)
+                               signatureSide: options.signatureSide, cropRule: options.cropRule)
         else {
             indexedCount = 0
             return

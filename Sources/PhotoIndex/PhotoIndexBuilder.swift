@@ -48,6 +48,7 @@ public struct PhotoIndexBuilder: Sendable {
 
     public var thumbnailWidth: Int
     public var signatureSide: Int
+    public var cropRule: CropRule
 
     /// How often progress is written down. Small enough that a crash loses
     /// seconds, large enough that the manifest is not rewritten per photograph.
@@ -56,10 +57,12 @@ public struct PhotoIndexBuilder: Sendable {
     public init(
         thumbnailWidth: Int = PhotoIndexBuilder.defaultThumbnailWidth,
         signatureSide: Int = PhotoIndexBuilder.defaultSignatureSide,
+        cropRule: CropRule = .standard,
         checkpointEvery: Int = 250
     ) {
         self.thumbnailWidth = thumbnailWidth
         self.signatureSide = signatureSide
+        self.cropRule = cropRule
         self.checkpointEvery = checkpointEvery
     }
 
@@ -79,7 +82,7 @@ public struct PhotoIndexBuilder: Sendable {
         var alreadySkipped: Set<String> = []
 
         if let existing, existing.matches(
-            root: root, thumbnailWidth: thumbnailWidth, signatureSide: signatureSide
+            root: root, thumbnailWidth: thumbnailWidth, signatureSide: signatureSide, cropRule: cropRule
         ) {
             manifest = existing
             for entry in existing.entries { known[entry.id] = entry }
@@ -90,6 +93,7 @@ public struct PhotoIndexBuilder: Sendable {
                 thumbnailWidth: thumbnailWidth,
                 thumbnailHeight: CanonicalAspect.height(forWidth: thumbnailWidth),
                 signatureSide: signatureSide,
+                cropRule: cropRule,
                 entries: [],
                 skipped: []
             )
@@ -124,6 +128,7 @@ public struct PhotoIndexBuilder: Sendable {
         let collector = Collector()
         let width = thumbnailWidth
         let side = signatureSide
+        let rule = cropRule
 
         for batch in stride(from: 0, to: outstanding.count, by: checkpointEvery) {
             if isCancelled?() == true { break }
@@ -135,7 +140,9 @@ public struct PhotoIndexBuilder: Sendable {
                 let descriptor = slice[offset]
                 let id = descriptor.id.rawValue
                 do {
-                    let image = try source.canonicalImage(for: descriptor.id, maxPixelWidth: width)
+                    let (image, cropStart) = try Self.canonicalImage(
+                        of: descriptor.id, from: source, width: width, rule: rule
+                    )
                     let signature = try ImageSampling.signature(of: image, side: side)
                     let name = IndexEntry.thumbnailName(id: id, versionToken: descriptor.versionToken)
                     try store.writeThumbnail(image, named: name)
@@ -145,7 +152,8 @@ public struct PhotoIndexBuilder: Sendable {
                         thumbnail: name,
                         signature: signature,
                         pixelWidth: image.width,
-                        pixelHeight: image.height
+                        pixelHeight: image.height,
+                        cropStart: cropStart
                     ))
                 } catch PhotoSourceError.unavailable {
                     // Not broken, only elsewhere: counted, and asked for again
@@ -188,6 +196,37 @@ public struct PhotoIndexBuilder: Sendable {
         _ = try? store.collectOrphans(keeping: Set(manifest.entries.map(\.thumbnail)))
 
         return manifest
+    }
+}
+
+extension PhotoIndexBuilder {
+    /// One photograph's canonical crop, and where its window was put.
+    ///
+    /// Decoded once, whole: faces are looked for in the upright photograph and
+    /// the crop is cut from the same pixels, so the face-aware crop costs Vision
+    /// (~40 ms a photograph at 854 px, measured 2026-10-02) and no second decode.
+    static func canonicalImage(
+        of id: PhotoID, from source: some PhotoSource, width: Int, rule: CropRule
+    ) throws -> (CGImage, cropStart: Double?) {
+        switch rule {
+        case .centre:
+            return (try source.canonicalImage(for: id, maxPixelWidth: width), nil)
+        case .faces:
+            let upright = try source.uprightImage(for: id, cropWidth: width)
+            // A photograph Vision cannot read is still a photograph: it keeps
+            // the centre, as one without faces does.
+            let faces = (try? FaceDetector.faces(in: upright)) ?? []
+            let choice = FaceAwareCrop.choose(
+                width: upright.width, height: upright.height, faces: faces.map(\.rect)
+            )
+            let start = CanonicalCrop.start(of: choice.rect, width: upright.width, height: upright.height)
+            let window = CanonicalCrop.rect(width: upright.width, height: upright.height, start: start)
+            do {
+                return (try CanonicalCrop.image(upright, cropping: window, maxPixelWidth: width), start)
+            } catch {
+                throw PhotoSourceError.couldNotRender(id)
+            }
+        }
     }
 }
 

@@ -81,7 +81,13 @@ struct PhotoIndexTests {
 
     private func builder() -> PhotoIndexBuilder {
         // Small, so the tests are quick; the shape is what is being tested.
-        PhotoIndexBuilder(thumbnailWidth: 128, signatureSide: 4, checkpointEvery: 4)
+        //
+        // Centred, because these tests are about incrementality, not about where
+        // the crop goes (that is CropWindowIndexTests). And because a dozen of
+        // them building with Vision at once, as Swift Testing runs them, stalled
+        // the whole test process with every test started and none finished
+        // (2026-10-02); one at a time, or with no Vision, it is 3 seconds.
+        PhotoIndexBuilder(thumbnailWidth: 128, signatureSide: 4, cropRule: .centre, checkpointEvery: 4)
     }
 
     @Test("indexing a folder records every readable photograph and no more")
@@ -339,7 +345,7 @@ struct PhotoIndexTests {
         let store = PhotoIndexStore(directory: index)
         try FileManager.default.createDirectory(at: index, withIntermediateDirectories: true)
 
-        let old = #"{"entries":[],"formatVersion":1,"root":"/somewhere","signatureSide":4,"#
+        let old = #"{"cropRule":"faces-1","entries":[],"formatVersion":2,"root":"/somewhere","signatureSide":4,"#
             + #""skipped":["a.jpg"],"thumbnailHeight":480,"thumbnailWidth":854}"#
         try Data(old.utf8).write(to: store.manifestURL)
 

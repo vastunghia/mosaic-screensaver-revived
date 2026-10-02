@@ -3,6 +3,7 @@ import Foundation
 import MosaicCore
 import MosaicPhotoKit
 import MosaicPhotos
+import PhotoIndex
 
 /// `--verify-canonical N`: the postcondition of `PhotoSource.canonicalImage`,
 /// checked on real photographs, and timed.
@@ -133,5 +134,55 @@ private final class Results: @unchecked Sendable {
 
     func failed(_ id: PhotoID, _ error: Error) {
         lock.lock(); current.failures.append((id, error)); lock.unlock()
+    }
+}
+
+/// `--verify-windows N`: that a close-up from the originals is cut where the
+/// index cut the thumbnail, on real photographs whose window moved.
+///
+/// The whole point of storing the window (SPEC § 4) is that the crossfade from
+/// tile to close-up does not jump. Both images are reduced to an 8x8 grid of
+/// linear colours and compared; the centre crop of the same original is the
+/// control, and has to be much further off than the window is.
+enum WindowVerifier {
+    static func verify(_ indexed: IndexedPhotoSource, count: Int, width: Int) throws -> Bool {
+        guard let originals = indexed.originals else {
+            print("verify-windows: no originals behind the index")
+            return false
+        }
+        let all = indexed.entries.filter { $0.cropStart != nil }
+        let moved = all.prefix(count)
+        print("verify-windows: \(moved.count) of the \(all.count) photographs whose window moved, of \(indexed.entries.count); "
+              + "close-ups at \(width) px against \(indexed.manifest.thumbnailWidth) px thumbnails")
+
+        var windowErrors: [Double] = []
+        var centreErrors: [Double] = []
+        for entry in moved {
+            let id = entry.photoID
+            let thumbnail = try ImageSampling.signature(
+                of: indexed.canonicalImage(for: id, maxPixelWidth: indexed.manifest.thumbnailWidth), side: 8
+            )
+            let closeUp = try ImageSampling.signature(of: indexed.canonicalImage(for: id, maxPixelWidth: width), side: 8)
+            let centre = try ImageSampling.signature(of: originals.canonicalImage(for: id, maxPixelWidth: width), side: 8)
+            windowErrors.append(distance(thumbnail, closeUp))
+            centreErrors.append(distance(thumbnail, centre))
+        }
+        windowErrors.sort()
+        centreErrors.sort()
+        func median(_ values: [Double]) -> Double { values.isEmpty ? 0 : values[values.count / 2] }
+        print(String(format: "  thumbnail vs close-up: median %.4f, worst %.4f (mean |Δ| per channel, linear)",
+                     median(windowErrors), windowErrors.last ?? 0))
+        print(String(format: "  thumbnail vs centre crop (control): median %.4f, best %.4f",
+                     median(centreErrors), centreErrors.first ?? 0))
+        let passed = (windowErrors.last ?? 0) < median(centreErrors) / 2
+        print(passed ? "  close-ups follow the window" : "  CLOSE-UPS DO NOT FOLLOW THE WINDOW")
+        return passed
+    }
+
+    private static func distance(_ a: TileSignature, _ b: TileSignature) -> Double {
+        let total = zip(a.cells, b.cells).reduce(0.0) { sum, pair in
+            sum + abs(pair.0.r - pair.1.r) + abs(pair.0.g - pair.1.g) + abs(pair.0.b - pair.1.b)
+        }
+        return total / Double(a.cells.count * 3)
     }
 }

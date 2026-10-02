@@ -51,6 +51,22 @@ do {
         exit(0)
     }
 
+    if let directory = options.exportFaces {
+        guard let folder = options.folder else { throw HarnessError.facesWithoutAFolder }
+        let widths = options.resolvedFaceWidths
+        let source = try FolderPhotoSource(root: folder)
+        try FaceSpecimen.export(from: source, to: directory, widths: widths)
+        exit(0)
+    }
+
+    if let count = options.verifyWindows {
+        guard let indexed = try PhotoSourceFactory.make(options: options).indexed else {
+            throw HarnessError.verifyingWithoutPhotographs
+        }
+        let passed = try WindowVerifier.verify(indexed, count: count, width: options.closeUpOptions.anchorWidth ?? 1920)
+        exit(passed ? 0 : 1)
+    }
+
     if let count = options.verifyCanonical {
         guard let indexable = try PhotoSourceFactory.indexable(options: options) else {
             throw HarnessError.verifyingWithoutPhotographs

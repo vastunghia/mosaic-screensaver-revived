@@ -93,4 +93,33 @@ struct CanonicalCropTests {
         let signature = try ImageSampling.signature(of: image, side: 1)
         #expect(signature.mean.r > signature.mean.g * 1.2, "the red middle is missing")
     }
+
+    @Test("a stored window start puts the crop where it says, at any size")
+    func windowStart() {
+        // No start is the centre, exactly.
+        #expect(CanonicalCrop.rect(width: 1000, height: 4000, start: nil)
+                == CanonicalCrop.rect(width: 1000, height: 4000))
+
+        // Chosen at one size, applied at another: the same place.
+        let small = CGRect(x: 0, y: 100, width: 900, height: 506)
+        let start = CanonicalCrop.start(of: small, width: 900, height: 1600)
+        #expect(start == 100.0 / 1600)
+        let big = CanonicalCrop.rect(width: 1800, height: 3200, start: start)
+        #expect(big.minY == 200)
+        #expect(big.size == CanonicalCrop.rect(width: 1800, height: 3200).size)
+
+        // And back at the size it was chosen at, to the pixel.
+        #expect(CanonicalCrop.rect(width: 900, height: 1600, start: start) == small)
+
+        // The centre has no start, so an unmoved window is stored as before.
+        #expect(CanonicalCrop.start(of: CanonicalCrop.rect(width: 900, height: 1600), width: 900, height: 1600) == nil)
+
+        // Never off the photograph, whatever rounding does.
+        #expect(CanonicalCrop.rect(width: 900, height: 1600, start: 0.99).maxY == 1600)
+        #expect(CanonicalCrop.rect(width: 900, height: 1600, start: -0.1).minY == 0)
+
+        // Sideways for a panorama.
+        let wide = CanonicalCrop.rect(width: 4000, height: 1000, start: 0.5)
+        #expect(wide.minX == 2000 && wide.height == 1000)
+    }
 }

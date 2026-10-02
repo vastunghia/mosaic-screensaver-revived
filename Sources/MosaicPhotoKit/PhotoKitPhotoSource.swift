@@ -77,6 +77,17 @@ public final class PhotoKitPhotoSource: PhotoSource, @unchecked Sendable {
     }
 
     public func canonicalImage(for id: PhotoID, maxPixelWidth: Int) throws -> CGImage {
+        let image = try uprightImage(for: id, cropWidth: maxPixelWidth)
+        // The same crop and sRGB redraw a folder's photographs go through, so
+        // that the two sources owe the same postcondition by construction.
+        do {
+            return try CanonicalCrop.image(image, maxPixelWidth: maxPixelWidth)
+        } catch {
+            throw PhotoSourceError.couldNotRender(id)
+        }
+    }
+
+    public func uprightImage(for id: PhotoID, cropWidth maxPixelWidth: Int) throws -> CGImage {
         precondition(maxPixelWidth > 0)
         guard let asset = asset(for: id) else { throw PhotoSourceError.unknownPhoto(id) }
 
@@ -110,14 +121,7 @@ public final class PhotoKitPhotoSource: PhotoSource, @unchecked Sendable {
         guard let image = delivered.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
             throw PhotoSourceError.couldNotRender(id)
         }
-
-        // The same crop and sRGB redraw a folder's photographs go through, so
-        // that the two sources owe the same postcondition by construction.
-        do {
-            return try CanonicalCrop.image(image, maxPixelWidth: maxPixelWidth)
-        } catch {
-            throw PhotoSourceError.couldNotRender(id)
-        }
+        return image
     }
 
     /// The size to ask PhotoKit for so that the **canonical crop** of what comes

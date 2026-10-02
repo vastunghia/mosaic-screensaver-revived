@@ -29,13 +29,21 @@ public struct IndexEntry: Codable, Equatable, Sendable {
     public let pixelWidth: Int
     public let pixelHeight: Int
 
+    /// Where the 16:9 window sits in the whole photograph, as
+    /// `CanonicalCrop.rect(width:height:start:)` takes it; absent when it is
+    /// centred. Chosen once, here, by `FaceAwareCrop` (SPEC § 4), so that the
+    /// thumbnail, the signature, the target and every full-resolution close-up
+    /// are cut from the same place — a crossfade between two windows would jump.
+    public let cropStart: Double?
+
     public init(
         id: String,
         versionToken: String,
         thumbnail: String,
         signature: TileSignature,
         pixelWidth: Int,
-        pixelHeight: Int
+        pixelHeight: Int,
+        cropStart: Double? = nil
     ) {
         self.id = id
         self.versionToken = versionToken
@@ -44,6 +52,7 @@ public struct IndexEntry: Codable, Equatable, Sendable {
         self.signature = Self.encode(signature)
         self.pixelWidth = pixelWidth
         self.pixelHeight = pixelHeight
+        self.cropStart = cropStart
     }
 
     public var photoID: PhotoID { PhotoID(id) }
@@ -99,11 +108,29 @@ public struct IndexEntry: Codable, Equatable, Sendable {
     }
 }
 
+/// How an index chose its windows. Part of what makes an index reusable: one
+/// built with another rule has thumbnails cut from other places.
+///
+/// The raw value is versioned on purpose. Changing `FaceAwareCrop` — the
+/// headroom, the tie-breaks — moves windows, so it must come with a new value
+/// here, or an old index would go on serving the old windows as if current.
+public enum CropRule: String, Codable, Sendable, CaseIterable {
+    /// Every window centred: the crop before faces were looked for.
+    case centre
+    /// `FaceAwareCrop` on Vision's faces, revision 3: headroom 0.5, area before
+    /// distance, faces cut by the photograph's frame not counted.
+    case faces = "faces-1"
+
+    public static let standard = CropRule.faces
+}
+
 /// The index, as one file.
 public struct IndexManifest: Codable, Equatable, Sendable {
     /// Bumped whenever anything above changes shape. A mismatch rebuilds; it
     /// never crashes and never half-reads.
-    public static let currentFormatVersion = 1
+    ///
+    /// 2: `cropRule` and `IndexEntry.cropStart`, the face-aware crop (2026-10-02).
+    public static let currentFormatVersion = 2
 
     public var formatVersion: Int
 
@@ -120,6 +147,7 @@ public struct IndexManifest: Codable, Equatable, Sendable {
     public var thumbnailWidth: Int
     public var thumbnailHeight: Int
     public var signatureSide: Int
+    public var cropRule: CropRule
 
     /// Sorted by identifier, so two builds over the same folder produce a
     /// byte-identical manifest and idempotence is a free test.
@@ -145,6 +173,7 @@ public struct IndexManifest: Codable, Equatable, Sendable {
         thumbnailWidth: Int,
         thumbnailHeight: Int,
         signatureSide: Int,
+        cropRule: CropRule = .standard,
         entries: [IndexEntry] = [],
         skipped: [String] = [],
         unavailable: [String] = []
@@ -154,13 +183,14 @@ public struct IndexManifest: Codable, Equatable, Sendable {
         self.thumbnailWidth = thumbnailWidth
         self.thumbnailHeight = thumbnailHeight
         self.signatureSide = signatureSide
+        self.cropRule = cropRule
         self.entries = entries
         self.skipped = skipped
         self.unavailable = unavailable
     }
 
     private enum CodingKeys: String, CodingKey {
-        case formatVersion, root, thumbnailWidth, thumbnailHeight, signatureSide
+        case formatVersion, root, thumbnailWidth, thumbnailHeight, signatureSide, cropRule
         case entries, skipped, unavailable
     }
 
@@ -171,14 +201,20 @@ public struct IndexManifest: Codable, Equatable, Sendable {
         thumbnailWidth = try container.decode(Int.self, forKey: .thumbnailWidth)
         thumbnailHeight = try container.decode(Int.self, forKey: .thumbnailHeight)
         signatureSide = try container.decode(Int.self, forKey: .signatureSide)
+        // Absent before format 2, which `matches` turns away anyway; read as
+        // centred so an old manifest still decodes and is rebuilt, not thrown at.
+        cropRule = try container.decodeIfPresent(CropRule.self, forKey: .cropRule) ?? .centre
         entries = try container.decode([IndexEntry].self, forKey: .entries)
         skipped = try container.decode([String].self, forKey: .skipped)
         unavailable = try container.decodeIfPresent([String].self, forKey: .unavailable) ?? []
     }
 
     /// Whether an index on disk can be continued rather than rebuilt.
-    public func matches(root: String, thumbnailWidth: Int, signatureSide: Int) -> Bool {
+    public func matches(
+        root: String, thumbnailWidth: Int, signatureSide: Int, cropRule: CropRule = .standard
+    ) -> Bool {
         formatVersion == Self.currentFormatVersion
+            && self.cropRule == cropRule
             && self.root == root
             && self.thumbnailWidth == thumbnailWidth
             && self.signatureSide == signatureSide

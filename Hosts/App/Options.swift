@@ -50,6 +50,31 @@ struct Options {
     /// source and times it, instead of running anything.
     var verifyCanonical: Int?
 
+    /// Checks that close-ups from the originals are cut where the index cut
+    /// the thumbnails, on this many photographs whose window moved.
+    var verifyWindows: Int?
+
+    /// Looks for faces in every photograph of a folder and writes where the
+    /// crop would go, timed, with a page to judge it by — instead of running
+    /// anything. Detection runs at each of `faceWidths` (crop widths, as for
+    /// the index); the first is the one the windows are chosen at.
+    var exportFaces: URL?
+    var faceWidths: [Int]?
+
+    /// `faceWidths`, or the index's own width when none were given.
+    ///
+    /// `Array(repeating:count:)` and not `[thumbnailWidth]`, which is not a
+    /// matter of style: in a release build (Swift 6.2.4, 2026-10-02) the
+    /// literal came back **empty** whenever the other branch was the stored
+    /// array — as `?? [thumbnailWidth]`, as `if let … return [thumbnailWidth]`,
+    /// and as a ternary in main.swift — and `widths[0]` trapped. The same literal
+    /// on its own line had one element; printing the result made the trap go
+    /// away. Not reproduced outside the project.
+    var resolvedFaceWidths: [Int] {
+        if let faceWidths { return faceWidths }
+        return Array(repeating: thumbnailWidth, count: 1)
+    }
+
     /// Writes the source's photographs — after the subset rule — with their
     /// dates to a CSV, instead of running anything.
     var listPhotos: URL?
@@ -63,6 +88,9 @@ struct Options {
     /// the real one (with `--index`) instead of replacing it.
     var thumbnailWidth = PhotoIndexBuilder.defaultThumbnailWidth
     var signatureSide = PhotoIndexBuilder.defaultSignatureSide
+    /// Where each photograph's window goes: around its faces (SPEC § 4), or
+    /// centred, to build a second index that shows the difference.
+    var cropRule = CropRule.standard
 
     var tileWidth = 256
 
@@ -213,8 +241,20 @@ struct Options {
             case "--subset-size": options.subsetSize = next().flatMap(Int.init) ?? options.subsetSize
             case "--subset-seed": options.subsetSeed = next().flatMap(UInt64.init) ?? options.subsetSeed
             case "--verify-canonical": options.verifyCanonical = next().flatMap(Int.init)
+            case "--verify-windows": options.verifyWindows = next().flatMap(Int.init)
             case "--list-photos": options.listPhotos = path()
+            case "--export-faces": options.exportFaces = path()
+            case "--face-widths":
+                let widths = next()?.split(separator: ",").compactMap { Int($0) }.filter { $0 > 0 } ?? []
+                options.faceWidths = widths.isEmpty ? nil : widths
             case "--thumbnail-width": options.thumbnailWidth = next().flatMap(Int.init) ?? options.thumbnailWidth
+            case "--crop":
+                let value = next()
+                switch value {
+                case "centre": options.cropRule = .centre
+                case "faces": options.cropRule = .faces
+                default: options.unknown.append("--crop \(value ?? "") (faces or centre)")
+                }
             case "--signature-side": options.signatureSide = next().flatMap(Int.init) ?? options.signatureSide
             case "--tile-width": options.tileWidth = next().flatMap(Int.init) ?? options.tileWidth
             case "--close-ups":
@@ -278,8 +318,8 @@ struct Options {
         }
 
         let exporting = options.exportMosaic != nil || options.exportBatch != nil
-            || options.exportDirectory != nil || options.buildIndex || options.verifyCanonical != nil
-            || options.listPhotos != nil
+            || options.exportDirectory != nil || options.buildIndex || options.verifyCanonical != nil || options.verifyWindows != nil
+            || options.listPhotos != nil || options.exportFaces != nil
         if !options.seedGiven && !exporting {
             options.seed = UInt64.random(in: .min ... .max)
             options.seedIsPerLaunch = true
@@ -321,8 +361,8 @@ struct Options {
             ))
             lines.append("  subjects: shuffled deck, each chosen among \(subjectCandidates) for the last to fit in")
             lines.append(String(
-                format: "  index: %@ · thumbnails %d px · signatures %d×%d",
-                resolvedIndexDirectory.path, thumbnailWidth, signatureSide, signatureSide
+                format: "  index: %@ · thumbnails %d px · signatures %d×%d · crop %@",
+                resolvedIndexDirectory.path, thumbnailWidth, signatureSide, signatureSide, cropRule.rawValue
             ))
         }
         if exportBatch != nil {

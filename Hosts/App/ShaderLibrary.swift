@@ -40,6 +40,7 @@ enum HarnessError: Error, CustomStringConvertible {
     case photosNotAuthorized(PhotoLibraryAccess.Status)
     case unknownAlbums([String], known: [String])
     case verifyingWithoutPhotographs
+    case facesWithoutAFolder
     case unknownScreen(String, known: [String])
 
     var description: String {
@@ -56,6 +57,8 @@ enum HarnessError: Error, CustomStringConvertible {
             return "no album called \(missing.joined(separator: ", ")). Albums: \(known.joined(separator: ", "))"
         case .unknownScreen(let name, let known):
             return "no display called \(name). Displays: \(known.joined(separator: ", "))"
+        case .facesWithoutAFolder:
+            return "--export-faces needs a --folder"
         case .verifyingWithoutPhotographs:
             return "--verify-canonical needs a --folder or --photos-library"
         case .noMetalDevice:
