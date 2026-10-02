@@ -21,6 +21,12 @@ public final class StaticTileAtlas: TileAtlas {
     public let texture: MTLTexture
     private let slices: [PhotoID: Int]
 
+    /// Metal's 2D texture arrays top out here, and the atlas is one array with
+    /// a slice per photograph, so no pool can be bigger. Past it `makeTexture`
+    /// returns nil and the only symptom is a failure to allocate, with nothing
+    /// to say why.
+    public static let maximumSlices = 2048
+
     /// Decodes every photograph at `tileWidth` and uploads it.
     ///
     /// The decoding is spread over every core: it is almost all of the cost,

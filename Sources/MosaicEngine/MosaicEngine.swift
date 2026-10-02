@@ -56,6 +56,10 @@ public final class MosaicEngine {
     /// freezes. Six frames at 60 Hz: past anything a busy frame explains.
     public static let freezeThreshold: TimeInterval = 0.1
 
+    /// The most photographs one engine can show: one atlas slice each, and an
+    /// atlas holds no more (`StaticTileAtlas.maximumSlices`).
+    public static let maximumPoolSize = StaticTileAtlas.maximumSlices
+
     /// Called on the host's thread for every freeze, after it has been logged.
     /// The host adds what only it can see — whether its thread was blocked,
     /// how busy the GPUs were.

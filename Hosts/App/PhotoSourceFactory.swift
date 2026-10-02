@@ -1,5 +1,6 @@
 import Foundation
 import MosaicCore
+import MosaicEngine
 import MosaicPhotoKit
 import MosaicPhotos
 import PhotoIndex
@@ -33,10 +34,7 @@ enum PhotoSourceFactory {
         }
     }
 
-    /// Metal's 2D texture arrays top out here, and the atlas is one array with a
-    /// slice per photograph. Past it `makeTexture` returns nil and the only
-    /// symptom is a failure to allocate, with nothing to say why.
-    static let maximumAtlasSlices = 2048
+    static let maximumAtlasSlices = MosaicEngine.maximumPoolSize
 
     /// A source that an index can be built from: what it is, the `root` its
     /// manifest records, and a name to print.
@@ -106,7 +104,10 @@ enum PhotoSourceFactory {
         }
 
         let full = try IndexedPhotoSource(store: store, originals: indexable.source)
-        let pool = subset(of: full, count: options.poolSize, seed: options.seed)
+        if options.poolSize > maximumAtlasSlices, full.entries.count > maximumAtlasSlices {
+            print("  pool capped at \(maximumAtlasSlices): one texture array holds no more slices")
+        }
+        let pool = full.pool(size: min(options.poolSize, maximumAtlasSlices), seed: options.seed)
 
         return Resolved(
             source: pool,
@@ -178,30 +179,6 @@ enum PhotoSourceFactory {
         ))
         print("  at \(store.directory.path)")
         return manifest
-    }
-
-    /// A deterministic subset, because the atlas has a ceiling and a library does
-    /// not. Seeded rather than "the first N": the entries are sorted by
-    /// identifier, so taking a prefix would take one corner of the folder.
-    ///
-    /// It follows the session's seed, so a library bigger than the atlas is
-    /// drawn from afresh at every launch: with a fixed subset, a 54,000-photo
-    /// library would show the same 2048 forever.
-    private static func subset(of source: IndexedPhotoSource, count: Int, seed: UInt64) -> IndexedPhotoSource {
-        let limit = min(count, maximumAtlasSlices)
-        guard source.entries.count > limit else { return source }
-
-        var rng = SplitMix64(seed: seed ^ 0x5EED_0F00)
-        let chosen = Array(rng.shuffled(source.entries).prefix(limit))
-        var manifest = source.manifest
-        manifest.entries = chosen.sorted { $0.id < $1.id }
-
-        if count > maximumAtlasSlices {
-            print("  pool capped at \(maximumAtlasSlices): one texture array holds no more slices")
-        }
-        return IndexedPhotoSource(
-            store: source.store, manifest: manifest, originals: source.originals
-        )
     }
 }
 

@@ -42,6 +42,22 @@ public struct IndexedPhotoSource: PhotoSource {
         self.byID = Dictionary(manifest.entries.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
     }
 
+    /// A seeded pool of at most `size` photographs, for one session.
+    ///
+    /// Seeded rather than "the first N": the entries are sorted by identifier,
+    /// so a prefix would take one corner of the folder. It follows the
+    /// session's seed, so an index bigger than the atlas is drawn from afresh
+    /// at every launch — with a fixed pool, a 54,000-photo library would show
+    /// the same 2048 forever. The app and the .saver both draw it here, so the
+    /// same seed gives both the same pool.
+    public func pool(size: Int, seed: UInt64) -> IndexedPhotoSource {
+        guard manifest.entries.count > size else { return self }
+        var rng = SplitMix64(seed: seed ^ 0x5EED_0F00)
+        var narrowed = manifest
+        narrowed.entries = Array(rng.shuffled(manifest.entries).prefix(size)).sorted { $0.id < $1.id }
+        return IndexedPhotoSource(store: store, manifest: narrowed, originals: originals)
+    }
+
     public func photos() throws -> [PhotoDescriptor] {
         manifest.entries.map { PhotoDescriptor(id: $0.photoID, versionToken: $0.versionToken) }
     }
