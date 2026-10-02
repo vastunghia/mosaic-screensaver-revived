@@ -4,6 +4,7 @@ import MosaicEngine
 import MosaicPhotos
 import MosaicSolver
 import PhotoIndex
+import SharedStore
 
 /// Command line options. Deliberately tiny: this is a development harness, and
 /// anything worth keeping ends up in the preferences of the real app instead.
@@ -197,10 +198,7 @@ struct Options {
     /// container but not writing.
     var resolvedIndexDirectory: URL {
         if let indexDirectory { return indexDirectory }
-        let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)
-        let home = support.first ?? URL(fileURLWithPath: NSHomeDirectory())
-            .appendingPathComponent("Library/Application Support")
-        return home.appendingPathComponent("Mosaic/index", isDirectory: true)
+        return SharedLocations.indexDirectory
     }
 
     static func parse(_ arguments: [String]) -> Options {

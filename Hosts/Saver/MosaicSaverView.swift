@@ -1,0 +1,358 @@
+import AppKit
+import Darwin
+import Metal
+import MosaicCore
+import MosaicEngine
+import PhotoIndex
+import QuartzCore
+import ScreenSaver
+import SharedStore
+import os
+
+/// M10: the screen saver. A thin shell over `MosaicEngine`, like the app's
+/// player: it reads the index the app has built, and nothing else.
+///
+/// It runs inside `legacyScreenSaver`, sandboxed, with that process's identity:
+/// no Photos, no writing outside its container, and the unified log as its only
+/// diagnostic channel (spikes 1 and 2). The process also outlives a run of the
+/// saver and is reused by the next one (spike 4), so whatever a run builds it
+/// lets go of when it stops.
+@objc(MosaicSaverView)
+final class MosaicSaverView: ScreenSaverView {
+    nonisolated private static let log = Logger(subsystem: "com.vastunghia.Mosaic", category: "saver")
+
+    /// The original would not start with fewer (SPEC § 5); nor does the app.
+    nonisolated private static let minimumPhotographs = 100
+
+    private var engine: MosaicEngine?
+    private var link: CADisplayLink?
+    private var time: TimeInterval = 0
+    private var lastTimestamp: CFTimeInterval?
+    /// Bumped by every start and stop, so an engine that finishes building
+    /// after its run has ended is dropped instead of shown.
+    private var generation = 0
+    private var isRunning = false
+    private var willStopObserver: NSObjectProtocol?
+    private var message: NSTextField?
+    private static var created = 0
+    private let instance: Int
+
+    override init?(frame: NSRect, isPreview: Bool) {
+        Self.created += 1
+        instance = Self.created
+        super.init(frame: frame, isPreview: isPreview)
+        Self.instances.add(self)
+        wantsLayer = true
+        layer?.backgroundColor = NSColor.black.cgColor
+        Self.log.notice("""
+            created #\(Self.created, privacy: .public), preview \(isPreview, privacy: .public), \
+            \(Int(frame.width), privacy: .public)×\(Int(frame.height), privacy: .public) points, \
+            pid \(ProcessInfo.processInfo.processIdentifier, privacy: .public), \
+            footprint \(Self.footprintMB, privacy: .public) MB
+            """)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError() }
+
+    override func makeBackingLayer() -> CALayer {
+        let layer = CAMetalLayer()
+        layer.backgroundColor = NSColor.black.cgColor
+        return layer
+    }
+
+    override var isOpaque: Bool { true }
+
+    // MARK: Life cycle
+
+    override func startAnimation() {
+        super.startAnimation()
+        Self.log.notice("""
+            startAnimation #\(self.instance, privacy: .public) of \(Self.created, privacy: .public): \
+            window \(self.window == nil ? "none" : "yes", privacy: .public), \
+            visible \(self.window?.isVisible ?? false, privacy: .public), \
+            occlusion visible \(self.window?.occlusionState.contains(.visible) ?? false, privacy: .public), \
+            on screen \(self.window?.screen?.localizedName ?? "none", privacy: .public), \
+            window number \(self.window?.windowNumber ?? -1, privacy: .public), \
+            superview \(self.superview == nil ? "none" : "yes", privacy: .public)
+            """)
+        guard !isRunning else { return }
+        isRunning = true
+        generation += 1
+        let run = generation
+
+        // On macOS 14 and later stopAnimation does not always arrive when the
+        // saver is dismissed; this notification does.
+        willStopObserver = DistributedNotificationCenter.default().addObserver(
+            forName: Notification.Name("com.apple.screensaver.willstop"), object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                Self.log.notice("screen saver will stop")
+                self?.stop()
+            }
+        }
+
+        guard !isPreview else {
+            // The preview in System Settings stays alive in a process of its
+            // own while the saver runs (spike 1): it is not where an atlas of
+            // 2048 photographs should be built a second time.
+            show("Mosaic")
+            return
+        }
+        let screen = window?.screen
+        guard screen == nil || screen == NSScreen.screens.first else {
+            // One mosaic, on the main display, for now (SPEC § 10).
+            Self.log.notice("not the main display: staying black")
+            return
+        }
+
+        // legacyScreenSaver does not throw away the views of earlier runs: it
+        // calls startAnimation on them again, about 20 ms before it creates
+        // the new one, and they draw into windows nobody sees (three runs, three
+        // engines, 2.1 GB; 2026-10-02). Their windows look exactly like the new
+        // one's. What tells them apart is age: the newest view on a screen is
+        // the one shown. So a view stops older ones as it starts, and waits a
+        // moment before building, in case it is the old one.
+        for other in Self.instances.allObjects
+        where other !== self && other.instance < instance && other.window?.screen == screen {
+            other.stop()
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.startDelay) { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self, self.generation == run, self.isRunning else { return }
+                if self.isSuperseded {
+                    Self.log.notice("#\(self.instance, privacy: .public) is a leftover of an earlier run: not starting")
+                    self.stop()
+                    return
+                }
+                self.build(run: run, screen: screen)
+            }
+        }
+    }
+
+    /// Long enough for the new view to be created after an old one was
+    /// restarted (about 20 ms, measured), short beside the seconds the atlas
+    /// takes.
+    private static let startDelay: TimeInterval = 0.6
+
+    private static let instances = NSHashTable<MosaicSaverView>.weakObjects()
+
+    /// A newer view showing on this screen, or not placed yet.
+    private var isSuperseded: Bool {
+        Self.instances.allObjects.contains { other in
+            other.instance > instance && !other.isPreview
+                && (other.window == nil || other.window?.screen == window?.screen)
+        }
+    }
+
+    private func build(run: Int, screen: NSScreen?) {
+        let seed = UInt64.random(in: .min ... .max)
+        let display = (screen?.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)
+            .map { CGDirectDisplayID($0.uint32Value) }
+        let started = ProcessInfo.processInfo.systemUptime
+        Self.log.notice("starting, seed \(String(seed, radix: 16), privacy: .public)")
+
+        // Reading the index and building the atlas take seconds: off the main
+        // thread, which belongs to legacyScreenSaver and its events.
+        let box = Built()
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            do {
+                box.engine = try Self.makeEngine(seed: seed, display: display)
+            } catch {
+                box.failure = error
+            }
+            DispatchQueue.main.async { [weak self] in
+                MainActor.assumeIsolated {
+                    guard let self, self.generation == run, self.isRunning else {
+                        Self.log.notice("an engine built for a run that has ended was dropped")
+                        return
+                    }
+                    let elapsed = ProcessInfo.processInfo.systemUptime - started
+                    if let engine = box.engine {
+                        Self.log.notice("""
+                            engine ready in \(elapsed, format: .fixed(precision: 2), privacy: .public) s \
+                            on \(engine.deviceName, privacy: .public), \
+                            footprint \(Self.footprintMB, privacy: .public) MB
+                            """)
+                        self.begin(engine, display: display)
+                    } else {
+                        let failure = box.failure.map { "\($0)" } ?? "unknown"
+                        Self.log.error("no engine: \(failure, privacy: .public)")
+                        self.show(Self.explanation(of: box.failure))
+                    }
+                }
+            }
+        }
+    }
+
+    override func stopAnimation() {
+        super.stopAnimation()
+        stop()
+    }
+
+    private func stop() {
+        guard isRunning else { return }
+        isRunning = false
+        generation += 1
+        link?.invalidate()
+        link = nil
+        if let willStopObserver {
+            DistributedNotificationCenter.default().removeObserver(willStopObserver)
+        }
+        willStopObserver = nil
+        let cycle = engine?.statistics.cycleIndex
+        engine = nil
+        lastTimestamp = nil
+        time = 0
+        Self.log.notice("""
+            stopped at cycle \(cycle.map(String.init) ?? "none", privacy: .public), \
+            footprint \(Self.footprintMB, privacy: .public) MB
+            """)
+    }
+
+    // MARK: The engine
+
+    nonisolated private static func makeEngine(seed: UInt64, display: CGDirectDisplayID?) throws -> MosaicEngine {
+        let store = PhotoIndexStore(directory: SharedLocations.indexDirectory)
+        let index = try IndexedPhotoSource(store: store)
+        guard index.entries.count >= minimumPhotographs else {
+            throw SaverError.tooFewPhotographs(index.entries.count)
+        }
+        let pool = index.pool(size: MosaicEngine.maximumPoolSize, seed: seed)
+        let planner = SolvedMosaicPlanner(catalog: IndexedTileCatalog(source: pool), seed: seed)
+
+        // The GPU driving the display: with an eGPU attached, the system
+        // default is not necessarily it.
+        guard let device = display.flatMap(CGDirectDisplayCopyCurrentMetalDevice)
+            ?? MTLCreateSystemDefaultDevice()
+        else {
+            throw SaverError.noMetalDevice
+        }
+        log.notice("""
+            \(pool.entries.count, privacy: .public) of \(index.entries.count, privacy: .public) photographs, \
+            system default GPU \(MTLCreateSystemDefaultDevice()?.name ?? "none", privacy: .public), \
+            display's GPU \(device.name, privacy: .public)
+            """)
+        // The index has no originals behind it here: the close-ups come from
+        // the thumbnails, which is all the saver has.
+        return try MosaicEngine(
+            device: device,
+            source: pool,
+            planner: planner,
+            seed: seed,
+            closeUpSource: pool
+        )
+    }
+
+    private func begin(_ engine: MosaicEngine, display: CGDirectDisplayID?) {
+        guard let metalLayer = layer as? CAMetalLayer else { return }
+        self.engine = engine
+        message?.removeFromSuperview()
+        engine.attach(to: metalLayer, size: drawableSize())
+        if let fps = window?.screen?.maximumFramesPerSecond, fps > 0 {
+            engine.refreshInterval = 1.0 / Double(fps)
+        }
+        if let display {
+            engine.deviceProvider = { _ in CGDirectDisplayCopyCurrentMetalDevice(display) }
+        }
+        // A display link tied to this view follows the refresh of the screen
+        // it is on, as in the app; animateOneFrame is a timer.
+        let link = displayLink(target: self, selector: #selector(tick(_:)))
+        link.add(to: .main, forMode: .common)
+        self.link = link
+    }
+
+    @objc private func tick(_ link: CADisplayLink) {
+        let now = link.timestamp
+        MainActor.assumeIsolated {
+            guard let engine else { return }
+            let delta = lastTimestamp.map { now - $0 } ?? 0
+            // The clock holds while the engine is not ready for the instant it
+            // would move to, exactly as the app's does: a pause at a join, never
+            // a frame drawn wrong.
+            let next = time + min(delta, 0.25)
+            guard engine.isReady(at: next) else {
+                lastTimestamp = nil
+                if engine.isReady(at: time) { engine.advance(to: time) }
+                return
+            }
+            time = next
+            lastTimestamp = now
+            engine.advance(to: time)
+        }
+    }
+
+    override func animateOneFrame() {}
+
+    // MARK: Geometry
+
+    private func drawableSize() -> CGSize {
+        let scale = window?.backingScaleFactor ?? 2
+        return CGSize(width: (bounds.width * scale).rounded(), height: (bounds.height * scale).rounded())
+    }
+
+    override func viewDidChangeBackingProperties() {
+        super.viewDidChangeBackingProperties()
+        layer?.contentsScale = window?.backingScaleFactor ?? 2
+        engine?.resize(drawableSize())
+    }
+
+    override func setFrameSize(_ newSize: NSSize) {
+        super.setFrameSize(newSize)
+        engine?.resize(drawableSize())
+    }
+
+    // MARK: Messages
+
+    private func show(_ text: String) {
+        message?.removeFromSuperview()
+        let label = NSTextField(wrappingLabelWithString: text)
+        label.alignment = .center
+        label.textColor = NSColor(white: 0.75, alpha: 1)
+        label.font = .systemFont(ofSize: isPreview ? 9 : 20)
+        label.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(label)
+        NSLayoutConstraint.activate([
+            label.centerXAnchor.constraint(equalTo: centerXAnchor),
+            label.centerYAnchor.constraint(equalTo: centerYAnchor),
+            label.widthAnchor.constraint(lessThanOrEqualTo: widthAnchor, multiplier: 0.8),
+        ])
+        message = label
+    }
+
+    private static func explanation(of error: Error?) -> String {
+        switch error {
+        case PhotoIndexError.missing?:
+            return "Open Mosaic to choose the photographs for the screen saver."
+        case SaverError.tooFewPhotographs(let count)?:
+            return "Mosaic has \(count) photographs so far. Open Mosaic to add more."
+        default:
+            return "Mosaic could not start. Open Mosaic to check its photographs."
+        }
+    }
+
+    /// The process's physical footprint, which is what Activity Monitor shows:
+    /// legacyScreenSaver is reused from one run to the next, so a run that
+    /// leaves memory behind shows up here, run after run.
+    private static var footprintMB: Int {
+        var info = task_vm_info_data_t()
+        var count = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<integer_t>.size)
+        let result = withUnsafeMutablePointer(to: &info) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+                task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count)
+            }
+        }
+        return result == KERN_SUCCESS ? Int(info.phys_footprint / 1_048_576) : -1
+    }
+}
+
+enum SaverError: Error {
+    case tooFewPhotographs(Int)
+    case noMetalDevice
+}
+
+/// The engine, carried from the thread that built it to the main thread.
+private final class Built: @unchecked Sendable {
+    var engine: MosaicEngine?
+    var failure: Error?
+}

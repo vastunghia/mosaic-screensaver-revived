@@ -8,13 +8,16 @@ import PackageDescription
 // enforces exactly the same boundaries for a single-author repository, and the
 // decision is recorded there.
 //
-// Modules are created when they are needed, not in advance: SharedStore (M11)
-// does not exist yet.
+// Modules are created when they are needed, not in advance.
 let package = Package(
     name: "Mosaic",
     platforms: [.macOS(.v15)],
     products: [
         .library(name: "MosaicEngine", targets: ["MosaicEngine"]),
+        // The .saver's executable. Dynamic, so that SwiftPM links it with the
+        // Swift driver: a bundle linked by clang loads but crashes on its first
+        // Swift global (spike 1). Hosts/Saver/build.sh wraps it in a bundle.
+        .library(name: "MosaicSaver", type: .dynamic, targets: ["MosaicSaver"]),
     ],
     targets: [
         // M1 — domain types and grid maths. Depends on nothing but Foundation.
@@ -73,16 +76,31 @@ let package = Package(
             ]
         ),
 
+        // M11 — the paths the app and the .saver agree on (spike 2). Foundation
+        // only: the saver links it.
+        .target(name: "SharedStore"),
+
         // M9 — the development harness. A thin shell over MosaicEngine.
         .executableTarget(
             name: "MosaicApp",
             // The host picks the settings (M1) and where the photographs come
             // from (M4), and drives the engine (M8). It has no business knowing
             // that there is a renderer behind it.
-            dependencies: ["MosaicEngine", "MosaicCore", "MosaicPhotos", "MosaicPhotoKit", "PhotoIndex"],
+            dependencies: [
+                "MosaicEngine", "MosaicCore", "MosaicPhotos", "MosaicPhotoKit", "PhotoIndex", "SharedStore",
+            ],
             path: "Hosts/App",
             // build.sh lives next to the sources it builds; SwiftPM only needs
             // telling that it is not one of them.
+            exclude: ["build.sh"]
+        ),
+
+        // M10 — the screen saver: a thin shell over MosaicEngine that reads the
+        // index and nothing else. No MosaicPhotoKit, ever.
+        .target(
+            name: "MosaicSaver",
+            dependencies: ["MosaicEngine", "MosaicCore", "PhotoIndex", "SharedStore"],
+            path: "Hosts/Saver",
             exclude: ["build.sh"]
         ),
 
