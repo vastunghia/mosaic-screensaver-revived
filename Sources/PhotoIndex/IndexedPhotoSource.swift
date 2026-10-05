@@ -64,6 +64,10 @@ public struct IndexedPhotoSource: PhotoSource {
 
     public var entries: [IndexEntry] { manifest.entries }
 
+    public func entry(for id: PhotoID) -> IndexEntry? {
+        byID[id.rawValue]
+    }
+
     public func signature(for id: PhotoID) -> TileSignature? {
         byID[id.rawValue]?.tileSignature
     }

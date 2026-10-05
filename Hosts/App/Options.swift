@@ -96,10 +96,11 @@ struct Options {
     var tileWidth = 256
 
     /// Where the tiles that outgrow an atlas slice get their pixels: the
-    /// originals, the index's thumbnails (exactly what the .saver has today),
+    /// originals, the index's thumbnails, the shelf the app stocks for the
+    /// .saver (exactly what the saver reads, thumbnails where it has a gap),
     /// or nowhere, which draws everything from the atlas.
     enum CloseUps: String {
-        case originals, thumbnails, off
+        case originals, thumbnails, stored, off
     }
     var closeUps = CloseUps.originals
     /// Ring radius and the widths of anchor and ring. `--close-up-anchor-width 0`
@@ -199,6 +200,18 @@ struct Options {
     var resolvedIndexDirectory: URL {
         if let indexDirectory { return indexDirectory }
         return SharedLocations.indexDirectory
+    }
+
+    /// The shelf of close-ups for the .saver: beside the index it belongs to,
+    /// so a test index of another shape never collects the real one's.
+    var resolvedCloseUpDirectory: URL {
+        guard let indexDirectory else { return SharedLocations.closeUpDirectory }
+        return indexDirectory.deletingLastPathComponent()
+            .appendingPathComponent(indexDirectory.lastPathComponent + "-closeups", isDirectory: true)
+    }
+
+    var closeUpShelf: CloseUpShelf {
+        CloseUpShelf(directory: resolvedCloseUpDirectory, width: CloseUpOptions.standard.anchorWidth ?? 1920)
     }
 
     static func parse(_ arguments: [String]) -> Options {

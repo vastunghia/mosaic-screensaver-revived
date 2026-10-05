@@ -43,7 +43,7 @@ enum Player {
             library: library,
             seed: options.seed,
             tilePixelWidth: options.tileWidth,
-            closeUpSource: PhotoSourceFactory.closeUpSource(options.closeUps, photos: photos),
+            closeUpSource: PhotoSourceFactory.closeUpSource(options.closeUps, photos: photos, shelf: options.closeUpShelf),
             closeUpOptions: options.closeUpOptions
         )
 

@@ -27,6 +27,12 @@ public enum SharedLocations {
         supportDirectory.appendingPathComponent("index", isDirectory: true)
     }
 
+    /// Close-ups at the anchor's width, made by the app from the originals,
+    /// which the saver cannot reach.
+    public static var closeUpDirectory: URL {
+        supportDirectory.appendingPathComponent("closeups", isDirectory: true)
+    }
+
     /// The directory name is part of the contract, like the bundle identifiers
     /// in `scripts/identity.sh`: renaming it orphans every index already built.
     public static let directoryName = "Mosaic"

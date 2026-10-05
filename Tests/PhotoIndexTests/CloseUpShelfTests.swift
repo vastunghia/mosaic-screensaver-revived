@@ -1,0 +1,100 @@
+import CoreGraphics
+import Foundation
+import MosaicCore
+import MosaicPhotos
+import Testing
+@testable import PhotoIndex
+
+/// The shelf is how the .saver gets close-ups sharper than a thumbnail without
+/// ever touching an original: the app stocks it, the saver reads it.
+@Suite("Close-up shelf")
+struct CloseUpShelfTests {
+    private let thumbnailWidth = 32
+    private let shelfWidth = 64
+
+    private func temporaryDirectory() -> URL {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("mosaic-shelf-\(UUID().uuidString)", isDirectory: true)
+        try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        return url
+    }
+
+    /// A small real index, with the originals behind it, and an empty shelf.
+    private func fixture(count: Int = 5) throws -> (IndexedPhotoSource, CloseUpShelf) {
+        let root = temporaryDirectory()
+        let source = SyntheticPhotoSource(count: count)
+        let store = PhotoIndexStore(directory: root.appendingPathComponent("index"))
+        try PhotoIndexBuilder(thumbnailWidth: thumbnailWidth, signatureSide: 2, cropRule: .centre)
+            .build(from: source, into: store, root: "synthetic")
+        let index = try IndexedPhotoSource(store: store, originals: source)
+        return (index, CloseUpShelf(directory: root.appendingPathComponent("closeups"), width: shelfWidth))
+    }
+
+    @Test("stocking makes one rendition per photograph, at the shelf's width, once")
+    func stock() throws {
+        let (index, shelf) = try fixture()
+        let first = try shelf.stock(from: index)
+        #expect(first.made == 5 && first.kept == 0 && first.failed == 0)
+        for entry in index.entries {
+            #expect(try shelf.read(entry, maxPixelWidth: shelfWidth).width == shelfWidth)
+        }
+
+        let second = try shelf.stock(from: index)
+        #expect(second.made == 0 && second.kept == 5, "nothing is made twice")
+    }
+
+    @Test("without originals there is nothing to stock from")
+    func noOriginals() throws {
+        let (index, shelf) = try fixture()
+        let bare = IndexedPhotoSource(store: index.store, manifest: index.manifest)
+        #expect(throws: CloseUpShelfError.self) { try shelf.stock(from: bare) }
+    }
+
+    @Test("a rendition's name changes with the window and the width")
+    func names() {
+        func entry(_ cropStart: Double?) -> IndexEntry {
+            IndexEntry(
+                id: "a", versionToken: "1", thumbnail: "thumbs/none.jpg",
+                signature: TileSignature(side: 1, cells: [LinearRGB(r: 0, g: 0, b: 0)]),
+                pixelWidth: 16, pixelHeight: 9, cropStart: cropStart
+            )
+        }
+        let shelf = CloseUpShelf(directory: URL(fileURLWithPath: "/shelf"), width: 1920)
+        let names = [entry(nil), entry(0), entry(0.25)].map(shelf.name(for:))
+        #expect(Set(names).count == 3)
+        #expect(CloseUpShelf(directory: shelf.directory, width: 2560).name(for: entry(nil)) != names[0])
+        #expect(shelf.name(for: entry(0.25)) == names[2], "a pure function of the entry")
+    }
+
+    @Test("the saver's source serves the shelf, and the thumbnail where it has a gap")
+    func fallback() throws {
+        let (index, shelf) = try fixture()
+        try shelf.stock(from: index)
+        let gap = index.entries[0]
+        try FileManager.default.removeItem(at: shelf.url(for: gap))
+
+        let bare = IndexedPhotoSource(store: index.store, manifest: index.manifest)
+        let shelved = ShelvedPhotoSource(index: bare, shelf: shelf)
+
+        #expect(try shelved.canonicalImage(for: index.entries[1].photoID, maxPixelWidth: shelfWidth).width == shelfWidth)
+        #expect(try shelved.canonicalImage(for: gap.photoID, maxPixelWidth: shelfWidth).width == thumbnailWidth)
+        // No wider than a thumbnail: the thumbnail, and neither count moves.
+        #expect(try shelved.canonicalImage(for: index.entries[1].photoID, maxPixelWidth: 16).width == 16)
+        #expect(shelved.served == 1)
+        #expect(shelved.fallbacks == 1)
+    }
+
+    @Test("renditions of photographs gone from the index, and half-written ones, are collected")
+    func orphans() throws {
+        let (index, shelf) = try fixture()
+        try shelf.stock(from: index)
+        let bucket = shelf.directory.appendingPathComponent("zz", isDirectory: true)
+        try FileManager.default.createDirectory(at: bucket, withIntermediateDirectories: true)
+        try Data([1]).write(to: bucket.appendingPathComponent("gone.jpg"))
+        try Data([1]).write(to: shelf.url(for: index.entries[0]).appendingPathExtension("partial"))
+
+        let report = try shelf.stock(from: index)
+        #expect(report.removed == 2)
+        #expect(index.entries.allSatisfy(shelf.has))
+    }
+}

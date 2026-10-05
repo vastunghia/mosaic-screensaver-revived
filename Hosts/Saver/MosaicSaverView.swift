@@ -25,6 +25,7 @@ final class MosaicSaverView: ScreenSaverView {
     nonisolated private static let minimumPhotographs = 100
 
     private var engine: MosaicEngine?
+    private var closeUps: ShelvedPhotoSource?
     private var link: CADisplayLink?
     private var time: TimeInterval = 0
     private var lastTimestamp: CFTimeInterval?
@@ -157,7 +158,7 @@ final class MosaicSaverView: ScreenSaverView {
         let box = Built()
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             do {
-                box.engine = try Self.makeEngine(seed: seed, display: display)
+                (box.engine, box.closeUps) = try Self.makeEngine(seed: seed, display: display)
             } catch {
                 box.failure = error
             }
@@ -174,6 +175,7 @@ final class MosaicSaverView: ScreenSaverView {
                             on \(engine.deviceName, privacy: .public), \
                             footprint \(Self.footprintMB, privacy: .public) MB
                             """)
+                        self.closeUps = box.closeUps
                         self.begin(engine, display: display)
                     } else {
                         let failure = box.failure.map { "\($0)" } ?? "unknown"
@@ -201,7 +203,14 @@ final class MosaicSaverView: ScreenSaverView {
         }
         willStopObserver = nil
         let cycle = engine?.statistics.cycleIndex
+        if let closeUps {
+            Self.log.notice("""
+                close-ups: \(closeUps.served, privacy: .public) from the shelf, \
+                \(closeUps.fallbacks, privacy: .public) from thumbnails for want of one
+                """)
+        }
         engine = nil
+        closeUps = nil
         lastTimestamp = nil
         time = 0
         Self.log.notice("""
@@ -212,7 +221,9 @@ final class MosaicSaverView: ScreenSaverView {
 
     // MARK: The engine
 
-    nonisolated private static func makeEngine(seed: UInt64, display: CGDirectDisplayID?) throws -> MosaicEngine {
+    nonisolated private static func makeEngine(
+        seed: UInt64, display: CGDirectDisplayID?
+    ) throws -> (MosaicEngine, ShelvedPhotoSource) {
         let store = PhotoIndexStore(directory: SharedLocations.indexDirectory)
         let index = try IndexedPhotoSource(store: store)
         guard index.entries.count >= minimumPhotographs else {
@@ -233,15 +244,22 @@ final class MosaicSaverView: ScreenSaverView {
             system default GPU \(MTLCreateSystemDefaultDevice()?.name ?? "none", privacy: .public), \
             display's GPU \(device.name, privacy: .public)
             """)
-        // The index has no originals behind it here: the close-ups come from
-        // the thumbnails, which is all the saver has.
-        return try MosaicEngine(
+        // No originals here: the close-ups come from the shelf the app
+        // stocks, and from the thumbnails where it has a gap.
+        let shelf = CloseUpShelf(
+            directory: SharedLocations.closeUpDirectory, width: CloseUpOptions.standard.anchorWidth ?? 1920
+        )
+        let onShelf = pool.entries.count { shelf.has($0) }
+        log.notice("\(onShelf, privacy: .public) of the pool's \(pool.entries.count, privacy: .public) close-ups on the shelf")
+        let closeUps = ShelvedPhotoSource(index: pool, shelf: shelf)
+        let engine = try MosaicEngine(
             device: device,
             source: pool,
             planner: planner,
             seed: seed,
-            closeUpSource: pool
+            closeUpSource: closeUps
         )
+        return (engine, closeUps)
     }
 
     private func begin(_ engine: MosaicEngine, display: CGDirectDisplayID?) {
@@ -354,5 +372,6 @@ enum SaverError: Error {
 /// The engine, carried from the thread that built it to the main thread.
 private final class Built: @unchecked Sendable {
     var engine: MosaicEngine?
+    var closeUps: ShelvedPhotoSource?
     var failure: Error?
 }

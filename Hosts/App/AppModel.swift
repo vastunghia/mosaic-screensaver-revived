@@ -160,15 +160,30 @@ final class AppModel: ObservableObject {
                     thumbnailWidth: options.thumbnailWidth, signatureSide: options.signatureSide,
                     cropRule: options.cropRule
                 )
+                let store = PhotoIndexStore(directory: options.resolvedIndexDirectory)
                 _ = try builder.build(
                     from: indexable.source,
-                    into: PhotoIndexStore(directory: options.resolvedIndexDirectory),
+                    into: store,
                     root: indexable.root,
                     progress: { progress in
                         Task { @MainActor in self?.progressed(progress) }
                     },
                     isCancelled: { flag.isSet }
                 )
+                // The .saver's close-ups, once the index is whole. The saver
+                // runs without them meanwhile, on enlarged thumbnails.
+                if !flag.isSet {
+                    Self.log.notice("close-ups started")
+                    let report = try options.closeUpShelf.stock(
+                        from: IndexedPhotoSource(store: store, originals: indexable.source),
+                        isCancelled: { flag.isSet }
+                    )
+                    Self.log.notice("""
+                        close-ups: \(report.made, privacy: .public) made, \(report.kept, privacy: .public) kept, \
+                        \(report.failed, privacy: .public) failed, \
+                        \(report.unavailable, privacy: .public) not on this Mac, \(report.removed, privacy: .public) removed
+                        """)
+                }
                 await self?.finished(error: nil)
             } catch {
                 await self?.finished(error: error)

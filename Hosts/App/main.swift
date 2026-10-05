@@ -26,12 +26,12 @@ do {
             throw HarnessError.indexingWithoutAFolder
         }
         print("mosaic: indexing \(indexable.root)")
+        let store = PhotoIndexStore(directory: options.resolvedIndexDirectory)
         try PhotoSourceFactory.buildIndex(
-            source: indexable.source,
-            store: PhotoIndexStore(directory: options.resolvedIndexDirectory),
-            root: indexable.root,
-            options: options
+            source: indexable.source, store: store, root: indexable.root, options: options
         )
+        // What the app does after every build: the .saver's close-ups.
+        try PhotoSourceFactory.stockCloseUps(source: indexable.source, store: store, shelf: options.closeUpShelf)
         exit(0)
     }
 
@@ -153,7 +153,7 @@ do {
             planner: planning.planner,
             tileWidth: options.tileWidth,
             seed: options.seed,
-            closeUpSource: PhotoSourceFactory.closeUpSource(options.closeUps, photos: photos),
+            closeUpSource: PhotoSourceFactory.closeUpSource(options.closeUps, photos: photos, shelf: options.closeUpShelf),
             closeUpOptions: options.closeUpOptions
         )
         exit(0)
@@ -167,7 +167,7 @@ do {
         library: library,
         seed: options.seed,
         tilePixelWidth: options.tileWidth,
-        closeUpSource: PhotoSourceFactory.closeUpSource(options.closeUps, photos: photos),
+        closeUpSource: PhotoSourceFactory.closeUpSource(options.closeUps, photos: photos, shelf: options.closeUpShelf),
         closeUpOptions: options.closeUpOptions
     )
 

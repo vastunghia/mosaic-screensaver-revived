@@ -20,7 +20,7 @@ enum PhotoSourceFactory {
     }
 
     /// Where close-ups come from, for `--close-ups`.
-    static func closeUpSource(_ mode: Options.CloseUps, photos: Resolved) -> (any PhotoSource)? {
+    static func closeUpSource(_ mode: Options.CloseUps, photos: Resolved, shelf: CloseUpShelf) -> (any PhotoSource)? {
         switch mode {
         case .off:
             return nil
@@ -31,6 +31,13 @@ enum PhotoSourceFactory {
             // reads, and all it reads.
             guard let indexed = photos.indexed else { return photos.source }
             return IndexedPhotoSource(store: indexed.store, manifest: indexed.manifest)
+        case .stored:
+            // What the .saver reads now: the shelf, and the thumbnails where
+            // it has a gap.
+            guard let indexed = photos.indexed else { return photos.source }
+            return ShelvedPhotoSource(
+                index: IndexedPhotoSource(store: indexed.store, manifest: indexed.manifest), shelf: shelf
+            )
         }
     }
 
@@ -182,6 +189,40 @@ enum PhotoSourceFactory {
     }
 }
 
+
+extension PhotoSourceFactory {
+    /// Makes the close-ups the .saver reads, for the whole index the source
+    /// was just indexed into, printing progress.
+    @discardableResult
+    static func stockCloseUps(
+        source: any PhotoSource, store: PhotoIndexStore, shelf: CloseUpShelf,
+        isCancelled: (@Sendable () -> Bool)? = nil
+    ) throws -> CloseUpShelf.StockReport {
+        let started = Date()
+        let index = try IndexedPhotoSource(store: store, originals: source)
+        let reported = Reported()
+        let report = try shelf.stock(
+            from: index,
+            progress: { report in
+                let done = report.kept + report.made + report.failed + report.unavailable
+                guard report.total > 0 else { return }
+                let progress = IndexProgress(completed: done, reused: report.kept, skipped: 0, total: report.total)
+                if reported.shouldReport(done * 100 / report.total, of: progress) {
+                    print("  close-ups \(done)/\(report.total)")
+                }
+            },
+            isCancelled: isCancelled
+        )
+        let elapsed = Date().timeIntervalSince(started)
+        print(String(
+            format: "  close-ups at %d px: %d made in %.1f s (%.1f/s), %d kept, %d failed, %d not on this Mac, %d removed",
+            shelf.width, report.made, elapsed, elapsed > 0 ? Double(report.made) / elapsed : 0,
+            report.kept, report.failed, report.unavailable, report.removed
+        ))
+        print("  at \(shelf.directory.path)")
+        return report
+    }
+}
 
 /// The permission, carried out of the task that asked for it.
 private final class Answer: @unchecked Sendable {
