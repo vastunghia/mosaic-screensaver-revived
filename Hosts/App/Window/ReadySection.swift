@@ -5,7 +5,6 @@ import SwiftUI
 /// something new at every launch after the first.
 struct ReadySection: View {
     @ObservedObject var model: AppModel
-    let showSteps: () -> Void
 
     var body: some View {
         Section {
@@ -22,10 +21,6 @@ struct ReadySection: View {
                 Text("Screen saver installed")
                 Spacer()
                 Button("Open Screen Saver Settings…", action: model.openScreenSaverSettings)
-            }
-            HStack {
-                Spacer()
-                Button("Show Setup Steps", action: showSteps)
             }
         } header: {
             Label {

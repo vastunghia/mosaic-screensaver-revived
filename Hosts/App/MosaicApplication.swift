@@ -171,18 +171,16 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.regular)
         if window == nil {
             NSApp.mainMenu = MosaicApplication.mainMenu()
-            let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 520, height: 720),
-                styleMask: [.titled, .closable, .miniaturizable, .resizable],
-                backing: .buffered,
-                defer: false
-            )
+            // Sized by its content, which grows and shrinks with the steps.
+            let controller = NSHostingController(rootView: AppView(model: model) { [weak self] in
+                self?.play(nil)
+            })
+            controller.sizingOptions = [.preferredContentSize]
+            let window = NSWindow(contentViewController: controller)
+            window.styleMask = [.titled, .closable, .miniaturizable]
             window.title = "Mosaic"
             window.isReleasedWhenClosed = false
             window.delegate = self
-            window.contentView = NSHostingView(rootView: AppView(model: model) { [weak self] in
-                self?.play(nil)
-            })
             window.setFrameAutosaveName("Mosaic")
             window.center()
             self.window = window

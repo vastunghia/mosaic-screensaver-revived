@@ -533,6 +533,17 @@ public final class MosaicEngine {
     /// frame time to mean anything.
     public var deviceName: String { gpu.device.name }
 
+    /// How many frames reached the screen in the last `seconds` (ten at
+    /// most). A view nobody sees goes on drawing and is never presented, or
+    /// only now and then, and no window state says so reliably: a preview in
+    /// System Settings drew for two hours with nothing shown, and another,
+    /// behind other windows, had one frame in three hundred shown — while
+    /// one in plain view reported itself occluded (2026-10-07). The host can
+    /// tell from this, and stop.
+    public func framesPresented(within seconds: TimeInterval) -> Int {
+        gpuTimings.presentations(after: CACurrentMediaTime() - seconds)
+    }
+
     public var statistics: FrameStatistics { statisticsBox.current }
 
     // MARK: - Another GPU

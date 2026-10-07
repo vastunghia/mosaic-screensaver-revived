@@ -34,9 +34,18 @@ mkdir -p "$BUILD"
 xcrun -sdk macosx metal -c Sources/MosaicRender/Shaders.metal -o "$BUILD/Shaders.air"
 xcrun -sdk macosx metallib "$BUILD/Shaders.air" -o "$BUILD/default.metallib"
 
+# The thumbnail the Screen Saver settings show, drawn by the icon's script and
+# only again when it changes.
+THUMBNAILS="$BUILD/thumbnails"
+if [ ! -f "$THUMBNAILS/thumbnail@2x.png" ] || [ scripts/make-icon.swift -nt "$THUMBNAILS/thumbnail@2x.png" ]; then
+    echo "==> thumbnail"
+    swift scripts/make-icon.swift --thumbnail "$THUMBNAILS"
+fi
+
 echo "==> bundle"
 rm -rf "$SAVER"
 mkdir -p "$SAVER/Contents/MacOS" "$SAVER/Contents/Resources"
+cp "$THUMBNAILS/thumbnail.png" "$THUMBNAILS/thumbnail@2x.png" "$SAVER/Contents/Resources/"
 cp "$(swift build -c "$CONFIG" ${ARCHS[@]+"${ARCHS[@]}"} --show-bin-path)/libMosaicSaver.dylib" "$SAVER/Contents/MacOS/$SAVER_NAME"
 cp "$BUILD/default.metallib" "$SAVER/Contents/Resources/default.metallib"
 

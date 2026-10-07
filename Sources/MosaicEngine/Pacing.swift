@@ -251,6 +251,9 @@ final class GPUTimings: @unchecked Sendable {
     private var bins: [Int: [Bin]] = [:]
     private var shown: [Int: [Shown]] = [:]
     private var lastPresented: CFTimeInterval = 0
+    /// When recent frames reached the screen, oldest first, for a few seconds.
+    private var recentPresentations: [CFTimeInterval] = []
+    private static let recentSpan: CFTimeInterval = 10
 
     func presented(cycle: Int, bin: Int, at time: CFTimeInterval, refresh: TimeInterval) {
         lock.lock()
@@ -266,8 +269,20 @@ final class GPUTimings: @unchecked Sendable {
                 cycleBins[bin].longest = Swift.max(cycleBins[bin].longest, interval)
             }
             lastPresented = time
+            recentPresentations.append(time)
+            if let first = recentPresentations.first, time - first > Self.recentSpan {
+                recentPresentations.removeAll { time - $0 > Self.recentSpan }
+            }
         }
         shown[cycle] = cycleBins
+    }
+
+    /// How many frames reached the screen after `time`, on the clock of
+    /// `CACurrentMediaTime`, looking back at most `recentSpan`.
+    func presentations(after time: CFTimeInterval) -> Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return recentPresentations.count { $0 > time }
     }
 
     func takeShown(cycle: Int) -> [Shown] {

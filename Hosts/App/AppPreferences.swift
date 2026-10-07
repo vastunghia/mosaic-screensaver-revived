@@ -7,7 +7,7 @@ import SharedStore
 /// They turn into `Options`, so the app runs the effect through exactly the
 /// code the harness does. The .saver has no preferences of its own: what it
 /// needs, `R` and `T`, the app hands it as `SharedSettings` (milestone 5).
-struct AppPreferences {
+struct AppPreferences: Equatable {
     enum Source: String, CaseIterable, Identifiable {
         case photos, folder
         var id: String { rawValue }

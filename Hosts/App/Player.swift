@@ -30,24 +30,7 @@ enum Player {
             throw HarnessError.noMetalDevice
         }
 
-        let library = try ShaderLibrary.load(device: device)
-        let photos = try PhotoSourceFactory.make(options: options)
-        let planning = PlannerFactory.make(options: options, photos: photos)
-        print(options.banner(sourceDescription: photos.description))
-
-        let engine = try MosaicEngine(
-            device: device,
-            settings: options.settings,
-            source: photos.source,
-            planner: planning.planner,
-            library: library,
-            seed: options.seed,
-            tilePixelWidth: options.tileWidth,
-            closeUpSource: PhotoSourceFactory.closeUpSource(options.closeUps, photos: photos, shelf: options.closeUpShelf),
-            closeUpOptions: options.closeUpOptions
-        )
-
-        engine.holdsEachFrameOneRefresh = options.holdsEachFrameOneRefresh
+        let engine = try EngineFactory.make(options: options, device: device)
         let clock = HarnessClock()
         clock.settings = options.settings
         let player = PlayerWindow(

@@ -38,6 +38,10 @@ final class MosaicSaverView: ScreenSaverView {
     private var everStarted = false
     private var willStopObserver: NSObjectProtocol?
     private var message: NSTextField?
+    /// When the engine began drawing, for telling a preview nobody sees.
+    private var beganAt: CFTimeInterval?
+    /// While a preview nobody sees waits, without an engine, to be seen.
+    private var probe: Timer?
     private static var created = 0
     private let instance: Int
 
@@ -235,6 +239,9 @@ final class MosaicSaverView: ScreenSaverView {
                 \(closeUps.fallbacks, privacy: .public) from thumbnails for want of one
                 """)
         }
+        probe?.invalidate()
+        probe = nil
+        beganAt = nil
         engine = nil
         closeUps = nil
         lastTimestamp = nil
@@ -323,12 +330,87 @@ final class MosaicSaverView: ScreenSaverView {
         let link = displayLink(target: self, selector: #selector(tick(_:)))
         link.add(to: .main, forMode: .common)
         self.link = link
+        beganAt = CACurrentMediaTime()
+    }
+
+    // MARK: A preview nobody sees
+
+    /// System Settings can start the preview, or start it again, where nobody
+    /// sees it — after the screen saver has run over it, or with its window
+    /// gone — and never stop it: one drew for two hours, 1,500 frames a cycle
+    /// and none of them shown (2026-10-07). Window occlusion cannot tell: a
+    /// preview in plain view reported itself occluded. Whether frames reach
+    /// the screen can — not whether one does: a preview behind other windows
+    /// had a frame shown every five seconds. So a preview that shows fewer
+    /// than one frame in ten for `unseenLimit` lets its engine go, and every
+    /// `probeInterval` presents a burst of blank frames: most of them shown,
+    /// and it builds its engine again.
+    private static let unseenLimit: TimeInterval = 5
+    private static let probeInterval: TimeInterval = 2
+    private static let probeBurst = 10
+    private static let probeShownToWake = 8
+
+    /// One in ten of the frames the display would show in `unseenLimit`.
+    private var fewestSeenFrames: Int {
+        let fps = window?.screen?.maximumFramesPerSecond ?? 60
+        return max(1, Int(Self.unseenLimit) * max(fps, 1) / 10)
+    }
+
+    private func hibernate(device: MTLDevice) {
+        let shown = engine?.framesPresented(within: Self.unseenLimit) ?? 0
+        Self.log.notice("""
+            preview #\(self.instance, privacy: .public) showed \(shown, privacy: .public) frames in \
+            \(Self.unseenLimit, format: .fixed(precision: 0), privacy: .public) s: nobody sees it, letting its engine go
+            """)
+        link?.invalidate()
+        link = nil
+        engine = nil
+        beganAt = nil
+        lastTimestamp = nil
+        guard let metalLayer = layer as? CAMetalLayer, let queue = device.makeCommandQueue() else { return }
+        let run = generation
+        probe = Timer.scheduledTimer(withTimeInterval: Self.probeInterval, repeats: true) { [weak self] _ in
+            // Blank frames, one a refresh, from another thread: nextDrawable
+            // may wait.
+            DispatchQueue.global(qos: .utility).async {
+                let tally = ProbeTally()
+                for _ in 0..<Self.probeBurst {
+                    guard let drawable = metalLayer.nextDrawable(), let commands = queue.makeCommandBuffer() else { return }
+                    let pass = MTLRenderPassDescriptor()
+                    pass.colorAttachments[0].texture = drawable.texture
+                    pass.colorAttachments[0].loadAction = .clear
+                    pass.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
+                    commands.makeRenderCommandEncoder(descriptor: pass)?.endEncoding()
+                    drawable.addPresentedHandler { frame in
+                        guard tally.count(shown: frame.presentedTime > 0) == Self.probeShownToWake else { return }
+                        DispatchQueue.main.async {
+                            MainActor.assumeIsolated { self?.wake(run: run) }
+                        }
+                    }
+                    commands.present(drawable, afterMinimumDuration: 1.0 / 60)
+                    commands.commit()
+                }
+            }
+        }
+    }
+
+    private func wake(run: Int) {
+        guard probe != nil, generation == run, isRunning else { return }
+        probe?.invalidate()
+        probe = nil
+        Self.log.notice("preview #\(self.instance, privacy: .public) is shown again: building its engine")
+        build(run: run, screen: window?.screen)
     }
 
     @objc private func tick(_ link: CADisplayLink) {
         let now = link.timestamp
         MainActor.assumeIsolated {
             guard let engine else { return }
+            if isPreview, let beganAt, now - beganAt > Self.unseenLimit,
+               engine.framesPresented(within: Self.unseenLimit) < fewestSeenFrames {
+                hibernate(device: engine.device)
+                return
+            }
             let delta = lastTimestamp.map { now - $0 } ?? 0
             // The clock holds while the engine is not ready for the instant it
             // would move to, exactly as the app's does: a pause at a join, never
@@ -535,4 +617,18 @@ private final class Built: @unchecked Sendable {
     var engine: MosaicEngine?
     var closeUps: ShelvedPhotoSource?
     var failure: Error?
+}
+
+/// Shown frames of one probe burst, counted from Metal's handler threads.
+private final class ProbeTally: @unchecked Sendable {
+    private let lock = NSLock()
+    private var shown = 0
+
+    /// The number shown so far, this frame included.
+    func count(shown frameShown: Bool) -> Int {
+        lock.lock()
+        defer { lock.unlock() }
+        if frameShown { shown += 1 }
+        return shown
+    }
 }
