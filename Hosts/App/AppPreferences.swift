@@ -1,11 +1,12 @@
 import Foundation
 import MosaicPhotos
+import SharedStore
 
 /// The app's preferences, in its own `UserDefaults`.
 ///
-/// Only the app reads them for now: how the saver gets at them is decided with
-/// the saver, at milestone 5 (PLAN.md, milestone 4). They turn into `Options`,
-/// so the app runs the effect through exactly the code the harness does.
+/// They turn into `Options`, so the app runs the effect through exactly the
+/// code the harness does. The .saver has no preferences of its own: what it
+/// needs, `R` and `T`, the app hands it as `SharedSettings` (milestone 5).
 struct AppPreferences {
     enum Source: String, CaseIterable, Identifiable {
         case photos, folder
@@ -25,8 +26,8 @@ struct AppPreferences {
     var rows = 90
     var cycleDuration: Double = 25
 
-    static let rowRange = 60...120
-    static let durationRange: ClosedRange<Double> = 10...60
+    static let rowRange = SharedSettings.rowRange
+    static let durationRange = SharedSettings.durationRange
 
     private enum Key {
         static let source = "source"
@@ -82,6 +83,11 @@ struct AppPreferences {
         defaults.set(String(subsetSeed), forKey: Key.seed)
         defaults.set(rows, forKey: Key.rows)
         defaults.set(cycleDuration, forKey: Key.duration)
+    }
+
+    /// What the .saver needs of them.
+    var shared: SharedSettings {
+        SharedSettings(rows: rows, cycleDuration: cycleDuration)
     }
 
     /// Whether there is anything to index at all.

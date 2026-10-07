@@ -10,7 +10,9 @@ import SharedStore
 import os
 
 /// M10: the screen saver. A thin shell over `MosaicEngine`, like the app's
-/// player: it reads the index the app has built, and nothing else.
+/// player: it reads the index the app has built and the settings the app has
+/// chosen, and nothing else. Without an index it says so and asks the app,
+/// through `mosaic://update`, to make one.
 ///
 /// It runs inside `legacyScreenSaver`, sandboxed, with that process's identity:
 /// no Photos, no writing outside its container, and the unified log as its only
@@ -33,6 +35,7 @@ final class MosaicSaverView: ScreenSaverView {
     /// after its run has ended is dropped instead of shown.
     private var generation = 0
     private var isRunning = false
+    private var everStarted = false
     private var willStopObserver: NSObjectProtocol?
     private var message: NSTextField?
     private static var created = 0
@@ -79,6 +82,7 @@ final class MosaicSaverView: ScreenSaverView {
             """)
         guard !isRunning else { return }
         isRunning = true
+        everStarted = true
         generation += 1
         let run = generation
 
@@ -93,15 +97,8 @@ final class MosaicSaverView: ScreenSaverView {
             }
         }
 
-        guard !isPreview else {
-            // The preview in System Settings stays alive in a process of its
-            // own while the saver runs (spike 1): it is not where an atlas of
-            // 2048 photographs should be built a second time.
-            show("Mosaic")
-            return
-        }
         let screen = window?.screen
-        guard screen == nil || screen == NSScreen.screens.first else {
+        guard isPreview || screen == nil || screen == NSScreen.screens.first else {
             // One mosaic, on the main display, for now (SPEC § 10).
             Self.log.notice("not the main display: staying black")
             return
@@ -114,8 +111,11 @@ final class MosaicSaverView: ScreenSaverView {
         // one's. What tells them apart is age: the newest view on a screen is
         // the one shown. So a view stops older ones as it starts, and waits a
         // moment before building, in case it is the old one.
+        // Previews and the saver proper are told apart by kind: a preview
+        // supersedes only older previews.
         for other in Self.instances.allObjects
-        where other !== self && other.instance < instance && other.window?.screen == screen {
+        where other !== self && other.instance < instance && other.isPreview == isPreview
+            && other.window?.screen == screen {
             other.stop()
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + Self.startDelay) { [weak self] in
@@ -131,6 +131,28 @@ final class MosaicSaverView: ScreenSaverView {
         }
     }
 
+    /// System Settings does not always start the preview it shows: opened
+    /// with Mosaic already chosen, it put the preview in its window and never
+    /// called startAnimation, and the preview stayed black until another saver
+    /// was chosen and Mosaic again (2026-10-07). So a preview that nobody has
+    /// started a moment after it is placed starts itself — once: a stop after
+    /// that, as when the options sheet opens, is meant.
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        guard isPreview, window != nil, !everStarted else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.unstartedPreviewWait) { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self, self.window != nil, !self.everStarted,
+                      !Self.instances.allObjects.contains(where: { $0.isPreview && $0.instance > self.instance })
+                else { return }
+                Self.log.notice("preview #\(self.instance, privacy: .public) placed but never started: starting it")
+                self.startAnimation()
+            }
+        }
+    }
+
+    nonisolated private static let unstartedPreviewWait: TimeInterval = 1
+
     /// Long enough for the new view to be created after an old one was
     /// restarted (about 20 ms, measured), short beside the seconds the atlas
     /// takes.
@@ -141,7 +163,7 @@ final class MosaicSaverView: ScreenSaverView {
     /// A newer view showing on this screen, or not placed yet.
     private var isSuperseded: Bool {
         Self.instances.allObjects.contains { other in
-            other.instance > instance && !other.isPreview
+            other.instance > instance && other.isPreview == isPreview
                 && (other.window == nil || other.window?.screen == window?.screen)
         }
     }
@@ -151,14 +173,15 @@ final class MosaicSaverView: ScreenSaverView {
         let display = (screen?.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)
             .map { CGDirectDisplayID($0.uint32Value) }
         let started = ProcessInfo.processInfo.systemUptime
-        Self.log.notice("starting, seed \(String(seed, radix: 16), privacy: .public)")
+        let preview = isPreview
+        Self.log.notice("starting\(preview ? " the preview" : "", privacy: .public), seed \(String(seed, radix: 16), privacy: .public)")
 
         // Reading the index and building the atlas take seconds: off the main
         // thread, which belongs to legacyScreenSaver and its events.
         let box = Built()
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             do {
-                (box.engine, box.closeUps) = try Self.makeEngine(seed: seed, display: display)
+                (box.engine, box.closeUps) = try Self.makeEngine(seed: seed, display: display, preview: preview)
             } catch {
                 box.failure = error
             }
@@ -181,6 +204,9 @@ final class MosaicSaverView: ScreenSaverView {
                         let failure = box.failure.map { "\($0)" } ?? "unknown"
                         Self.log.error("no engine: \(failure, privacy: .public)")
                         self.show(Self.explanation(of: box.failure))
+                        if !preview, let reason = Self.updateReason(for: box.failure) {
+                            Self.askForUpdate(reason: reason)
+                        }
                     }
                 }
             }
@@ -221,16 +247,29 @@ final class MosaicSaverView: ScreenSaverView {
 
     // MARK: The engine
 
+    /// The preview is the effect itself, on fewer photographs: the atlas is
+    /// what costs, and in a window a few hundred points wide 256 photographs
+    /// look like 2048. It lives as long as System Settings shows it, in a
+    /// process of its own, also while the saver runs (spike 1).
+    nonisolated private static let previewPoolSize = 256
+
     nonisolated private static func makeEngine(
-        seed: UInt64, display: CGDirectDisplayID?
-    ) throws -> (MosaicEngine, ShelvedPhotoSource) {
+        seed: UInt64, display: CGDirectDisplayID?, preview: Bool
+    ) throws -> (MosaicEngine, ShelvedPhotoSource?) {
         let store = PhotoIndexStore(directory: SharedLocations.indexDirectory)
         let index = try IndexedPhotoSource(store: store)
         guard index.entries.count >= minimumPhotographs else {
             throw SaverError.tooFewPhotographs(index.entries.count)
         }
-        let pool = index.pool(size: MosaicEngine.maximumPoolSize, seed: seed)
+        let shared = SharedSettings.read()
+        let chosen = shared ?? .standard
+        let settings = MosaicSettings(rows: chosen.rows, cycleDuration: chosen.cycleDuration)
+        let pool = index.pool(size: preview ? previewPoolSize : MosaicEngine.maximumPoolSize, seed: seed)
         let planner = SolvedMosaicPlanner(catalog: IndexedTileCatalog(source: pool), seed: seed)
+        log.notice("""
+            \(chosen.rows, privacy: .public) rows, \(chosen.cycleDuration, format: .fixed(precision: 0), privacy: .public) s a cycle\
+            \(shared == nil ? " (standard: no settings from the app)" : "", privacy: .public)
+            """)
 
         // The GPU driving the display: with an eGPU attached, the system
         // default is not necessarily it.
@@ -244,6 +283,11 @@ final class MosaicSaverView: ScreenSaverView {
             system default GPU \(MTLCreateSystemDefaultDevice()?.name ?? "none", privacy: .public), \
             display's GPU \(device.name, privacy: .public)
             """)
+        guard !preview else {
+            // Nothing in a preview grows past a slice of the atlas.
+            let engine = try MosaicEngine(device: device, settings: settings, source: pool, planner: planner, seed: seed)
+            return (engine, nil)
+        }
         // No originals here: the close-ups come from the shelf the app
         // stocks, and from the thumbnails where it has a gap.
         let shelf = CloseUpShelf(
@@ -254,6 +298,7 @@ final class MosaicSaverView: ScreenSaverView {
         let closeUps = ShelvedPhotoSource(index: pool, shelf: shelf)
         let engine = try MosaicEngine(
             device: device,
+            settings: settings,
             source: pool,
             planner: planner,
             seed: seed,
@@ -320,6 +365,91 @@ final class MosaicSaverView: ScreenSaverView {
         engine?.resize(drawableSize())
     }
 
+    // MARK: Options
+
+    /// Settings live in the app (milestone 5): the sheet says what the saver
+    /// will show, and opens the app to change it.
+    override var hasConfigureSheet: Bool { true }
+
+    private var optionsSheet: NSWindow?
+
+    override var configureSheet: NSWindow? {
+        let sheet = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 400, height: 10),
+            styleMask: [.titled], backing: .buffered, defer: true
+        )
+        let title = NSTextField(labelWithString: "Mosaic")
+        title.font = .boldSystemFont(ofSize: NSFont.systemFontSize + 2)
+        let status = NSTextField(wrappingLabelWithString: Self.indexStatus())
+        let settings = SharedSettings.read() ?? .standard
+        let effect = NSTextField(labelWithString: "\(settings.rows) rows, \(Int(settings.cycleDuration)) seconds a photograph.")
+        let note = NSTextField(wrappingLabelWithString: "The photographs and the settings are chosen in the Mosaic app.")
+        note.textColor = .secondaryLabelColor
+        note.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+
+        let open = NSButton(title: "Open Mosaic…", target: self, action: #selector(openApp(_:)))
+        let done = NSButton(title: "Done", target: self, action: #selector(closeOptions(_:)))
+        done.keyEquivalent = "\r"
+        let buttons = NSStackView(views: [open, NSView(), done])
+        buttons.distribution = .fill
+
+        let stack = NSStackView(views: [title, status, effect, note, buttons])
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 10
+        stack.edgeInsets = NSEdgeInsets(top: 20, left: 20, bottom: 20, right: 20)
+        stack.setCustomSpacing(18, after: note)
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        buttons.translatesAutoresizingMaskIntoConstraints = false
+        let content = NSView()
+        content.addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.leadingAnchor.constraint(equalTo: content.leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: content.trailingAnchor),
+            stack.topAnchor.constraint(equalTo: content.topAnchor),
+            stack.bottomAnchor.constraint(equalTo: content.bottomAnchor),
+            content.widthAnchor.constraint(equalToConstant: 400),
+            buttons.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -40),
+        ])
+        sheet.contentView = content
+        optionsSheet = sheet
+        return sheet
+    }
+
+    /// What the index holds, read now: the app may have changed it since the
+    /// saver last ran.
+    private static func indexStatus() -> String {
+        let store = PhotoIndexStore(directory: SharedLocations.indexDirectory)
+        guard let manifest = try? store.load(), !manifest.entries.isEmpty else {
+            return "No photographs yet. Open Mosaic to choose them."
+        }
+        var text = "\(manifest.entries.count) photographs"
+        if let date = try? store.manifestURL.resourceValues(forKeys: [.contentModificationDateKey])
+            .contentModificationDate {
+            text += ", updated \(date.formatted(date: .abbreviated, time: .shortened))"
+        }
+        if manifest.entries.count < minimumPhotographs {
+            text += ": Mosaic needs at least \(minimumPhotographs)"
+        }
+        return text + "."
+    }
+
+    @objc private func openApp(_ sender: Any?) {
+        let opened = NSWorkspace.shared.open(MosaicURL.open.url)
+        Self.log.notice("options: opened the app, \(opened ? "done" : "failed", privacy: .public)")
+        closeOptions(sender)
+    }
+
+    @objc private func closeOptions(_ sender: Any?) {
+        guard let sheet = optionsSheet else { return }
+        if let parent = sheet.sheetParent {
+            parent.endSheet(sheet)
+        } else {
+            sheet.close()
+        }
+        optionsSheet = nil
+    }
+
     // MARK: Messages
 
     private func show(_ text: String) {
@@ -336,6 +466,37 @@ final class MosaicSaverView: ScreenSaverView {
             label.widthAnchor.constraint(lessThanOrEqualTo: widthAnchor, multiplier: 0.8),
         ])
         message = label
+    }
+
+    /// Why the app should be called, if it can help: only for an index that
+    /// is missing or too small. Keeping an index fresh is the login item's
+    /// job, not the saver's (spike 4): a saver that started PhotoKit work on
+    /// every run would compete with itself.
+    private static func updateReason(for error: Error?) -> String? {
+        switch error {
+        case PhotoIndexError.missing?: return "index-missing"
+        case SaverError.tooFewPhotographs?: return "too-few-photographs"
+        default: return nil
+        }
+    }
+
+    /// The process outlives a run (spike 4), so this spans runs: at most one
+    /// call an hour, whatever the app makes of it.
+    private static var lastUpdateCall: TimeInterval?
+    private static let updateCallInterval: TimeInterval = 3600
+
+    private static func askForUpdate(reason: String) {
+        let now = ProcessInfo.processInfo.systemUptime
+        if let lastUpdateCall, now - lastUpdateCall < updateCallInterval {
+            log.notice("not calling the app again so soon (\(reason, privacy: .public))")
+            return
+        }
+        lastUpdateCall = now
+        // A URL, not arguments, which are dropped on the way out of
+        // legacyScreenSaver; and the app is launched with its own Photos grant.
+        let url = MosaicURL.update(reason: reason).url
+        let opened = NSWorkspace.shared.open(url)
+        log.notice("called the app with \(url, privacy: .public): \(opened ? "opened" : "failed", privacy: .public)")
     }
 
     private static func explanation(of error: Error?) -> String {

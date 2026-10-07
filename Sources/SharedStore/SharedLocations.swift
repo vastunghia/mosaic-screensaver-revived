@@ -33,6 +33,11 @@ public enum SharedLocations {
         supportDirectory.appendingPathComponent("closeups", isDirectory: true)
     }
 
+    /// `R` and `T` as chosen in the app (`SharedSettings`).
+    public static var settingsFile: URL {
+        supportDirectory.appendingPathComponent("settings.json", isDirectory: false)
+    }
+
     /// The directory name is part of the contract, like the bundle identifiers
     /// in `scripts/identity.sh`: renaming it orphans every index already built.
     public static let directoryName = "Mosaic"

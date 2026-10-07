@@ -4,6 +4,7 @@ import MosaicPhotoKit
 import PhotoIndex
 import os
 import ServiceManagement
+import SharedStore
 
 /// What the app's window shows and does: the permission, the source, the index
 /// being built, the preferences, and the button that plays the effect.
@@ -26,6 +27,7 @@ final class AppModel: ObservableObject {
     @Published var preferences: AppPreferences {
         didSet {
             preferences.save()
+            if preferences.shared != oldValue.shared { shareSettings() }
             if preferences.source != oldValue.source || preferences.folder != oldValue.folder
                 || preferences.albumIdentifiers != oldValue.albumIdentifiers
                 || preferences.allowsDownloads != oldValue.allowsDownloads
@@ -68,7 +70,18 @@ final class AppModel: ObservableObject {
         preferences = AppPreferences.load()
         pendingSaverRequest = UserDefaults.standard.string(forKey: Self.pendingKey)
         refreshIndexedCount()
+        // Also at launch: the file may predate these settings, or be missing.
+        if SharedSettings.read() != preferences.shared { shareSettings() }
         if access.isGranted { accessGranted() }
+    }
+
+    /// `R` and `T` for the .saver, next to the index.
+    private func shareSettings() {
+        do {
+            try preferences.shared.write()
+        } catch {
+            Self.log.error("the screen saver's settings could not be written: \(error, privacy: .public)")
+        }
     }
 
     var canPlay: Bool { indexedCount >= Self.minimumPhotographs && !needsAccess }
@@ -106,11 +119,22 @@ final class AppModel: ObservableObject {
             Self.log.notice("no Photos grant, and nobody to ask: noted for the next time the window opens")
             pendingSaverRequest = reason
             UserDefaults.standard.set(reason, forKey: Self.pendingKey)
-            return
         }
         // A pass under way is as fresh as a new one would be: unlike a change
         // in the library, nothing has happened since it started.
         startIndexing()
+        if !isIndexing { quitIfIdle() }
+    }
+
+    /// Launched without a window and with nothing left to do: only a login
+    /// item stays, to keep watching the library. Without this, a call the app
+    /// could not act on — no grant, no folder — left it running unseen.
+    private func quitIfIdle() {
+        guard !foreground else { return }
+        refreshLoginItem()
+        guard !opensAtLogin else { return }
+        Self.log.notice("nothing left to do without a window: quitting")
+        NSApp.terminate(nil)
     }
 
     private static let pendingKey = "pendingSaverRequest"
@@ -326,14 +350,8 @@ final class AppModel: ObservableObject {
         refreshIndexedCount()
         if restartWhenDone {
             startIndexing()
-        } else if !foreground {
-            // Called by the .saver with nobody in front: done. Only a login
-            // item stays, to keep watching the library.
-            refreshLoginItem()
-            if !opensAtLogin {
-                Self.log.notice("nothing left to do without a window: quitting")
-                NSApp.terminate(nil)
-            }
+        } else {
+            quitIfIdle()
         }
     }
 
