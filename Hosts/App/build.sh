@@ -14,11 +14,13 @@ source scripts/sign.sh
 CONFIG="release"
 ARCHS=()
 UNIVERSAL=()
+INSTALL=0
 for argument in "$@"; do
     case "$argument" in
         --universal) ARCHS=(--arch arm64 --arch x86_64); UNIVERSAL=(--universal) ;;
+        --install) INSTALL=1 ;;
         debug|release) CONFIG="$argument" ;;
-        *) echo "usage: $0 [debug|release] [--universal]" >&2; exit 2 ;;
+        *) echo "usage: $0 [debug|release] [--universal] [--install]" >&2; exit 2 ;;
     esac
 done
 BUILD=".build/bundle"
@@ -83,5 +85,20 @@ echo "==> check"
 lipo -archs "$APP/Contents/MacOS/$APP_NAME"
 show_signature "$APP"
 echo "==> $APP"
+
+# The copy in /Applications is the one LaunchServices opens for mosaic://
+# and the one a login item should point at, so that is where a build goes to
+# be used rather than tried.
+if [ "$INSTALL" = 1 ]; then
+    DEST="/Applications/$APP_NAME.app"
+    if pgrep -xq "$APP_NAME"; then
+        osascript -e "tell application id \"$APP_BUNDLE_ID\" to quit" || true
+        for _ in $(seq 50); do pgrep -xq "$APP_NAME" || break; sleep 0.1; done
+    fi
+    rm -rf "$DEST"
+    ditto "$APP" "$DEST"
+    APP="$DEST"
+    echo "==> installed in $DEST; the app updates the screen saver from its window"
+fi
 echo "    open with:  open \"$APP\""
 echo "    full screen:  open \"$APP\" --args --full-screen"
