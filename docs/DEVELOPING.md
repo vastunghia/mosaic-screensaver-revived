@@ -20,7 +20,7 @@
 ./Hosts/App/build.sh --universal      # arm64 and x86_64
 ./Hosts/App/build.sh --install        # and copy it to /Applications
 ./Hosts/Saver/build.sh --install      # the screen saver alone, into ~/Library/Screen Savers
-./scripts/release.sh                  # universal, verified, on a disk image in .build/release
+./scripts/release.sh                  # universal, verified, on a disk image in .build/dist
 swift test
 ```
 

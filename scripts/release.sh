@@ -40,7 +40,8 @@ fi
 
 APP=".build/bundle/$APP_NAME.app"
 SAVER="$APP/Contents/Resources/$SAVER_NAME.saver"
-OUT=".build/release"
+# Not .build/release, which is SwiftPM's own build products.
+OUT=".build/dist"
 NAME="$APP_NAME-$VERSION"
 DMG="$OUT/$NAME.dmg"
 
