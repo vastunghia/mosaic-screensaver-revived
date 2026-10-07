@@ -21,6 +21,7 @@ struct AppView: View {
                 }
                 indexSection
                 effectSection
+                screenSaverSection
             }
             .formStyle(.grouped)
 
@@ -44,6 +45,7 @@ struct AppView: View {
         .frame(minWidth: 480, idealWidth: 520, minHeight: 560, idealHeight: 720)
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             model.refreshAccess()
+            model.refreshLoginItem()
         }
     }
 
@@ -113,6 +115,10 @@ struct AppView: View {
 
     @ViewBuilder
     private var accessRow: some View {
+        if let reason = model.pendingSaverRequest, !model.access.isGranted {
+            Label("The screen saver asked for photographs (\(reason)).", systemImage: "info.circle")
+                .foregroundStyle(.secondary)
+        }
         switch model.access {
         case .notDetermined:
             HStack {
@@ -202,6 +208,29 @@ struct AppView: View {
                         .frame(width: 36, alignment: .trailing)
                 }
             }
+        }
+    }
+
+    /// Whether the app keeps the index fresh on its own. The system's word is
+    /// the truth: the user can switch it off in System Settings.
+    private var screenSaverSection: some View {
+        Section {
+            Toggle("Open at login to keep the screen saver's photographs up to date", isOn: Binding(
+                get: { model.opensAtLogin },
+                set: { model.setOpensAtLogin($0) }
+            ))
+            if model.loginItem == .requiresApproval {
+                HStack {
+                    Text("Waiting for approval in System Settings.")
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Open Login Items…") { model.openLoginItemsSettings() }
+                }
+            }
+        } header: {
+            Text("Screen Saver")
+        } footer: {
+            Text("Mosaic then runs without a window, and the screen saver always has the latest photographs.")
         }
     }
 

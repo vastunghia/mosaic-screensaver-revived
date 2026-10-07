@@ -30,9 +30,10 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$(swift build -c "$CONFIG" --show-bin-path)/MosaicApp" "$APP/Contents/MacOS/$APP_NAME"
 cp "$BUILD/default.metallib" "$APP/Contents/Resources/default.metallib"
 
-# NSPhotoLibraryUsageDescription is here already, though nothing reads the
-# Photos library yet: the Info.plist of an app whose TCC identity has to stay
-# stable is not a file to keep changing.
+# The Info.plist of an app whose TCC identity has to stay stable is not a file
+# to keep changing. LSUIElement keeps the app out of the Dock until it opens a
+# window (launched at login it opens none); the URL scheme is how the .saver
+# calls it (spike 4, MosaicURL).
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -48,6 +49,14 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>CFBundleVersion</key><string>1</string>
     <key>LSMinimumSystemVersion</key><string>15.0</string>
     <key>NSHighResolutionCapable</key><true/>
+    <key>LSUIElement</key><true/>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key><string>$APP_BUNDLE_ID</string>
+            <key>CFBundleURLSchemes</key><array><string>mosaic</string></array>
+        </dict>
+    </array>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>Mosaic reads your photo library to build the screen saver's mosaics.</string>
 </dict>

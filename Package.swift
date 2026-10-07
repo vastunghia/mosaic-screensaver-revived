@@ -111,5 +111,6 @@ let package = Package(
         .testTarget(name: "PhotoIndexTests", dependencies: ["PhotoIndex", "MosaicPhotos", "MosaicCore"]),
         .testTarget(name: "MosaicEngineTests", dependencies: ["MosaicEngine", "MosaicSolver", "MosaicCore"]),
         .testTarget(name: "CycleEngineTests", dependencies: ["CycleEngine", "MosaicCore"]),
+        .testTarget(name: "SharedStoreTests", dependencies: ["SharedStore"]),
     ]
 )

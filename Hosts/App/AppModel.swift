@@ -3,6 +3,7 @@ import Foundation
 import MosaicPhotoKit
 import PhotoIndex
 import os
+import ServiceManagement
 
 /// What the app's window shows and does: the permission, the source, the index
 /// being built, the preferences, and the button that plays the effect.
@@ -12,6 +13,11 @@ import os
 /// its `isCancelled`. The effect can start before the index is finished — the
 /// original waited on "Creating photo database" until the end, which is the
 /// flaw this index exists to fix.
+///
+/// The model also runs with nobody in front of it: launched at login, or by
+/// the .saver through `mosaic://update`, the app has no window, and then it
+/// never asks for anything — a Photos prompt behind the screen saver would go
+/// unseen (spike 4). It notes that it was wanted and asks when a window opens.
 @MainActor
 final class AppModel: ObservableObject {
     /// The original would not start with fewer (SPEC § 5).
@@ -35,6 +41,11 @@ final class AppModel: ObservableObject {
     @Published private(set) var isIndexing = false
     @Published private(set) var progress: IndexProgress?
     @Published private(set) var lastError: String?
+    @Published private(set) var loginItem = SMAppService.mainApp.status
+
+    /// Why the .saver last called while there was no Photos grant, if it has
+    /// not been dealt with yet.
+    @Published private(set) var pendingSaverRequest: String?
 
     /// Photographs in the index on disk that belong to the current source.
     @Published private(set) var indexedCount = 0
@@ -43,8 +54,19 @@ final class AppModel: ObservableObject {
     private var changes: PhotoLibraryChanges?
     private var restartWhenDone = false
 
-    init() {
+    /// Whether a window is, or has been, open: someone may be looking.
+    private var foreground: Bool
+    private var albumsLoaded = false
+
+    /// Indexing blocks — `concurrentPerform`, synchronous PhotoKit, a first
+    /// fetch that waits minutes at login — so it runs on a queue of its own,
+    /// not on the cooperative pool, whose few threads it would hold.
+    private static let indexQueue = DispatchQueue(label: "mosaic.index")
+
+    init(foreground: Bool) {
+        self.foreground = foreground
         preferences = AppPreferences.load()
+        pendingSaverRequest = UserDefaults.standard.string(forKey: Self.pendingKey)
         refreshIndexedCount()
         if access.isGranted { accessGranted() }
     }
@@ -55,11 +77,84 @@ final class AppModel: ObservableObject {
         preferences.source == .photos && !access.isGranted
     }
 
+    // MARK: Who is in front
+
+    /// A window has opened: from now on there is someone to ask.
+    func windowOpened() {
+        foreground = true
+        refreshAccess()
+        refreshLoginItem()
+        if access.isGranted {
+            loadAlbums()
+        } else if pendingSaverRequest != nil, access == .notDetermined, preferences.source == .photos {
+            // The screen saver wanted photographs while nobody could answer.
+            requestAccess()
+        }
+    }
+
+    /// The window has closed and the app stays, as a login item: nobody to
+    /// ask any more, and the next pass yields to everything else again.
+    func windowClosed() {
+        foreground = false
+    }
+
+    /// `mosaic://update`, or a launch at login: bring the index up to date if
+    /// it can be done without asking anyone.
+    func updateRequested(reason: String) {
+        Self.log.notice("update requested: \(reason, privacy: .public)")
+        if needsAccess, !foreground {
+            Self.log.notice("no Photos grant, and nobody to ask: noted for the next time the window opens")
+            pendingSaverRequest = reason
+            UserDefaults.standard.set(reason, forKey: Self.pendingKey)
+            return
+        }
+        // A pass under way is as fresh as a new one would be: unlike a change
+        // in the library, nothing has happened since it started.
+        startIndexing()
+    }
+
+    private static let pendingKey = "pendingSaverRequest"
+
+    // MARK: Login item
+
+    /// Read from the system every time: the user can change it in System
+    /// Settings behind the app's back.
+    func refreshLoginItem() {
+        loginItem = SMAppService.mainApp.status
+    }
+
+    func setOpensAtLogin(_ on: Bool) {
+        do {
+            if on {
+                try SMAppService.mainApp.register()
+            } else {
+                try SMAppService.mainApp.unregister()
+            }
+            lastError = nil
+        } catch {
+            lastError = "\(error.localizedDescription)"
+        }
+        refreshLoginItem()
+        Self.log.notice("login item \(on ? "registered" : "unregistered", privacy: .public), status \(self.loginItem.rawValue, privacy: .public)")
+    }
+
+    var opensAtLogin: Bool {
+        loginItem == .enabled || loginItem == .requiresApproval
+    }
+
+    func openLoginItemsSettings() {
+        SMAppService.openSystemSettingsLoginItems()
+    }
+
     // MARK: Permission
 
     func requestAccess() {
         Task {
             access = await PhotoLibraryAccess.request()
+            if access != .notDetermined {
+                pendingSaverRequest = nil
+                UserDefaults.standard.removeObject(forKey: Self.pendingKey)
+            }
             if access.isGranted { accessGranted() }
         }
     }
@@ -78,7 +173,7 @@ final class AppModel: ObservableObject {
     }
 
     private func accessGranted() {
-        loadAlbums()
+        if foreground { loadAlbums() }
         if changes == nil {
             changes = PhotoLibraryChanges { [weak self] in
                 Task { @MainActor in self?.libraryChanged() }
@@ -87,13 +182,17 @@ final class AppModel: ObservableObject {
         if preferences.source == .photos { startIndexing() }
     }
 
+    /// Only for the window, which lists them: at login the first fetch can
+    /// wait minutes for the library to open.
     private func loadAlbums() {
-        Task.detached {
+        guard !albumsLoaded else { return }
+        albumsLoaded = true
+        DispatchQueue.global(qos: .userInitiated).async {
             let started = ProcessInfo.processInfo.systemUptime
             let albums = PhotoLibraryAccess.albums()
             let fetched = ProcessInfo.processInfo.systemUptime - started
             Self.log.notice("\(albums.count, privacy: .public) albums fetched in \(fetched, format: .fixed(precision: 2), privacy: .public) s")
-            await MainActor.run {
+            DispatchQueue.main.async {
                 let shown = ProcessInfo.processInfo.systemUptime
                 self.albums = albums
                 // The window lays the list out on the run loop's next pass;
@@ -150,45 +249,61 @@ final class AppModel: ObservableObject {
         cancel = flag
         isIndexing = true
         lastError = nil
-        Self.log.notice("indexing started")
         restartWhenDone = false
+        // Spike 4: with nobody watching, the index waits its turn behind
+        // whatever the user is doing — the screen saver included.
+        let qos: DispatchQoS.QoSClass = foreground ? .utility : .background
+        Self.log.notice("indexing started, \(self.foreground ? "utility" : "background", privacy: .public) QoS")
 
-        Task.detached { [weak self] in
-            do {
-                guard let indexable = try PhotoSourceFactory.indexable(options: options) else { return }
-                let builder = PhotoIndexBuilder(
-                    thumbnailWidth: options.thumbnailWidth, signatureSide: options.signatureSide,
-                    cropRule: options.cropRule
-                )
-                let store = PhotoIndexStore(directory: options.resolvedIndexDirectory)
-                _ = try builder.build(
-                    from: indexable.source,
-                    into: store,
-                    root: indexable.root,
-                    progress: { progress in
-                        Task { @MainActor in self?.progressed(progress) }
-                    },
-                    isCancelled: { flag.isSet }
-                )
-                // The .saver's close-ups, once the index is whole. The saver
-                // runs without them meanwhile, on enlarged thumbnails.
-                if !flag.isSet {
-                    Self.log.notice("close-ups started")
-                    let report = try options.closeUpShelf.stock(
-                        from: IndexedPhotoSource(store: store, originals: indexable.source),
-                        isCancelled: { flag.isSet }
-                    )
-                    Self.log.notice("""
-                        close-ups: \(report.made, privacy: .public) made, \(report.kept, privacy: .public) kept, \
-                        \(report.failed, privacy: .public) failed, \
-                        \(report.unavailable, privacy: .public) not on this Mac, \(report.removed, privacy: .public) removed
-                        """)
-                }
-                await self?.finished(error: nil)
-            } catch {
-                await self?.finished(error: error)
-            }
+        // Made here, on the main actor, so the queue's block holds no
+        // reference to the model of its own.
+        let progressed: @Sendable (IndexProgress) -> Void = { [weak self] progress in
+            Task { @MainActor in self?.progressed(progress) }
         }
+        let finished: @Sendable (Error?, Double) -> Void = { [weak self] error, seconds in
+            Task { @MainActor in self?.finished(error: error, seconds: seconds) }
+        }
+        Self.indexQueue.async(qos: DispatchQoS(qosClass: qos, relativePriority: 0)) {
+            let started = ProcessInfo.processInfo.systemUptime
+            var failure: Error?
+            do {
+                try Self.index(options: options, flag: flag, progress: progressed)
+            } catch {
+                failure = error
+            }
+            finished(failure, ProcessInfo.processInfo.systemUptime - started)
+        }
+    }
+
+    /// The index, then the .saver's close-ups once the index is whole. The
+    /// saver runs without them meanwhile, on enlarged thumbnails.
+    nonisolated private static func index(
+        options: Options, flag: CancelFlag, progress: @escaping @Sendable (IndexProgress) -> Void
+    ) throws {
+        guard let indexable = try PhotoSourceFactory.indexable(options: options) else { return }
+        let builder = PhotoIndexBuilder(
+            thumbnailWidth: options.thumbnailWidth, signatureSide: options.signatureSide,
+            cropRule: options.cropRule
+        )
+        let store = PhotoIndexStore(directory: options.resolvedIndexDirectory)
+        _ = try builder.build(
+            from: indexable.source,
+            into: store,
+            root: indexable.root,
+            progress: progress,
+            isCancelled: { flag.isSet }
+        )
+        guard !flag.isSet else { return }
+        log.notice("close-ups started")
+        let report = try options.closeUpShelf.stock(
+            from: IndexedPhotoSource(store: store, originals: indexable.source),
+            isCancelled: { flag.isSet }
+        )
+        log.notice("""
+            close-ups: \(report.made, privacy: .public) made, \(report.kept, privacy: .public) kept, \
+            \(report.failed, privacy: .public) failed, \
+            \(report.unavailable, privacy: .public) not on this Mac, \(report.removed, privacy: .public) removed
+            """)
     }
 
     func cancelIndexing() {
@@ -201,12 +316,25 @@ final class AppModel: ObservableObject {
         indexedCount = progress.completed - progress.skipped - progress.unavailable
     }
 
-    private func finished(error: Error?) {
+    private func finished(error: Error?, seconds: Double) {
         isIndexing = false
-        Self.log.notice("indexing finished\(error.map { ": \($0)" } ?? "", privacy: .public)")
+        Self.log.notice("""
+            indexing finished in \(seconds, format: .fixed(precision: 1), privacy: .public) s\
+            \(error.map { ": \($0)" } ?? "", privacy: .public)
+            """)
         if let error { lastError = "\(error)" }
         refreshIndexedCount()
-        if restartWhenDone { startIndexing() }
+        if restartWhenDone {
+            startIndexing()
+        } else if !foreground {
+            // Called by the .saver with nobody in front: done. Only a login
+            // item stays, to keep watching the library.
+            refreshLoginItem()
+            if !opensAtLogin {
+                Self.log.notice("nothing left to do without a window: quitting")
+                NSApp.terminate(nil)
+            }
+        }
     }
 
     /// What is on disk, for the current source. Also right while a build runs,

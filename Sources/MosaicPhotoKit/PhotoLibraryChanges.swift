@@ -11,6 +11,9 @@ import Photos
 ///
 /// Registering before the user has granted access would make PhotoKit ask, so
 /// the owner creates this only once access is settled.
+///
+/// Registering waits for the library to open, which at login took 69 s: it
+/// happens on the observer's own queue, never on the caller's thread.
 public final class PhotoLibraryChanges: NSObject, PHPhotoLibraryChangeObserver, @unchecked Sendable {
     private let quiet: TimeInterval
     private let handler: @Sendable () -> Void
@@ -21,7 +24,7 @@ public final class PhotoLibraryChanges: NSObject, PHPhotoLibraryChangeObserver, 
         self.quiet = quiet
         self.handler = handler
         super.init()
-        PHPhotoLibrary.shared().register(self)
+        queue.async { [self] in PHPhotoLibrary.shared().register(self) }
     }
 
     deinit {
