@@ -46,6 +46,7 @@ struct AppView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             model.refreshAccess()
             model.refreshLoginItem()
+            model.refreshSaver()
         }
     }
 
@@ -215,6 +216,7 @@ struct AppView: View {
     /// the truth: the user can switch it off in System Settings.
     private var screenSaverSection: some View {
         Section {
+            saverRow
             Toggle("Open at login to keep the screen saver's photographs up to date", isOn: Binding(
                 get: { model.opensAtLogin },
                 set: { model.setOpensAtLogin($0) }
@@ -231,6 +233,33 @@ struct AppView: View {
             Text("Screen Saver")
         } footer: {
             Text("Mosaic then runs without a window, and the screen saver always has the latest photographs.")
+        }
+    }
+
+    /// Whether the screen saver this app carries is the one installed.
+    @ViewBuilder
+    private var saverRow: some View {
+        switch model.saver {
+        case .unavailable:
+            EmptyView()
+        case .notInstalled:
+            HStack {
+                Text("The screen saver is not installed.")
+                Spacer()
+                Button("Install…") { model.installSaver() }
+            }
+        case .different:
+            HStack {
+                Label("The installed screen saver is not this version", systemImage: "arrow.triangle.2.circlepath")
+                Spacer()
+                Button("Update") { model.installSaver() }
+            }
+        case .installed:
+            HStack {
+                Label("Screen saver installed", systemImage: "checkmark.circle")
+                Spacer()
+                Button("Open Screen Saver Settings…") { model.openScreenSaverSettings() }
+            }
         }
     }
 

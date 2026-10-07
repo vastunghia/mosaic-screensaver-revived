@@ -44,6 +44,7 @@ final class AppModel: ObservableObject {
     @Published private(set) var progress: IndexProgress?
     @Published private(set) var lastError: String?
     @Published private(set) var loginItem = SMAppService.mainApp.status
+    @Published private(set) var saver = SaverInstaller.State.unavailable
 
     /// Why the .saver last called while there was no Photos grant, if it has
     /// not been dealt with yet.
@@ -97,6 +98,7 @@ final class AppModel: ObservableObject {
         foreground = true
         refreshAccess()
         refreshLoginItem()
+        refreshSaver()
         if access.isGranted {
             loadAlbums()
         } else if pendingSaverRequest != nil, access == .notDetermined, preferences.source == .photos {
@@ -138,6 +140,28 @@ final class AppModel: ObservableObject {
     }
 
     private static let pendingKey = "pendingSaverRequest"
+
+    // MARK: Screen saver
+
+    /// Read from disk every time: the user can remove it in System Settings.
+    func refreshSaver() {
+        saver = SaverInstaller.state
+    }
+
+    /// Installs or updates the saver, then shows where it is chosen.
+    func installSaver() {
+        do {
+            try SaverInstaller.install { SaverInstaller.openSettings() }
+            lastError = nil
+        } catch {
+            lastError = "The screen saver could not be installed: \(error.localizedDescription)"
+        }
+        refreshSaver()
+    }
+
+    func openScreenSaverSettings() {
+        SaverInstaller.openSettings()
+    }
 
     // MARK: Login item
 

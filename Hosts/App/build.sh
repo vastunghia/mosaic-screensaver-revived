@@ -24,11 +24,17 @@ mkdir -p "$BUILD"
 xcrun -sdk macosx metal -c Sources/MosaicRender/Shaders.metal -o "$BUILD/Shaders.air"
 xcrun -sdk macosx metallib "$BUILD/Shaders.air" -o "$BUILD/default.metallib"
 
+# The app carries the screen saver and installs it (milestone 5): built and
+# signed on its own first, then sealed into the app as a resource.
+echo "==> screen saver"
+./Hosts/Saver/build.sh "$CONFIG"
+
 echo "==> bundle"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$(swift build -c "$CONFIG" --show-bin-path)/MosaicApp" "$APP/Contents/MacOS/$APP_NAME"
 cp "$BUILD/default.metallib" "$APP/Contents/Resources/default.metallib"
+cp -R "$BUILD/$SAVER_NAME.saver" "$APP/Contents/Resources/"
 
 # The Info.plist of an app whose TCC identity has to stay stable is not a file
 # to keep changing. LSUIElement keeps the app out of the Dock until it opens a
