@@ -141,12 +141,22 @@ do {
     }
 
     if let directory = options.exportDirectory {
+        // A loop that did not take would export cycles that do not close:
+        // nothing at all is the honest result.
+        guard options.loop.isEmpty || planning.planner is LoopingPlanner else {
+            print("error: --loop was not usable (see the warning above); nothing exported")
+            exit(1)
+        }
         try CycleExporter.export(
             to: directory,
             frames: options.exportFrames,
             width: options.exportWidth,
             settings: options.settings,
-            startCycle: options.exportCycle,
+            // One round of a loop, from the first cycle whose subject has one
+            // before it: cycle 0 has no anchor.
+            startCycle: options.loop.isEmpty ? options.exportCycle : options.loop.count,
+            cycles: max(1, options.loop.count),
+            closing: !options.loop.isEmpty,
             device: device,
             library: library,
             source: photos.source,

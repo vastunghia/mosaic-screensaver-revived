@@ -37,6 +37,17 @@ enum PlannerFactory {
             notes.append("\(indexed.entries.count - solved.poolSize) photographs have no signature and were left out")
         }
 
+        if !options.loop.isEmpty {
+            let ring = options.loop.map(PhotoID.init)
+            let missing = options.loop.filter { indexed.signature(for: PhotoID($0)) == nil }
+            guard missing.isEmpty, ring.count >= 2, Set(ring).count == ring.count else {
+                notes.append("WARNING: --loop needs two or more different photographs of the pool; not in it: \(missing.joined(separator: ", "))")
+                return Resolved(planner: solved, notes: notes)
+            }
+            notes.append("loop: \(options.loop.joined(separator: " → ")) → \(options.loop[0]) …")
+            return Resolved(planner: LoopingPlanner(inner: solved, ring: ring, seed: options.seed), notes: notes)
+        }
+
         guard let wanted = options.subject else {
             return Resolved(planner: solved, notes: notes)
         }

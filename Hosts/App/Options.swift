@@ -109,6 +109,9 @@ struct Options {
     var exportMosaic: URL?
     var randomTiles = false
     var subject: String?
+    /// Subjects that come round again, for a video that loops: with
+    /// `--export-cycle`, the export is one round of them (`LoopingPlanner`).
+    var loop: [String] = []
 
     // The quality knobs. They are options and not constants because milestone 2
     // exists to settle them by looking at exports.
@@ -287,6 +290,7 @@ struct Options {
                 options.closeUpOptions.ring = max(0, next().flatMap(Int.init) ?? options.closeUpOptions.ring)
             case "--export-mosaic": options.exportMosaic = path()
             case "--subject": options.subject = next()
+            case "--loop": options.loop = next()?.split(separator: ",").map(String.init) ?? []
             case "--random-tiles": options.randomTiles = true
             case "--k": options.detail = next().flatMap(Int.init) ?? options.detail
             case "--spacing": options.spacing = next().flatMap(Int.init) ?? options.spacing

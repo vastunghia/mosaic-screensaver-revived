@@ -149,3 +149,47 @@ struct MosaicPlannerTests {
         #expect(planner.poolSize == 27)
     }
 }
+
+@Suite("Looping planner")
+struct LoopingPlannerTests {
+    private let ring = ["tile-000", "tile-123", "tile-330"].map(PhotoID.init)
+
+    @Test("the subjects come round in the ring's order")
+    func subjectsCycle() {
+        let planner = LoopingPlanner(inner: SolvedMosaicPlanner(catalog: lattice(perAxis: 4)), ring: ring, seed: 7)
+        for index in 0..<12 {
+            #expect(planner.subject(ofCycle: index) == ring[index % ring.count])
+        }
+    }
+
+    @Test("a cycle and the one a ring later are the same mosaic, whatever seed the engine passes")
+    func onceRoundIsTheSame() throws {
+        // What makes the video loop: the engine seeds each cycle by its number,
+        // and the planner has to make that not matter.
+        let planner = LoopingPlanner(inner: SolvedMosaicPlanner(catalog: lattice(perAxis: 4)), ring: ring, seed: 7)
+        for index in 3..<6 {
+            let first = try planner.plan(
+                rows: 12, subject: planner.subject(ofCycle: index),
+                previousSubject: planner.subject(ofCycle: index - 1), seed: UInt64(index) &* 0x2545_F491
+            )
+            let again = try planner.plan(
+                rows: 12, subject: planner.subject(ofCycle: index + ring.count),
+                previousSubject: planner.subject(ofCycle: index + ring.count - 1),
+                seed: UInt64(index + ring.count) &* 0x2545_F491
+            )
+            #expect(first.layout == again.layout, "cycle \(index)")
+        }
+    }
+
+    @Test("each place in the ring has a mosaic of its own")
+    func placesDiffer() throws {
+        let planner = LoopingPlanner(inner: SolvedMosaicPlanner(catalog: lattice(perAxis: 4)), ring: ring, seed: 7)
+        let layouts = try (3..<6).map { index in
+            try planner.plan(
+                rows: 12, subject: planner.subject(ofCycle: index),
+                previousSubject: planner.subject(ofCycle: index - 1), seed: 0
+            ).layout
+        }
+        #expect(layouts[0] != layouts[1] && layouts[1] != layouts[2])
+    }
+}

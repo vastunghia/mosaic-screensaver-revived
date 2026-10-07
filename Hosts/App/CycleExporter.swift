@@ -21,6 +21,8 @@ enum CycleExporter {
         width: Int,
         settings: MosaicSettings,
         startCycle: Int,
+        cycles: Int = 1,
+        closing: Bool = false,
         device: MTLDevice,
         library: MTLLibrary,
         source: any PhotoSource,
@@ -52,17 +54,11 @@ enum CycleExporter {
         let bytesPerRow = width * 4
         var pixels = [UInt8](repeating: 0, count: bytesPerRow * height)
 
-        print("exporting \(frames) frames of \(width)x\(height) to \(directory.path)")
+        print("exporting \(frames * cycles) frames of \(width)x\(height) to \(directory.path)\(cycles > 1 ? ", \(cycles) cycles" : "")")
         print("GPU: \(engine.deviceName)")
 
-        for frame in 0..<frames {
-            // The last frame of a cycle is the first of the next one, so the
-            // sequence stops just short of it: exporting both would look like a
-            // duplicate rather than like continuity.
-            let u = Double(frame) / Double(frames)
-            let time = (Double(startCycle) + u) * settings.cycleDuration
+        func write(at time: TimeInterval, to name: String) throws {
             engine.renderFrame(at: time, into: texture)
-
             pixels.withUnsafeMutableBytes { raw in
                 texture.getBytes(
                     raw.baseAddress!,
@@ -71,9 +67,24 @@ enum CycleExporter {
                     mipmapLevel: 0
                 )
             }
+            try PNGWriter.write(pixels: pixels, width: width, height: height, to: directory.appendingPathComponent(name))
+        }
 
-            let url = directory.appendingPathComponent(String(format: "%04d.png", frame))
-            try PNGWriter.write(pixels: pixels, width: width, height: height, to: url)
+        // The last frame of a cycle is the first of the next one, so each
+        // cycle stops just short of it: exporting both would look like a
+        // duplicate rather than like continuity. Numbered on across cycles.
+        for cycle in 0..<cycles {
+            for frame in 0..<frames {
+                let u = Double(frame) / Double(frames)
+                let time = (Double(startCycle + cycle) + u) * settings.cycleDuration
+                try write(at: time, to: String(format: "%04d.png", cycle * frames + frame))
+            }
+        }
+
+        // The frame the sequence would go on to, which a loop has to match
+        // with its first, byte for byte.
+        if closing {
+            try write(at: Double(startCycle + cycles) * settings.cycleDuration, to: "closing.png")
         }
 
         print("done: \(directory.path)")
