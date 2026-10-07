@@ -30,23 +30,59 @@ enum MosaicApplication {
         exit(0)
     }
 
+    /// The menu bar a Mac app is expected to have (HIG, "The menu bar"):
+    /// every command of the window is here too, with its shortcut.
     static func mainMenu() -> NSMenu {
         let menu = NSMenu()
-        let appItem = NSMenuItem()
-        menu.addItem(appItem)
-        let appMenu = NSMenu()
-        appMenu.addItem(withTitle: "Hide Mosaic", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
-        appMenu.addItem(.separator())
-        appMenu.addItem(withTitle: "Quit Mosaic", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
-        appItem.submenu = appMenu
 
-        let windowItem = NSMenuItem()
-        menu.addItem(windowItem)
-        let windowMenu = NSMenu(title: "Window")
-        windowMenu.addItem(withTitle: "Close", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
-        windowMenu.addItem(withTitle: "Minimize", action: #selector(NSWindow.miniaturize(_:)), keyEquivalent: "m")
-        windowItem.submenu = windowMenu
+        let app = submenu(of: menu, titled: "Mosaic")
+        app.addItem(withTitle: "About Mosaic",
+                    action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        app.addItem(.separator())
+        app.addItem(withTitle: "Settings…", action: #selector(AppDelegate.showSettings(_:)), keyEquivalent: ",")
+        app.addItem(.separator())
+        app.addItem(withTitle: "Hide Mosaic", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
+        let hideOthers = app.addItem(withTitle: "Hide Others",
+                                     action: #selector(NSApplication.hideOtherApplications(_:)), keyEquivalent: "h")
+        hideOthers.keyEquivalentModifierMask = [.command, .option]
+        app.addItem(withTitle: "Show All", action: #selector(NSApplication.unhideAllApplications(_:)), keyEquivalent: "")
+        app.addItem(.separator())
+        app.addItem(withTitle: "Quit Mosaic", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+
+        let file = submenu(of: menu, titled: "File")
+        file.addItem(withTitle: "Close", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+
+        // The album search field needs it to paste.
+        let edit = submenu(of: menu, titled: "Edit")
+        edit.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
+        edit.addItem(withTitle: "Redo", action: Selector(("redo:")), keyEquivalent: "Z")
+        edit.addItem(.separator())
+        edit.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        edit.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        edit.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        edit.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+
+        // As in Music: Play lives in Controls.
+        let controls = submenu(of: menu, titled: "Controls")
+        controls.addItem(withTitle: "Play", action: #selector(AppDelegate.play(_:)), keyEquivalent: "\r")
+        controls.addItem(withTitle: "Update Photographs",
+                         action: #selector(AppDelegate.updatePhotographs(_:)), keyEquivalent: "r")
+
+        let window = submenu(of: menu, titled: "Window")
+        window.addItem(withTitle: "Minimize", action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
+        window.addItem(withTitle: "Zoom", action: #selector(NSWindow.performZoom(_:)), keyEquivalent: "")
+        window.addItem(.separator())
+        window.addItem(withTitle: "Bring All to Front", action: #selector(NSApplication.arrangeInFront(_:)), keyEquivalent: "")
+        NSApp.windowsMenu = window
         return menu
+    }
+
+    private static func submenu(of menu: NSMenu, titled title: String) -> NSMenu {
+        let item = NSMenuItem()
+        let submenu = NSMenu(title: title)
+        item.submenu = submenu
+        menu.addItem(item)
+        return submenu
     }
 }
 
@@ -60,6 +96,7 @@ enum MosaicApplication {
 @MainActor
 private final class AppDelegate: NSObject, NSApplicationDelegate {
     private var window: NSWindow?
+    private var settingsWindow: NSWindow?
     private var model: AppModel?
 
     private var launchedAtLogin = false
@@ -143,16 +180,8 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
             window.title = "Mosaic"
             window.isReleasedWhenClosed = false
             window.delegate = self
-            window.contentView = NSHostingView(rootView: AppView(model: model) { [weak window, weak model] in
-                guard let model else { return }
-                do {
-                    try Player.play(preferences: model.preferences, on: window?.screen)
-                } catch {
-                    let alert = NSAlert()
-                    alert.messageText = "The mosaic could not start."
-                    alert.informativeText = "\(error)"
-                    alert.runModal()
-                }
+            window.contentView = NSHostingView(rootView: AppView(model: model) { [weak self] in
+                self?.play(nil)
             })
             window.setFrameAutosaveName("Mosaic")
             window.center()
@@ -164,12 +193,60 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate(ignoringOtherApps: true)
     }
 
+    // MARK: Commands
+
+    @objc func play(_ sender: Any?) {
+        guard let model, model.canPlay else { return }
+        do {
+            try Player.play(preferences: model.preferences, on: window?.screen)
+        } catch {
+            let alert = NSAlert()
+            alert.messageText = "The mosaic could not start."
+            alert.informativeText = "\(error)"
+            alert.runModal()
+        }
+    }
+
+    @objc func updatePhotographs(_ sender: Any?) {
+        model?.startIndexing()
+    }
+
+    /// One pane, so no toolbar; titled "Mosaic Settings", and neither
+    /// minimised nor zoomed (HIG, "Settings").
+    @objc func showSettings(_ sender: Any?) {
+        guard let model else { return }
+        if settingsWindow == nil {
+            let controller = NSHostingController(rootView: SettingsView(model: model))
+            controller.sizingOptions = [.preferredContentSize]
+            let window = NSWindow(contentViewController: controller)
+            window.styleMask = [.titled, .closable]
+            window.title = "Mosaic Settings"
+            window.isReleasedWhenClosed = false
+            window.setFrameAutosaveName("Mosaic Settings")
+            window.center()
+            settingsWindow = window
+        }
+        settingsWindow?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
     /// A login item outlives its window, to keep watching the library; an app
     /// that is not one quits with it, as before.
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         guard let model else { return true }
         model.refreshLoginItem()
         return !model.opensAtLogin
+    }
+}
+
+extension AppDelegate: NSMenuItemValidation {
+    func validateMenuItem(_ item: NSMenuItem) -> Bool {
+        switch item.action {
+        case #selector(play(_:)): model?.canPlay ?? false
+        case #selector(updatePhotographs(_:)):
+            model.map { !$0.isIndexing && $0.hasPhotographs } ?? false
+        default: true
+        }
     }
 }
 

@@ -17,6 +17,7 @@ struct PhotographsStep: View {
             } else {
                 FolderRow(model: model)
             }
+            ProblemRow(model: model, place: .photographs)
         } header: {
             StepHeader(number: number, title: "Photographs", isDone: model.hasPhotographs)
         } footer: {

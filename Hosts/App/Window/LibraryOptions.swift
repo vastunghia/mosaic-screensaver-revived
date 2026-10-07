@@ -11,7 +11,7 @@ struct LibraryOptions: View {
         Section {
             HStack {
                 LabeledContent("Albums") {
-                    Text(albumSummary)
+                    Text(model.albumSummary)
                         .lineLimit(1)
                         .truncationMode(.tail)
                 }
@@ -23,15 +23,14 @@ struct LibraryOptions: View {
                 Text("Most recent").tag(SubsetRule.recent)
                 Text("Spread over time").tag(SubsetRule.uniformInTime)
             }
-            Stepper(
-                "How many: \(model.preferences.subsetSize)",
-                value: $model.preferences.subsetSize,
-                in: 100...20_000,
-                step: 512
-            )
+            Picker("How many", selection: $model.preferences.subsetSize) {
+                ForEach(sizes, id: \.self) { size in
+                    Text(size.formatted()).tag(size)
+                }
+            }
             Toggle("Download photographs kept only in iCloud", isOn: $model.preferences.allowsDownloads)
         } header: {
-            Text("Photographs to use")
+            Text("Photographs to Use")
         } footer: {
             Footnote("No album chosen is the whole library; several are combined.")
         }
@@ -44,15 +43,11 @@ struct LibraryOptions: View {
         choosingAlbums = true
     }
 
-    /// One line, however many albums there are: the list itself lives in a
-    /// sheet. Laid out inline, a Form built one view per album at once, and on
-    /// a library with many albums that held the main thread — and the effect
-    /// drawn on it — for over ten seconds.
-    private var albumSummary: String {
-        let chosen = model.preferences.albumIdentifiers
-        if chosen.isEmpty { return "All photographs" }
-        let titles = model.albums.filter { chosen.contains($0.id) }.map(\.title)
-        if titles.isEmpty { return chosen.count == 1 ? "1 album" : "\(chosen.count) albums" }
-        return titles.joined(separator: ", ")
+    /// Powers of two from 512: more than 8,192 adds time and disk, not
+    /// variety. A size chosen before these existed stays on the list.
+    private var sizes: [Int] {
+        let presets = [512, 1_024, 2_048, 4_096, 8_192]
+        let current = model.preferences.subsetSize
+        return presets.contains(current) ? presets : (presets + [current]).sorted()
     }
 }

@@ -18,7 +18,7 @@ struct PhotosAccessRow: View {
                 Button("Allow Access…", action: model.requestAccess)
             }
         case .authorized:
-            Label("Access granted", systemImage: "checkmark.circle")
+            LabeledContent("Using", value: model.albumSummary)
         case .limited:
             HStack {
                 Label("Limited to the photographs you picked", systemImage: "circle.lefthalf.filled")

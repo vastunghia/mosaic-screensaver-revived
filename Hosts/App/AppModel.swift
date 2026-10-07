@@ -42,7 +42,7 @@ final class AppModel: ObservableObject {
     @Published private(set) var albums: [PhotoLibraryAccess.Album] = []
     @Published private(set) var isIndexing = false
     @Published private(set) var progress: IndexProgress?
-    @Published private(set) var lastError: String?
+    @Published private(set) var problem: Problem?
     @Published private(set) var loginItem = SMAppService.mainApp.status
     @Published private(set) var saver = SaverInstaller.State.unavailable
 
@@ -100,6 +100,25 @@ final class AppModel: ObservableObject {
     /// Step: enough of them indexed for the effect, and for the saver.
     var hasIndex: Bool { indexedCount >= Self.minimumPhotographs }
 
+    /// Every step done: the window shows a line of status instead of them.
+    /// Not while something went wrong, which belongs to a step.
+    var isSetUp: Bool {
+        !isTranslocated && hasPhotographs && hasIndex && saver == .installed && problem == nil
+    }
+
+    /// Which photographs of the library, in one line, however many albums
+    /// there are: the list itself lives in a sheet. Laid out inline, a Form
+    /// built one view per album at once, and on a library with many albums
+    /// that held the main thread — and the effect drawn on it — for over ten
+    /// seconds.
+    var albumSummary: String {
+        let chosen = preferences.albumIdentifiers
+        if chosen.isEmpty { return "All photographs" }
+        let titles = albums.filter { chosen.contains($0.id) }.map(\.title)
+        if titles.isEmpty { return chosen.count == 1 ? "1 album" : "\(chosen.count) albums" }
+        return titles.joined(separator: ", ")
+    }
+
     func moveToApplications() {
         cancelIndexing()
         Task {
@@ -107,16 +126,26 @@ final class AppModel: ObservableObject {
                 try await AppLocation.moveToApplications()
                 NSApp.terminate(nil)
             } catch {
-                lastError = """
+                report(.location, """
                     Mosaic could not be moved to Applications (\(error.localizedDescription)). \
                     Drag it there in the Finder, then open it again.
-                    """
+                    """)
             }
         }
     }
 
     var needsAccess: Bool {
         preferences.source == .photos && !access.isGranted
+    }
+
+    // MARK: Problems
+
+    private func report(_ place: Problem.Place, _ message: String) {
+        problem = Problem(place: place, message: message)
+    }
+
+    private func clearProblem(at place: Problem.Place) {
+        if problem?.place == place { problem = nil }
     }
 
     // MARK: Who is in front
@@ -176,15 +205,22 @@ final class AppModel: ObservableObject {
         saver = SaverInstaller.state
     }
 
-    /// Installs or updates the saver, then shows where it is chosen.
+    /// Installs or updates the saver, then shows where it is chosen. The
+    /// first time, Mosaic also starts opening at login, which is what keeps
+    /// the screen saver's photographs current; Settings turns it off.
     func installSaver() {
+        let first = saver == .notInstalled
         do {
             try SaverInstaller.install { SaverInstaller.openSettings() }
-            lastError = nil
+            clearProblem(at: .screenSaver)
         } catch {
-            lastError = "The screen saver could not be installed: \(error.localizedDescription)"
+            report(.screenSaver, "The screen saver could not be installed: \(error.localizedDescription)")
         }
         refreshSaver()
+        refreshLoginItem()
+        if first, saver == .installed, !isTranslocated, loginItem == .notRegistered {
+            setOpensAtLogin(true, reportingAt: .screenSaver)
+        }
     }
 
     func openScreenSaverSettings() {
@@ -199,16 +235,16 @@ final class AppModel: ObservableObject {
         loginItem = SMAppService.mainApp.status
     }
 
-    func setOpensAtLogin(_ on: Bool) {
+    func setOpensAtLogin(_ on: Bool, reportingAt place: Problem.Place = .settings) {
         do {
             if on {
                 try SMAppService.mainApp.register()
             } else {
                 try SMAppService.mainApp.unregister()
             }
-            lastError = nil
+            clearProblem(at: place)
         } catch {
-            lastError = "\(error.localizedDescription)"
+            report(place, "Mosaic could not \(on ? "be added to" : "be removed from") the login items: \(error.localizedDescription)")
         }
         refreshLoginItem()
         Self.log.notice("login item \(on ? "registered" : "unregistered", privacy: .public), status \(self.loginItem.rawValue, privacy: .public)")
@@ -324,7 +360,7 @@ final class AppModel: ObservableObject {
         let flag = CancelFlag()
         cancel = flag
         isIndexing = true
-        lastError = nil
+        clearProblem(at: .preparing)
         restartWhenDone = false
         // Spike 4: with nobody watching, the index waits its turn behind
         // whatever the user is doing — the screen saver included.
@@ -398,7 +434,9 @@ final class AppModel: ObservableObject {
             indexing finished in \(seconds, format: .fixed(precision: 1), privacy: .public) s\
             \(error.map { ": \($0)" } ?? "", privacy: .public)
             """)
-        if let error { lastError = "\(error)" }
+        if let error {
+            report(.preparing, "Preparing the photographs stopped: \(error.localizedDescription)")
+        }
         refreshIndexedCount()
         if restartWhenDone {
             startIndexing()

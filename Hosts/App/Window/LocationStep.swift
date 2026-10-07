@@ -13,6 +13,7 @@ struct LocationStep: View {
                 Spacer()
                 Button("Move to Applications", action: model.moveToApplications)
             }
+            ProblemRow(model: model, place: .location)
         } header: {
             StepHeader(number: number, title: "Applications", isDone: false)
         } footer: {

@@ -7,7 +7,7 @@ struct LoginItemOption: View {
 
     var body: some View {
         Section {
-            Toggle("Open at login to keep the screen saver's photographs up to date", isOn: Binding(
+            Toggle("Open at login", isOn: Binding(
                 get: { model.opensAtLogin },
                 set: { model.setOpensAtLogin($0) }
             ))
@@ -20,12 +20,13 @@ struct LoginItemOption: View {
                     Button("Open Login Items…", action: model.openLoginItemsSettings)
                 }
             }
+            ProblemRow(model: model, place: .settings)
         } header: {
-            Text("In the background")
+            Text("In the Background")
         } footer: {
             Footnote(model.isTranslocated
                  ? "Available once Mosaic is in Applications."
-                 : "Mosaic then runs without a window, and the screen saver always has the latest photographs.")
+                 : "Mosaic runs without a window and keeps the screen saver's photographs up to date.")
         }
     }
 }
