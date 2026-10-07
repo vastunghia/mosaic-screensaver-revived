@@ -271,6 +271,23 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// Quits and opens again: a Photos grant given in System Settings after a
+    /// refusal reaches only a new process.
+    func reopen() {
+        cancelIndexing()
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.createsNewApplicationInstance = true
+        NSWorkspace.shared.openApplication(at: Bundle.main.bundleURL, configuration: configuration) { _, error in
+            DispatchQueue.main.async {
+                if let error {
+                    Self.log.error("could not open Mosaic again: \(error, privacy: .public)")
+                } else {
+                    NSApp.terminate(nil)
+                }
+            }
+        }
+    }
+
     func openPrivacySettings() {
         if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Photos") {
             NSWorkspace.shared.open(url)

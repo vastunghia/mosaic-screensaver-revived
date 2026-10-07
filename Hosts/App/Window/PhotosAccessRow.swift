@@ -34,9 +34,15 @@ struct PhotosAccessRow: View {
                     Button("Open System Settings…", action: model.openPrivacySettings)
                 }
                 if model.access == .denied {
-                    Text("Turn Mosaic on under Photos, then come back here. A folder of photographs works too.")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
+                    // macOS gives the access to a Mosaic opened afresh, not to
+                    // this one: it says so itself, and offers to quit it.
+                    HStack {
+                        Text("Turn Mosaic on under Photos, then reopen it: the access starts with the next launch. A folder of photographs works too.")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Button("Reopen Mosaic", action: model.reopen)
+                    }
                 }
             }
         }

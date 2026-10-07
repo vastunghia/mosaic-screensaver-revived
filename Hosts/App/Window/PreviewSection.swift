@@ -17,15 +17,22 @@ struct PreviewSection: View {
     var body: some View {
         Section {
             ZStack(alignment: .bottomTrailing) {
-                if model.canPlay {
-                    LivePreview(preferences: model.preferences, isReady: model.canPlay, play: play)
+                // The index on disk is enough, as for the screen saver: also
+                // while the Photos grant is missing, which Play needs.
+                if model.hasIndex {
+                    LivePreview(preferences: model.preferences, isReady: model.hasIndex, play: play)
                         .accessibilityLabel("Preview of the mosaic")
                         .accessibilityAddTraits(.isButton)
                         .accessibilityAction(named: "Play", play)
-                    Button("Play", systemImage: "play.fill", action: play)
-                        .buttonStyle(.borderedProminent)
-                        .padding()
-                        .help("Full screen. Any key or click ends it.")
+                    // Full screen needs the library, for its close-ups. Without
+                    // it the button is not shown: disabled over a moving
+                    // mosaic it could not be read, and the step above says why.
+                    if model.canPlay {
+                        Button("Play", systemImage: "play.fill", action: play)
+                            .buttonStyle(.borderedProminent)
+                            .padding()
+                            .help("Full screen. Any key or click ends it.")
+                    }
                 } else {
                     Waiting()
                 }
