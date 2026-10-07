@@ -55,7 +55,7 @@ enum SaverInstaller {
         let staging = folder.appendingPathComponent(".\(saverName).\(UUID().uuidString)", isDirectory: true)
         try manager.copyItem(at: bundled, to: staging)
         do {
-            try removeQuarantine(from: staging)
+            try Quarantine.remove(from: staging)
             if replacing {
                 _ = try manager.replaceItemAt(installed, withItemAt: staging)
             } else {
@@ -91,25 +91,6 @@ enum SaverInstaller {
               let information = information as? [String: Any]
         else { return nil }
         return information[kSecCodeInfoUnique as String] as? Data
-    }
-
-    /// A downloaded app carries the quarantine attribute on every file inside
-    /// it, the saver included, and `copyItem` keeps it. A quarantined saver is
-    /// not loaded: Gatekeeper holds it behind a prompt of its own, raised from
-    /// inside the screen saver where nobody sees it (2026-10-07). The user has
-    /// already let this app run, and the saver is part of it.
-    private static func removeQuarantine(from bundle: URL) throws {
-        let attribute = "com.apple.quarantine"
-        var paths = [bundle.path]
-        if let contents = FileManager.default.enumerator(atPath: bundle.path) {
-            for case let relative as String in contents {
-                paths.append(bundle.appendingPathComponent(relative).path)
-            }
-        }
-        for path in paths where removexattr(path, attribute, XATTR_NOFOLLOW) != 0 && errno != ENOATTR {
-            throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno),
-                          userInfo: [NSFilePathErrorKey: path])
-        }
     }
 
     /// `legacyScreenSaver` keeps the saver it has loaded until it exits, and

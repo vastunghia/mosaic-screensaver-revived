@@ -85,7 +85,35 @@ final class AppModel: ObservableObject {
         }
     }
 
-    var canPlay: Bool { indexedCount >= Self.minimumPhotographs && !needsAccess }
+    var canPlay: Bool { hasIndex && !needsAccess }
+
+    // MARK: The steps of the window
+
+    /// Running from where the download was unpacked (`AppLocation`).
+    let isTranslocated = AppLocation.isTranslocated
+
+    /// Step: there are photographs to read.
+    var hasPhotographs: Bool {
+        preferences.hasSource && !needsAccess
+    }
+
+    /// Step: enough of them indexed for the effect, and for the saver.
+    var hasIndex: Bool { indexedCount >= Self.minimumPhotographs }
+
+    func moveToApplications() {
+        cancelIndexing()
+        Task {
+            do {
+                try await AppLocation.moveToApplications()
+                NSApp.terminate(nil)
+            } catch {
+                lastError = """
+                    Mosaic could not be moved to Applications (\(error.localizedDescription)). \
+                    Drag it there in the Finder, then open it again.
+                    """
+            }
+        }
+    }
 
     var needsAccess: Bool {
         preferences.source == .photos && !access.isGranted

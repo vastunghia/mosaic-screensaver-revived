@@ -91,6 +91,12 @@ struct AppPreferences {
     }
 
     /// Whether there is anything to index at all.
+    /// `rows` for a slider, which moves in doubles.
+    var rowsForSlider: Double {
+        get { Double(rows) }
+        set { rows = Int(newValue.rounded()) }
+    }
+
     var hasSource: Bool {
         source == .photos || folder != nil
     }
