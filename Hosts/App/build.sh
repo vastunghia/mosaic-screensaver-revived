@@ -11,13 +11,21 @@ cd "$(dirname "$0")/../.."
 source scripts/identity.sh
 source scripts/sign.sh
 
-CONFIG="${1:-release}"
+CONFIG="release"
+ARCHS=()
+UNIVERSAL=()
+for argument in "$@"; do
+    case "$argument" in
+        --universal) ARCHS=(--arch arm64 --arch x86_64); UNIVERSAL=(--universal) ;;
+        debug|release) CONFIG="$argument" ;;
+        *) echo "usage: $0 [debug|release] [--universal]" >&2; exit 2 ;;
+    esac
+done
 BUILD=".build/bundle"
 APP="$BUILD/$APP_NAME.app"
-TARGET="$(uname -m)-apple-macos15.0"
 
 echo "==> swift build ($CONFIG)"
-swift build -c "$CONFIG" --product MosaicApp
+swift build -c "$CONFIG" ${ARCHS[@]+"${ARCHS[@]}"} --product MosaicApp
 
 echo "==> shaders"
 mkdir -p "$BUILD"
@@ -27,12 +35,12 @@ xcrun -sdk macosx metallib "$BUILD/Shaders.air" -o "$BUILD/default.metallib"
 # The app carries the screen saver and installs it (milestone 5): built and
 # signed on its own first, then sealed into the app as a resource.
 echo "==> screen saver"
-./Hosts/Saver/build.sh "$CONFIG"
+./Hosts/Saver/build.sh "$CONFIG" ${UNIVERSAL[@]+"${UNIVERSAL[@]}"}
 
 echo "==> bundle"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp "$(swift build -c "$CONFIG" --show-bin-path)/MosaicApp" "$APP/Contents/MacOS/$APP_NAME"
+cp "$(swift build -c "$CONFIG" ${ARCHS[@]+"${ARCHS[@]}"} --show-bin-path)/MosaicApp" "$APP/Contents/MacOS/$APP_NAME"
 cp "$BUILD/default.metallib" "$APP/Contents/Resources/default.metallib"
 cp -R "$BUILD/$SAVER_NAME.saver" "$APP/Contents/Resources/"
 
@@ -51,8 +59,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
     <key>CFBundleName</key><string>$APP_NAME</string>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>0.1</string>
-    <key>CFBundleVersion</key><string>1</string>
+    <key>CFBundleShortVersionString</key><string>$VERSION</string>
+    <key>CFBundleVersion</key><string>$BUILD_NUMBER</string>
     <key>LSMinimumSystemVersion</key><string>15.0</string>
     <key>NSHighResolutionCapable</key><true/>
     <key>LSUIElement</key><true/>
@@ -72,6 +80,7 @@ PLIST
 sign_bundle "$APP"
 
 echo "==> check"
+lipo -archs "$APP/Contents/MacOS/$APP_NAME"
 show_signature "$APP"
 echo "==> $APP"
 echo "    open with:  open \"$APP\""

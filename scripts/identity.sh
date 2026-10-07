@@ -22,3 +22,9 @@ TEAM_ID="7PW62W8KVP"
 # Unified log subsystem. Inside the saver this is the only diagnostic channel
 # available: no stdout, no stderr.
 LOG_SUBSYSTEM="com.vastunghia.Mosaic"
+
+# Version, the same for the app and the saver they are built together. The
+# marketing version is the VERSION file at the root; the build number is the
+# commit count, so it only ever grows.
+VERSION="$(tr -d '[:space:]' < "$(dirname "${BASH_SOURCE[0]}")/../VERSION")"
+BUILD_NUMBER="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-list --count HEAD 2>/dev/null || echo 1)"

@@ -13,11 +13,13 @@ source scripts/sign.sh
 
 CONFIG="release"
 INSTALL=0
+ARCHS=()
 for argument in "$@"; do
     case "$argument" in
         --install) INSTALL=1 ;;
+        --universal) ARCHS=(--arch arm64 --arch x86_64) ;;
         debug|release) CONFIG="$argument" ;;
-        *) echo "usage: $0 [debug|release] [--install]" >&2; exit 2 ;;
+        *) echo "usage: $0 [debug|release] [--universal] [--install]" >&2; exit 2 ;;
     esac
 done
 
@@ -25,7 +27,7 @@ BUILD=".build/bundle"
 SAVER="$BUILD/$SAVER_NAME.saver"
 
 echo "==> swift build ($CONFIG)"
-swift build -c "$CONFIG" --product MosaicSaver
+swift build -c "$CONFIG" ${ARCHS[@]+"${ARCHS[@]}"} --product MosaicSaver
 
 echo "==> shaders"
 mkdir -p "$BUILD"
@@ -35,7 +37,7 @@ xcrun -sdk macosx metallib "$BUILD/Shaders.air" -o "$BUILD/default.metallib"
 echo "==> bundle"
 rm -rf "$SAVER"
 mkdir -p "$SAVER/Contents/MacOS" "$SAVER/Contents/Resources"
-cp "$(swift build -c "$CONFIG" --show-bin-path)/libMosaicSaver.dylib" "$SAVER/Contents/MacOS/$SAVER_NAME"
+cp "$(swift build -c "$CONFIG" ${ARCHS[@]+"${ARCHS[@]}"} --show-bin-path)/libMosaicSaver.dylib" "$SAVER/Contents/MacOS/$SAVER_NAME"
 cp "$BUILD/default.metallib" "$SAVER/Contents/Resources/default.metallib"
 
 cat > "$SAVER/Contents/Info.plist" <<PLIST
@@ -49,8 +51,8 @@ cat > "$SAVER/Contents/Info.plist" <<PLIST
     <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
     <key>CFBundleName</key><string>$SAVER_NAME</string>
     <key>CFBundlePackageType</key><string>BNDL</string>
-    <key>CFBundleShortVersionString</key><string>0.1</string>
-    <key>CFBundleVersion</key><string>1</string>
+    <key>CFBundleShortVersionString</key><string>$VERSION</string>
+    <key>CFBundleVersion</key><string>$BUILD_NUMBER</string>
     <key>LSMinimumSystemVersion</key><string>15.0</string>
     <key>NSPrincipalClass</key><string>MosaicSaverView</string>
 </dict>
