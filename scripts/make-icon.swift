@@ -2,6 +2,11 @@
 // and so on down to a pixel — the effect, zooming in, in one picture.
 //
 //     swift scripts/make-icon.swift <out.icns> [preview.png] [--tint <0...1>] [--side <pixels>] [--tiles <odd n>]
+//     swift scripts/make-icon.swift --thumbnail <directory>
+//
+// The second draws the screen saver's thumbnail for the Screen Saver settings,
+// thumbnail.png and thumbnail@2x.png: the same mosaic, its tiles the shape of
+// the whole, as on screen.
 //
 // The icon is drawn, not stored: the tile colours below are the only thing
 // to edit. They were sampled from a sunset gradient drafted with an image
@@ -74,20 +79,22 @@ func color(_ c: RGB, shade: CGFloat = 1) -> CGColor {
 /// The mosaic in `rect`, its centre tile the mosaic again until a tile is
 /// smaller than a pixel. Rows run top to bottom; the context's y runs up.
 func drawMosaic(in rect: CGRect, context: CGContext, pixel: CGFloat, towards target: RGB? = nil) {
-    let cell = rect.width / CGFloat(tiles)
+    // Tiles the shape of the whole, so that the centre one can hold it.
+    let width = rect.width / CGFloat(tiles), height = rect.height / CGFloat(tiles)
+    let grout = min(width, height) * groutShare
     for row in 0..<tiles {
         for column in 0..<tiles {
             let frame = CGRect(
-                x: rect.minX + CGFloat(column) * cell,
-                y: rect.maxY - CGFloat(row + 1) * cell,
-                width: cell, height: cell
+                x: rect.minX + CGFloat(column) * width,
+                y: rect.maxY - CGFloat(row + 1) * height,
+                width: width, height: height
             )
             var shown = paletteColour(row: row, column: column)
             if let target { shown = mix(shown, target, tint) }
             context.setFillColor(color(shown, shade: groutShade))
             context.fill(frame)
-            let tile = frame.insetBy(dx: cell * groutShare / 2, dy: cell * groutShare / 2)
-            if row == tiles / 2, column == tiles / 2, tile.width / CGFloat(tiles) >= pixel {
+            let tile = frame.insetBy(dx: grout / 2, dy: grout / 2)
+            if row == tiles / 2, column == tiles / 2, min(tile.width, tile.height) / CGFloat(tiles) >= pixel {
                 drawMosaic(in: tile, context: context, pixel: pixel, towards: shown)
             } else {
                 context.setFillColor(color(shown))
@@ -97,11 +104,15 @@ func drawMosaic(in rect: CGRect, context: CGContext, pixel: CGFloat, towards tar
     }
 }
 
-func render(side: Int) -> CGImage {
-    let context = CGContext(
-        data: nil, width: side, height: side, bitsPerComponent: 8, bytesPerRow: 0, space: space,
+func makeContext(width: Int, height: Int) -> CGContext {
+    CGContext(
+        data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0, space: space,
         bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
     )!
+}
+
+func render(side: Int) -> CGImage {
+    let context = makeContext(width: side, height: side)
     let scale = CGFloat(side) / canvas
     context.scaleBy(x: scale, y: scale)
     let shape = CGPath(roundedRect: body, cornerWidth: cornerRadius, cornerHeight: cornerRadius, transform: nil)
@@ -123,6 +134,16 @@ func render(side: Int) -> CGImage {
     return context.makeImage()!
 }
 
+/// The Screen Saver settings' thumbnail. The system's own savers carry one at
+/// 90 × 58 points, but macOS 15 shows it in a 100 × 66 box, enlarged and
+/// soft: drawn at the box's size it is sharp (measured on a screenshot of the
+/// settings, 2026-10-07).
+func renderThumbnail(scale: Int) -> CGImage {
+    let context = makeContext(width: 100 * scale, height: 66 * scale)
+    drawMosaic(in: CGRect(x: 0, y: 0, width: 100 * scale, height: 66 * scale), context: context, pixel: 1)
+    return context.makeImage()!
+}
+
 func writePNG(_ image: CGImage, to url: URL) {
     let destination = CGImageDestinationCreateWithURL(url as CFURL, UTType.png.identifier as CFString, 1, nil)!
     CGImageDestinationAddImage(destination, image, nil)
@@ -131,17 +152,25 @@ func writePNG(_ image: CGImage, to url: URL) {
 
 var arguments: [String] = []
 var previewSide = 1024
+var thumbnails: URL?
 var rest = CommandLine.arguments.makeIterator()
 while let argument = rest.next() {
     switch argument {
     case "--tint": tint = rest.next().flatMap(Double.init).map { CGFloat($0) } ?? tint
     case "--side": previewSide = rest.next().flatMap(Int.init) ?? previewSide
     case "--tiles": tiles = rest.next().flatMap(Int.init).map { max(3, $0 | 1) } ?? tiles
+    case "--thumbnail": thumbnails = rest.next().map { URL(fileURLWithPath: $0, isDirectory: true) }
     default: arguments.append(argument)
     }
 }
+if let thumbnails {
+    try FileManager.default.createDirectory(at: thumbnails, withIntermediateDirectories: true)
+    writePNG(renderThumbnail(scale: 1), to: thumbnails.appendingPathComponent("thumbnail.png"))
+    writePNG(renderThumbnail(scale: 2), to: thumbnails.appendingPathComponent("thumbnail@2x.png"))
+    if arguments.count < 2 { exit(0) }
+}
 guard arguments.count >= 2 else {
-    FileHandle.standardError.write("usage: make-icon.swift <out.icns> [preview.png] [--tint t] [--side n]\n".data(using: .utf8)!)
+    FileHandle.standardError.write("usage: make-icon.swift <out.icns> [preview.png] | --thumbnail <directory>\n".data(using: .utf8)!)
     exit(2)
 }
 let icns = URL(fileURLWithPath: arguments[1])
