@@ -39,9 +39,18 @@ xcrun -sdk macosx metallib "$BUILD/Shaders.air" -o "$BUILD/default.metallib"
 echo "==> screen saver"
 ./Hosts/Saver/build.sh "$CONFIG" ${UNIVERSAL[@]+"${UNIVERSAL[@]}"}
 
+# The icon is drawn by a script, and only again when the script changes:
+# compiling it takes a few seconds.
+ICON="$BUILD/AppIcon.icns"
+if [ ! -f "$ICON" ] || [ scripts/make-icon.swift -nt "$ICON" ]; then
+    echo "==> icon"
+    swift scripts/make-icon.swift "$ICON"
+fi
+
 echo "==> bundle"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+cp "$ICON" "$APP/Contents/Resources/AppIcon.icns"
 cp "$(swift build -c "$CONFIG" ${ARCHS[@]+"${ARCHS[@]}"} --show-bin-path)/MosaicApp" "$APP/Contents/MacOS/$APP_NAME"
 cp "$BUILD/default.metallib" "$APP/Contents/Resources/default.metallib"
 cp -R "$BUILD/$SAVER_NAME.saver" "$APP/Contents/Resources/"
@@ -57,6 +66,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <dict>
     <key>CFBundleDevelopmentRegion</key><string>en</string>
     <key>CFBundleExecutable</key><string>$APP_NAME</string>
+    <key>CFBundleIconFile</key><string>AppIcon</string>
     <key>CFBundleIdentifier</key><string>$APP_BUNDLE_ID</string>
     <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
     <key>CFBundleName</key><string>$APP_NAME</string>
