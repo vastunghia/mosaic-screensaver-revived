@@ -1,7 +1,7 @@
 # Mosaic
 
-**The Mosaic screen saver from Mac OS X Leopard, rebuilt from scratch for macOS 15 and
-later, on your own photographs.**
+The Mosaic screen saver from Mac OS X Leopard, rebuilt from scratch for macOS 15 and
+later, on your own photographs.
 
 <img src="docs/media/mosaic-loop.avif" width="640" alt="A photograph of a red teapot zooms out until it is one tile of a mosaic of sunflowers, which zooms out into a tree against the sky, then a red heart held in a hand, and back to the teapot.">
 
@@ -25,7 +25,7 @@ It shows its mosaic on the main display; other displays stay black.
 
 ## Installing
 
-1. Download **Mosaic-x.y.dmg** from the [latest release](https://github.com/vastunghia/mosaic-screensaver-revived/releases/latest),
+1. Download `Mosaic-x.y.dmg` from the [latest release](https://github.com/vastunghia/mosaic-screensaver-revived/releases/latest),
    open it and drag **Mosaic** to **Applications**.
 2. Open Mosaic from Applications. macOS says *"Mosaic" Not Opened*: choose **Done**.
 3. Open **System Settings › Privacy & Security**, scroll down to *"Mosaic" was blocked
