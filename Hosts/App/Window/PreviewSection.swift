@@ -41,9 +41,13 @@ struct PreviewSection: View {
             .clipShape(.rect(cornerRadius: 6))
             .listRowInsets(EdgeInsets())
         } footer: {
-            if let stepsToggle {
-                HStack {
-                    Spacer()
+            HStack {
+                // Under the mosaic it changes, so the options are found where
+                // they act; the menu item and ⌘, open the same window.
+                Button("Mosaic Settings…", systemImage: "gearshape", action: MosaicApplication.showSettings)
+                    .help("Rows, zoom duration and the photographs to use (⌘,)")
+                Spacer()
+                if let stepsToggle {
                     Button(stepsToggle.showing ? "Hide Setup Steps" : "Show Setup Steps", action: stepsToggle.action)
                         .buttonStyle(.link)
                 }

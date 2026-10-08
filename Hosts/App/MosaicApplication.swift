@@ -30,6 +30,11 @@ enum MosaicApplication {
         exit(0)
     }
 
+    /// The window's own way to Settings, besides the menu item and ⌘,.
+    static func showSettings() {
+        delegate?.showSettings(nil)
+    }
+
     /// The menu bar a Mac app is expected to have (HIG, "The menu bar"):
     /// every command of the window is here too, with its shortcut.
     static func mainMenu() -> NSMenu {

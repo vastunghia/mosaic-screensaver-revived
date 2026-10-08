@@ -20,7 +20,7 @@ struct ReadySection: View {
             HStack {
                 Text("Screen saver installed")
                 Spacer()
-                Button("Open Screen Saver Settings…", action: model.openScreenSaverSettings)
+                Button("Open System Settings…", action: model.openScreenSaverSettings)
             }
         } header: {
             Label {
@@ -30,7 +30,7 @@ struct ReadySection: View {
                     .foregroundStyle(.green)
             }
         } footer: {
-            Footnote("Mosaic keeps the photographs up to date. Choose it in the Screen Saver settings, under Other.")
+            Footnote("Mosaic keeps the photographs up to date. Choose it in System Settings, under Screen Saver › Other.")
         }
     }
 }
