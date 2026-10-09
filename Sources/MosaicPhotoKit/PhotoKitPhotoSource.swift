@@ -18,11 +18,13 @@ import Photos
 /// index is keyed by `PhotoKitPhotoSource.indexRoot` alone and changing the
 /// albums in scope reuses every photograph the two scopes share.
 public final class PhotoKitPhotoSource: PhotoSource, @unchecked Sendable {
-    /// Which part of the library. SPEC § 5: no albums means the whole library,
-    /// otherwise the union of the ones chosen.
+    /// Which part of the library. SPEC § 5: nothing chosen means the whole
+    /// library, otherwise the union of the albums and folders chosen. A folder
+    /// is read when the photographs are, so it brings whatever albums it holds
+    /// by then, in its subfolders too.
     public enum Scope: Equatable, Sendable {
         case library
-        case albums([String])
+        case collections([String])
     }
 
     /// What goes in the manifest's `root`.
@@ -179,15 +181,31 @@ public final class PhotoKitPhotoSource: PhotoSource, @unchecked Sendable {
         switch scope {
         case .library:
             return [PHAsset.fetchAssets(with: options)]
-        case .albums(let identifiers):
-            let collections = PHAssetCollection.fetchAssetCollections(
-                withLocalIdentifiers: identifiers, options: nil
-            )
-            var results: [PHFetchResult<PHAsset>] = []
-            collections.enumerateObjects { collection, _, _ in
-                results.append(PHAsset.fetchAssets(in: collection, options: options))
+        case .collections(let identifiers):
+            var albums: [PHAssetCollection] = []
+            var seen = Set<String>()
+            func add(_ album: PHAssetCollection) {
+                if seen.insert(album.localIdentifier).inserted { albums.append(album) }
             }
-            return results
+            PHAssetCollection.fetchAssetCollections(withLocalIdentifiers: identifiers, options: nil)
+                .enumerateObjects { album, _, _ in add(album) }
+            PHCollectionList.fetchCollectionLists(withLocalIdentifiers: identifiers, options: nil)
+                .enumerateObjects { folder, _, _ in Self.albums(in: folder).forEach(add) }
+            return albums.map { PHAsset.fetchAssets(in: $0, options: options) }
         }
+    }
+
+    /// The albums a folder holds, at any depth: the ones a user could pick
+    /// from it (`PhotoLibraryAccess.albumTree()`).
+    private static func albums(in folder: PHCollectionList) -> [PHAssetCollection] {
+        var found: [PHAssetCollection] = []
+        PHCollection.fetchCollections(in: folder, options: nil).enumerateObjects { collection, _, _ in
+            if let subfolder = collection as? PHCollectionList {
+                found += albums(in: subfolder)
+            } else if let album = collection as? PHAssetCollection, PhotoLibraryAccess.isPickable(album) {
+                found.append(album)
+            }
+        }
+        return found
     }
 }

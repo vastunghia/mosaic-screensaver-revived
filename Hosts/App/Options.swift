@@ -33,9 +33,9 @@ struct Options {
     /// to the terminal instead.
     var photosLibrary = false
     var albums: [String] = []
-    /// The same, by identifier: what the app's preferences hold, since a title
-    /// can be shared or renamed.
-    var albumIdentifiers: [String] = []
+    /// Albums and folders by identifier: what the app's preferences hold,
+    /// since a title can be shared or renamed.
+    var collectionIdentifiers: [String] = []
     /// Download photographs kept only in iCloud (SPEC § 5, off by default).
     var allowsDownloads = false
 

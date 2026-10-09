@@ -56,9 +56,9 @@ enum PhotoSourceFactory {
     static func indexable(options: Options) throws -> Indexable? {
         if options.photosLibrary {
             try authorizePhotos()
-            let scope = options.albumIdentifiers.isEmpty
+            let scope = options.collectionIdentifiers.isEmpty
                 ? try photoKitScope(albums: options.albums)
-                : .albums(options.albumIdentifiers)
+                : .collections(options.collectionIdentifiers)
             let library = PhotoKitPhotoSource(scope: scope, allowsNetworkAccess: options.allowsDownloads)
             return Indexable(
                 source: SubsetPhotoSource(
@@ -66,7 +66,7 @@ enum PhotoSourceFactory {
                 ),
                 root: PhotoKitPhotoSource.indexRoot,
                 name: options.albums.isEmpty
-                    ? (options.albumIdentifiers.isEmpty ? "the Photos library" : "the chosen albums")
+                    ? (options.collectionIdentifiers.isEmpty ? "the Photos library" : "the chosen albums and folders")
                     : options.albums.joined(separator: ", ")
             )
         }
@@ -153,7 +153,7 @@ enum PhotoSourceFactory {
         guard missing.isEmpty else {
             throw HarnessError.unknownAlbums(missing, known: albums.map(\.title))
         }
-        return .albums(chosen.map(\.id))
+        return .collections(chosen.map(\.id))
     }
 
     /// Builds or refreshes the index, printing progress.

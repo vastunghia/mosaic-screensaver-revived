@@ -29,7 +29,7 @@ final class AppModel: ObservableObject {
             preferences.save()
             if preferences.shared != oldValue.shared { shareSettings() }
             if preferences.source != oldValue.source || preferences.folder != oldValue.folder
-                || preferences.albumIdentifiers != oldValue.albumIdentifiers
+                || preferences.collectionIdentifiers != oldValue.collectionIdentifiers
                 || preferences.allowsDownloads != oldValue.allowsDownloads
                 || preferences.subsetRule != oldValue.subsetRule
                 || preferences.subsetSize != oldValue.subsetSize {
@@ -39,7 +39,7 @@ final class AppModel: ObservableObject {
     }
 
     @Published private(set) var access = PhotoLibraryAccess.status
-    @Published private(set) var albums: [PhotoLibraryAccess.Album] = []
+    @Published private(set) var albums = AlbumTree(roots: [])
     @Published private(set) var isIndexing = false
     @Published private(set) var progress: IndexProgress?
     @Published private(set) var problem: Problem?
@@ -112,9 +112,9 @@ final class AppModel: ObservableObject {
     /// that held the main thread — and the effect drawn on it — for over ten
     /// seconds.
     var albumSummary: String {
-        let chosen = preferences.albumIdentifiers
+        let chosen = preferences.collectionIdentifiers
         if chosen.isEmpty { return "All photographs" }
-        let titles = albums.filter { chosen.contains($0.id) }.map(\.title)
+        let titles = albums.titles(of: chosen)
         if titles.isEmpty { return chosen.count == 1 ? "1 album" : "\(chosen.count) albums" }
         return titles.joined(separator: ", ")
     }
@@ -318,9 +318,9 @@ final class AppModel: ObservableObject {
         albumsLoaded = true
         DispatchQueue.global(qos: .userInitiated).async {
             let started = ProcessInfo.processInfo.systemUptime
-            let albums = PhotoLibraryAccess.albums()
+            let albums = PhotoLibraryAccess.albumTree()
             let fetched = ProcessInfo.processInfo.systemUptime - started
-            Self.log.notice("\(albums.count, privacy: .public) albums fetched in \(fetched, format: .fixed(precision: 2), privacy: .public) s")
+            Self.log.notice("\(albums.albums.count, privacy: .public) albums fetched in \(fetched, format: .fixed(precision: 2), privacy: .public) s")
             DispatchQueue.main.async {
                 let shown = ProcessInfo.processInfo.systemUptime
                 self.albums = albums

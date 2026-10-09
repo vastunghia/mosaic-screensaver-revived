@@ -1,12 +1,13 @@
 import MosaicPhotoKit
 import SwiftUI
 
-/// The albums to draw the photographs from, in a sheet.
+/// The albums to draw the photographs from, in a sheet, in the folders Photos
+/// shows them in.
 ///
-/// A `List`, which on macOS is a table view and makes rows only for what is on
-/// screen, so a library with thousands of albums costs no more than one with
-/// ten. The choice is applied on Done, not on every click: each change of
-/// scope restarts the index.
+/// A `List`, which on macOS is a table view (an outline view, with folders)
+/// and makes rows only for what is on screen, so a library with thousands of
+/// albums costs no more than one with ten. The choice is applied on Done, not
+/// on every click: each change of scope restarts the index.
 struct AlbumPicker: View {
     @ObservedObject var model: AppModel
     @Environment(\.dismiss) private var dismiss
@@ -18,21 +19,25 @@ struct AlbumPicker: View {
             TextField("Search", text: $filter)
                 .textFieldStyle(.roundedBorder)
                 .padding()
-            List(shown) { album in
-                Toggle(isOn: Binding(
-                    get: { chosen.contains(album.id) },
-                    set: { if $0 { chosen.insert(album.id) } else { chosen.remove(album.id) } }
-                )) {
-                    HStack {
-                        Text(album.title)
-                        Spacer()
-                        Text("\(album.count)").foregroundStyle(.secondary).monospacedDigit()
+            if query.isEmpty {
+                List(model.albums.roots, children: \.children) { node in
+                    row(node)
+                }
+            } else {
+                List(model.albums.search(query)) { match in
+                    VStack(alignment: .leading, spacing: 2) {
+                        row(match.node)
+                        if !match.path.isEmpty {
+                            Text(match.path.joined(separator: " › "))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .padding(.leading, 20)
+                        }
                     }
                 }
-                .toggleStyle(.checkbox)
             }
             HStack {
-                Text(chosen.isEmpty ? "All photographs" : chosen.count == 1 ? "1 album" : "\(chosen.count) albums")
+                Text(summary)
                     .foregroundStyle(.secondary)
                 Button("Clear") { chosen = [] }
                     .disabled(chosen.isEmpty)
@@ -40,11 +45,11 @@ struct AlbumPicker: View {
                 Button("Cancel", role: .cancel) { dismiss() }
                     .keyboardShortcut(.cancelAction)
                 Button("Done") {
-                    // In the order the albums are listed, so an unchanged choice
-                    // compares equal and does not restart the index.
-                    let ordered = model.albums.map(\.id).filter(chosen.contains)
-                    if Set(ordered) != Set(model.preferences.albumIdentifiers) {
-                        model.preferences.albumIdentifiers = ordered
+                    // In the order the sidebar lists them, so an unchanged
+                    // choice compares equal and does not restart the index.
+                    let ordered = model.albums.ordered(chosen)
+                    if Set(ordered) != Set(model.preferences.collectionIdentifiers) {
+                        model.preferences.collectionIdentifiers = ordered
                     }
                     dismiss()
                 }
@@ -52,13 +57,53 @@ struct AlbumPicker: View {
             }
             .padding()
         }
-        .frame(width: 420, height: 520)
-        .onAppear { chosen = Set(model.preferences.albumIdentifiers) }
+        .frame(width: 460, height: 560)
+        .onAppear { chosen = Set(model.preferences.collectionIdentifiers) }
     }
 
-    private var shown: [PhotoLibraryAccess.Album] {
-        let query = filter.trimmingCharacters(in: .whitespaces)
-        guard !query.isEmpty else { return model.albums }
-        return model.albums.filter { $0.title.localizedStandardContains(query) }
+    private func row(_ node: AlbumTree.Node) -> some View {
+        let state = model.albums.state(of: node.id, in: chosen)
+        // A checkbox shows a mixed state only when its sources disagree.
+        let values = state == .mixed ? [true, false] : [state == .on]
+        let sources = values.indices.map { index in
+            Binding(get: { values[index] }, set: { set(node.id, on: $0) })
+        }
+        return Toggle(sources: sources, isOn: \.self) {
+            HStack {
+                Label(node.title, systemImage: symbol(for: node.kind))
+                Spacer()
+                Text("\(node.count)").foregroundStyle(.secondary).monospacedDigit()
+            }
+        }
+        .toggleStyle(.checkbox)
+    }
+
+    /// Called once per source, so it only acts when the state has to change.
+    private func set(_ id: String, on: Bool) {
+        let isOn = model.albums.state(of: id, in: chosen) == .on
+        guard on != isOn else { return }
+        chosen = model.albums.toggling(id, in: chosen)
+    }
+
+    private func symbol(for kind: AlbumTree.Kind) -> String {
+        switch kind {
+        case .favorites: "heart"
+        case .folder: "folder"
+        case .album: "rectangle.stack"
+        }
+    }
+
+    private var query: String {
+        filter.trimmingCharacters(in: .whitespaces)
+    }
+
+    private var summary: String {
+        guard !chosen.isEmpty else { return "All photographs" }
+        let folders = chosen.filter { model.albums.node($0)?.kind == .folder }.count
+        let albums = chosen.count - folders
+        return [
+            albums > 0 ? (albums == 1 ? "1 album" : "\(albums) albums") : nil,
+            folders > 0 ? (folders == 1 ? "1 folder" : "\(folders) folders") : nil,
+        ].compactMap { $0 }.joined(separator: ", ")
     }
 }

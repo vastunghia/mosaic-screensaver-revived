@@ -15,8 +15,8 @@ struct AppPreferences: Equatable {
 
     var source: Source = .photos
     var folder: URL?
-    /// Empty is the whole library (SPEC § 5).
-    var albumIdentifiers: [String] = []
+    /// Albums and folders. Empty is the whole library (SPEC § 5).
+    var collectionIdentifiers: [String] = []
     var allowsDownloads = false
     var subsetRule = SubsetRule.uniformInTime
     var subsetSize = 2048
@@ -47,7 +47,7 @@ struct AppPreferences: Equatable {
             preferences.source = source
         }
         preferences.folder = defaults.string(forKey: Key.folder).map { URL(fileURLWithPath: $0) }
-        preferences.albumIdentifiers = defaults.stringArray(forKey: Key.albums) ?? []
+        preferences.collectionIdentifiers = defaults.stringArray(forKey: Key.albums) ?? []
         preferences.allowsDownloads = defaults.bool(forKey: Key.downloads)
         if let raw = defaults.string(forKey: Key.rule), let rule = SubsetRule(rawValue: raw) {
             preferences.subsetRule = rule
@@ -76,7 +76,7 @@ struct AppPreferences: Equatable {
     func save(to defaults: UserDefaults = .standard) {
         defaults.set(source.rawValue, forKey: Key.source)
         defaults.set(folder?.path, forKey: Key.folder)
-        defaults.set(albumIdentifiers, forKey: Key.albums)
+        defaults.set(collectionIdentifiers, forKey: Key.albums)
         defaults.set(allowsDownloads, forKey: Key.downloads)
         defaults.set(subsetRule.rawValue, forKey: Key.rule)
         defaults.set(subsetSize, forKey: Key.size)
@@ -108,7 +108,7 @@ struct AppPreferences: Equatable {
         switch source {
         case .photos:
             options.photosLibrary = true
-            options.albumIdentifiers = albumIdentifiers
+            options.collectionIdentifiers = collectionIdentifiers
             options.allowsDownloads = allowsDownloads
             options.subsetRule = subsetRule
             options.subsetSize = subsetSize
