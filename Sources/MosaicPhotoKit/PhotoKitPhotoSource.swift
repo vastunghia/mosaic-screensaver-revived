@@ -182,30 +182,32 @@ public final class PhotoKitPhotoSource: PhotoSource, @unchecked Sendable {
         case .library:
             return [PHAsset.fetchAssets(with: options)]
         case .collections(let identifiers):
-            var albums: [PHAssetCollection] = []
-            var seen = Set<String>()
-            func add(_ album: PHAssetCollection) {
-                if seen.insert(album.localIdentifier).inserted { albums.append(album) }
-            }
-            PHAssetCollection.fetchAssetCollections(withLocalIdentifiers: identifiers, options: nil)
-                .enumerateObjects { album, _, _ in add(album) }
-            PHCollectionList.fetchCollectionLists(withLocalIdentifiers: identifiers, options: nil)
-                .enumerateObjects { folder, _, _ in Self.albums(in: folder).forEach(add) }
-            return albums.map { PHAsset.fetchAssets(in: $0, options: options) }
+            return Self.albums(chosen: Set(identifiers)).map { PHAsset.fetchAssets(in: $0, options: options) }
         }
     }
 
-    /// The albums a folder holds, at any depth: the ones a user could pick
-    /// from it (`PhotoLibraryAccess.albumTree()`).
-    private static func albums(in folder: PHCollectionList) -> [PHAssetCollection] {
+    /// The albums a choice stands for, found by walking the sidebar's tree
+    /// rather than fetched by identifier: an album's identifier handed to
+    /// `PHCollectionList.fetchCollectionLists(withLocalIdentifiers:)` raises
+    /// an Objective-C exception, and nothing public tells the two kinds
+    /// apart. A chosen folder brings every album under it, at any depth.
+    static func albums(chosen: Set<String>) -> [PHAssetCollection] {
         var found: [PHAssetCollection] = []
-        PHCollection.fetchCollections(in: folder, options: nil).enumerateObjects { collection, _, _ in
-            if let subfolder = collection as? PHCollectionList {
-                found += albums(in: subfolder)
-            } else if let album = collection as? PHAssetCollection, PhotoLibraryAccess.isPickable(album) {
-                found.append(album)
+        PHAssetCollection.fetchAssetCollections(with: .smartAlbum, subtype: .smartAlbumFavorites, options: nil)
+            .enumerateObjects { album, _, _ in
+                if chosen.contains(album.localIdentifier) { found.append(album) }
+            }
+        func walk(_ result: PHFetchResult<PHCollection>, inChosenFolder: Bool) {
+            result.enumerateObjects { collection, _, _ in
+                let isChosen = inChosenFolder || chosen.contains(collection.localIdentifier)
+                if let folder = collection as? PHCollectionList {
+                    walk(PHCollection.fetchCollections(in: folder, options: nil), inChosenFolder: isChosen)
+                } else if isChosen, let album = collection as? PHAssetCollection, PhotoLibraryAccess.isPickable(album) {
+                    found.append(album)
+                }
             }
         }
+        walk(PHCollectionList.fetchTopLevelUserCollections(with: nil), inChosenFolder: false)
         return found
     }
 }
