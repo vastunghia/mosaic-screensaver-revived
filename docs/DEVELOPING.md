@@ -99,9 +99,9 @@ cmp ~/Pictures/mosaic-loop/0000.png ~/Pictures/mosaic-loop/closing.png   # the l
 ffmpeg -framerate 30 -i ~/Pictures/mosaic-loop/%04d.png -vf scale=640:-2 -c:v libsvtav1 \
     -crf 42 -g 15 -svtav1-params keyint=15 -pix_fmt yuv420p -f avif -loop 0 docs/media/mosaic-loop.avif
 
-# The full-quality video attached to the release, under GitHub's 10 MB: two passes.
+# The full-quality video the README links to, kept under 10 MB: two passes.
 ffmpeg -framerate 30 -i ~/Pictures/mosaic-loop/%04d.png -c:v libx264 -preset slow -b:v 1266k \
     -pass 1 -an -f mp4 /dev/null
 ffmpeg -framerate 30 -i ~/Pictures/mosaic-loop/%04d.png -c:v libx264 -preset slow -b:v 1266k \
-    -pass 2 -pix_fmt yuv420p -movflags +faststart -an Mosaic-loop.mp4
+    -pass 2 -pix_fmt yuv420p -movflags +faststart -an docs/media/mosaic-loop.mp4
 ```

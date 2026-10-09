@@ -10,7 +10,7 @@ which makes up another photograph, which is one tile of the next mosaic, and so 
 Apple shipped it in Mac OS X 10.5 and dropped it in 10.8. Nothing of the original survives
 on today's macOS, so this is a clean-room reimplementation, drawn with Metal.
 
-The loop above is 60 seconds at 640 pixels; [watch it at full quality](https://github.com/vastunghia/mosaic-screensaver-revived/releases/latest/download/Mosaic-loop.mp4).
+The loop above is 60 seconds at 640 pixels; [watch it at full quality](docs/media/mosaic-loop.mp4).
 
 ## What you need
 
