@@ -46,7 +46,7 @@ membership. macOS therefore asks you, once, whether you trust it. If you would r
 ## Using it
 
 The window shows the mosaic moving; click it, or press **⌘↩**, to watch it full screen.
-**Mosaic › Settings…** (⌘,) chooses which photographs (albums, how many, how they are
+**Mosaic › Settings…** (⌘,) chooses which photographs (albums or whole folders, how many, how they are
 picked over time), how many rows a mosaic has, and how long each zoom lasts.
 
 Mosaic opens at login, without a window, to keep the screen saver's photographs up to
