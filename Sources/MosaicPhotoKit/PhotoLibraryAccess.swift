@@ -51,8 +51,7 @@ public enum PhotoLibraryAccess {
     /// Favorites, and folders with nothing left in them.
     ///
     /// The counts are PhotoKit's `estimatedAssetCount`, which it keeps with the
-    /// album. Counting only the images took a fetch per album: 143 s for the
-    /// 2020 albums of a real library, measured 2026-09-30.
+    /// album and which includes videos: `videoCounts()` gives what to take out.
     public static func albumTree() -> AlbumTree {
         var roots: [AlbumTree.Node] = []
         PHAssetCollection.fetchAssetCollections(with: .smartAlbum, subtype: .smartAlbumFavorites, options: nil)
@@ -61,6 +60,27 @@ public enum PhotoLibraryAccess {
             }
         roots += nodes(in: PHCollectionList.fetchTopLevelUserCollections(with: nil))
         return AlbumTree(roots: roots)
+    }
+
+    /// How many videos each album holds, Favorites included, by identifier.
+    ///
+    /// Asked the other way round, video by video, because a library has far
+    /// fewer videos than its albums hold photographs. On a real library,
+    /// measured 2026-10-09: 7.8 s for 4745 videos across 2019 albums, against
+    /// 22.8 s counting each album's images (`countOfAssets(with:)`) and about
+    /// 145 s fetching them with a predicate. Slow enough to run after the
+    /// albums are listed, not before.
+    public static func videoCounts() -> [String: Int] {
+        var counts: [String: Int] = [:]
+        var favorites = 0
+        PHAsset.fetchAssets(with: .video, options: nil).enumerateObjects { video, _, _ in
+            if video.isFavorite { favorites += 1 }
+            PHAssetCollection.fetchAssetCollectionsContaining(video, with: .album, options: nil)
+                .enumerateObjects { album, _, _ in counts[album.localIdentifier, default: 0] += 1 }
+        }
+        PHAssetCollection.fetchAssetCollections(with: .smartAlbum, subtype: .smartAlbumFavorites, options: nil)
+            .enumerateObjects { album, _, _ in counts[album.localIdentifier] = favorites }
+        return counts
     }
 
     private static func nodes(in result: PHFetchResult<PHCollection>) -> [AlbumTree.Node] {
@@ -90,9 +110,8 @@ public enum PhotoLibraryAccess {
     private static func count(of album: PHAssetCollection) -> Int {
         let estimated = album.estimatedAssetCount
         guard estimated == NSNotFound else { return estimated }
-        let images = PHFetchOptions()
-        images.predicate = NSPredicate(format: "mediaType == %d", PHAssetMediaType.image.rawValue)
-        return PHAsset.fetchAssets(in: album, options: images).count
+        // Videos included, like the estimate, so `videoCounts()` applies to both.
+        return PHAsset.fetchAssets(in: album, options: nil).count
     }
 }
 

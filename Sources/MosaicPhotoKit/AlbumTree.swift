@@ -17,9 +17,9 @@ public struct AlbumTree: Equatable, Sendable {
         public let id: String
         public let title: String
         public let kind: Kind
-        /// For an album, PhotoKit's estimate; for a folder, the sum over its
-        /// albums, which counts twice a photograph kept in two of them. Only a
-        /// guide to how big it is.
+        /// For an album, PhotoKit's estimate until `excludingVideos(_:)` takes
+        /// them out; for a folder, the sum over its albums, which counts twice
+        /// a photograph kept in two of them. Only a guide to how big it is.
         public let count: Int
         /// Nil for an album, so a list draws no disclosure triangle for it.
         public let children: [Node]?
@@ -79,6 +79,20 @@ public struct AlbumTree: Equatable, Sendable {
     public var isEmpty: Bool { roots.isEmpty }
 
     public func node(_ id: String) -> Node? { nodes[id] }
+
+    /// The same tree with each album's videos taken out of its count, and the
+    /// folders added up again. `videos` maps album identifiers to how many
+    /// videos each holds.
+    public func excludingVideos(_ videos: [String: Int]) -> AlbumTree {
+        func refined(_ node: Node) -> Node {
+            if let children = node.children {
+                return .folder(id: node.id, title: node.title, children: children.map(refined))
+            }
+            let count = max(0, node.count - videos[node.id, default: 0])
+            return Node(id: node.id, title: node.title, kind: node.kind, count: count, children: nil)
+        }
+        return AlbumTree(roots: roots.map(refined))
+    }
 
     /// Every album, Favorites included, in sidebar order.
     public var albums: [Node] {

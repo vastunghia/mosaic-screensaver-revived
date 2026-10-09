@@ -28,6 +28,16 @@ struct AlbumTreeTests {
         #expect(tree.node("travel")?.count == 12)
     }
 
+    @Test func takingVideosOutAddsFoldersUpAgain() {
+        let refined = tree.excludingVideos(["paris": 1, "lisbon": 2, "fav": 3, "gone": 9])
+        #expect(refined.node("paris")?.count == 3)
+        #expect(refined.node("2019")?.count == 6)
+        #expect(refined.node("travel")?.count == 9)
+        #expect(refined.node("fav")?.count == 7)
+        #expect(refined.node("family")?.count == 6)
+        #expect(refined.ordered(["travel", "family"]) == ["travel", "family"])
+    }
+
     @Test func albumsAreListedInSidebarOrder() {
         #expect(tree.albums.map(\.id) == ["fav", "rome", "paris", "lisbon", "family"])
     }

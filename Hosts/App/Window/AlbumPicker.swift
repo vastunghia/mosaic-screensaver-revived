@@ -36,6 +36,10 @@ struct AlbumPicker: View {
                     }
                 }
             }
+            Footnote("Photographs only. A folder's count adds up its albums, so a photograph in more than one counts more than once.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding([.horizontal, .top])
             HStack {
                 Text(summary)
                     .foregroundStyle(.secondary)

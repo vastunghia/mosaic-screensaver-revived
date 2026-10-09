@@ -331,6 +331,13 @@ final class AppModel: ObservableObject {
                     Self.log.notice("albums shown, main thread busy \(busy, format: .fixed(precision: 2), privacy: .public) s")
                 }
             }
+            // Then the counts without videos, which take seconds more.
+            let counting = ProcessInfo.processInfo.systemUptime
+            let videos = PhotoLibraryAccess.videoCounts()
+            let refined = albums.excludingVideos(videos)
+            let counted = ProcessInfo.processInfo.systemUptime - counting
+            Self.log.notice("videos counted in \(videos.count, privacy: .public) albums in \(counted, format: .fixed(precision: 2), privacy: .public) s")
+            DispatchQueue.main.async { self.albums = refined }
         }
     }
 
