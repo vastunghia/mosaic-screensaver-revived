@@ -3,10 +3,10 @@
 **Questions.** The saver only reads what the app has prepared, so the index goes stale
 unless the app runs now and then. Two ways to keep it fresh, each with an open question:
 
-1. Can a `.saver`, confined to `legacyScreenSaver`, **launch the app** — for a button in
-   its configure sheet, or when it finds no index? And does the app it launches keep
-   **its own** Photos grant, or inherit someone else's?
-2. Can the app run as a **login item** (`SMAppService.mainApp`) and still read the
+1. Can a `.saver`, confined to `legacyScreenSaver`, launch the app, for a button in
+   its configure sheet or when it finds no index? And does the app it launches keep
+   *its own* Photos grant, or inherit someone else's?
+2. Can the app run as a login item (`SMAppService.mainApp`) and still read the
    Photos library?
 
 **Answers.** Yes to both: the saver launches the app with `NSWorkspace`, and the app,
@@ -67,7 +67,7 @@ No sandbox denial, no prompt, `activates = false` honoured. The app is a child o
 ### 2. Arguments do not survive; a URL does
 
 `OpenConfiguration.arguments` and `open --args` arrive empty when the caller is the saver
-(they arrive in the control). A **URL scheme** carries the data instead:
+(they arrive in the control). A URL scheme carries the data instead:
 `spike4probe://from-saver?reason=index-missing` reached the probe intact, as a `GURL`
 Apple event before `applicationDidFinishLaunching`. That is the channel for "the saver
 launched you, and why".
@@ -99,10 +99,10 @@ windowless.
 
 ### 4. At login the library takes two minutes to open
 
-The grant answers in 7 ms, but the first fetch waited **108 s** in
+The grant answers in 7 ms, but the first fetch waited 108 s in
 `openPhotoLibraryDatabase`: `photolibraryd` was opening the 54,213-photo library store for
 the first time since boot (internal SSD, so not a slow volume). Launched again by hand
-three minutes later, the same fetch and read took **0.2 s**. One cold boot measured, so
+three minutes later, the same fetch and read took 0.2 s. One cold boot measured, so
 the number is an order of magnitude, not a constant.
 
 ## What changes in the plan

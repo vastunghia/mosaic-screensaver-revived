@@ -16,10 +16,10 @@ Two sides that try the same five paths and write the outcome to the unified log:
 | `Sources/PathProbeView.swift` | the **saver** side: tries to read the markers back and to write its own |
 | `Sources/Probe.swift` | the list of candidates and the probes, shared by both sides |
 
-The app side **must** be a real `.app`, signed and launched with `open`. Running it from a
-shell would inherit the Terminal's TCC identity — which may hold permissions our app will
-never have — and the result would be false. It is the central methodological point of this
-spike, and it holds for any future test involving TCC.
+The app side must be a real `.app`, signed and launched with `open`. Running it from a
+shell would inherit the Terminal's TCC identity, which may hold permissions our app will
+never have, and the result would be false. The same holds for any future test involving
+TCC.
 
 ```sh
 ./build.sh
@@ -37,19 +37,19 @@ open build/MosaicSpike2Writer.app        # then select PathProbe in System Setti
 | `/Users/Shared/` | ✅ | ✅ | ✅ |
 | `~/Pictures/` | ✅ | ✅ | ✅ |
 
-### 1. The saver's sandbox allows **reading** outside the container
+### 1. The saver's sandbox allows reading outside the container
 
-This is the result that decides everything. The `.saver` read without friction from all
-five paths, including `~/Library/Application Support/`, which lies outside its container.
+The `.saver` read from all five paths, including `~/Library/Application Support/`, which
+lies outside its container.
 
 Writing outside the container is denied where it matters
-(`NSCocoaErrorDomain Code=513` on `~/Library/Application Support/`). It is not a POSIX
-permission problem — the files are `sergio:staff` with mode 755 — but sandbox policy.
+(`NSCocoaErrorDomain Code=513` on `~/Library/Application Support/`). That is sandbox
+policy, not a POSIX permission problem: the files are `sergio:staff` with mode 755.
 
 ### 2. Writing into the `legacyScreenSaver` container trips TCC
 
 From a different app, writing into the screen saver's container is not gated by POSIX
-permissions but by the TCC service **`kTCCServiceSystemPolicyAppData`** ("app data",
+permissions but by the TCC service `kTCCServiceSystemPolicyAppData` ("app data",
 introduced in Sonoma). With the app held waiting, `tccd` records:
 
 ```
@@ -61,20 +61,19 @@ first launch, for a request that sounds invasive and would be hard to explain.
 
 ## Consequence: the design of M11
 
-The starting assumption was that the app had to write **inside** the screen saver's
+The starting assumption was that the app had to write inside the screen saver's
 container. Result 1 makes that unnecessary, and result 2 makes it unpleasant as well.
 
-> **The app writes the index into `~/Library/Application Support/<app>/`, that is, into its
+> The app writes the index into `~/Library/Application Support/<app>/`, that is, into its
 > own home, and the saver reads it from there. No TCC prompt, no writing into anyone else's
-> container.**
+> container.
 
 M11 therefore stops being an inter-process communication channel and becomes very little: a
-path contract, with one side writing and one side reading, read-only. Which was the best
-possible outcome, and was not a given.
+path contract, with one side writing and one side reading, read-only.
 
-The container is still needed for **the saver's preferences**: `ScreenSaverDefaults` writes
-into the ByHost domain inside the container, and the saver writes there without friction.
-But that is the saver acting for itself, not the app acting for it — no boundary is crossed.
+The container is still needed for the saver's preferences: `ScreenSaverDefaults` writes
+into the ByHost domain inside the container, and the saver writes there. But that is the
+saver acting for itself, not the app acting for it: no boundary is crossed.
 
 ### Requirements that follow
 
@@ -90,7 +89,7 @@ But that is the saver acting for itself, not the app acting for it — no bounda
 ### What stays open
 
 - **If the app were ever sandboxed** (for the Mac App Store, say), it would write into its
-  own container and the saver would have to read *from someone else's container* — something
+  own container and the saver would have to read *from someone else's container*, something
   we have not tested from that side and which might require TCC in its turn. To be
   re-verified if and when distribution changes.
 - **The saver's broad read access was measured on files we created ourselves.** That it can

@@ -3,7 +3,7 @@
 **Question.** Are the thumbnails the app extracts from the Photos library usable by the
 `.saver` without re-authorisation? And how fast can the index be built?
 
-**Outcome: yes, with no friction at all.** The saver does not even import `Photos`: it reads
+**Outcome: yes.** The saver does not even import `Photos`: it reads
 files, and that is it. The surprise is not there but in the numbers, which change the design
 of M5.
 
@@ -31,17 +31,17 @@ open build/MosaicSpike3Indexer.app --args bench # measure
 
 ### 1. The chain holds — ✅
 
-- Authorisation granted to an **ad-hoc signed** app: `authorized`. It needs
+- Authorisation granted to an ad-hoc signed app: `authorized`. It needs
   `NSPhotoLibraryUsageDescription` in the `Info.plist`; without it no prompt appears at all.
-- Test library: **54,169 images**, all available locally
+- Test library: 54,169 images, all available locally
   (`PHImageResultIsInCloudKey` never true, 0 skipped).
-- The saver read the index and loaded 120 thumbnails out of 120, **without importing
-  `Photos`** and without any authorisation. Spike 2 confirmed on real data.
+- The saver read the index and loaded 120 thumbnails out of 120, without importing
+  `Photos` and without any authorisation. Spike 2 confirmed on real data.
 
 ### 2. The first measurement round was wrong, and badly so
 
-The first indexing run gave **30.2 photos/s**, that is ~30 minutes for the whole library —
-a number that would have forced heavy constraints on M5. Separating the phases over 100
+The first indexing run gave 30.2 photos/s, that is ~30 minutes for the whole library: a
+number that would have forced heavy constraints on M5. Separating the phases over 100
 assets:
 
 | strategy | photos/s | whole library |
@@ -62,25 +62,25 @@ Three conclusions:
 - **The `CIContext` has to be shared**: creating one per image costs 2.7×. It is the mistake
   I had made, and it is extremely easy to repeat.
 - **Do not read the originals.** The "request the original data and resample with
-  `CGImageSource`" route, which looked like the obvious optimisation, is **six times
-  slower**: it re-reads whole multi-megabyte files from disk. PhotoKit's derivatives exist
+  `CGImageSource`" route, which looked like the obvious optimisation, is six times
+  slower: it re-reads whole multi-megabyte files from disk. PhotoKit's derivatives exist
   precisely for this.
 
-### 3. Two caveats about the numbers, not to be hidden
+### 3. Two caveats about the numbers
 
 - **The bench ran over the same assets the indexing had already touched**, hence with
-  PhotoKit's derivatives already warm. The 198 photos/s is a **warm** rate; the 30.2 of the
+  PhotoKit's derivatives already warm. The 198 photos/s is a warm rate; the 30.2 of the
   first round were cold *and* with the inefficient code. The real cold cost lies between the
-  two and **was not measured**. It has to be redone on assets never touched before.
+  two and was not measured. It has to be redone on assets never touched before.
 - **`fastFormat` is too fast to be free.** In all likelihood it returns a small
   ready-made derivative, not an image at the requested size. We did not verify the actual
-  dimensions of what comes back, so those 2926 photos/s **cannot be spent** until someone
+  dimensions of what comes back, so those 2926 photos/s cannot be spent until someone
   checks what they really contain.
 
 ### 4. Cost on disk
 
-The 200 thumbnails at 512×288, JPEG quality 0.8, weigh **40.8 KB on average**: about
-**2.1 GB** for the whole library. The JSON index, without the pixels, is ~245 bytes per
+The 200 thumbnails at 512×288, JPEG quality 0.8, weigh 40.8 KB on average: about
+2.1 GB for the whole library. The JSON index, without the pixels, is ~245 bytes per
 entry.
 
 ### 5. Ad-hoc signatures lose the authorisation on every build — ✅ solved
@@ -89,7 +89,7 @@ Rebuilding the app changes its `cdhash`, and TCC treats it as a new application:
 goes back to `notDetermined` and the prompt returns. With an ad-hoc signature it has to be
 re-authorised on every build, which makes working on M4 and M5 unbearable.
 
-**Solved on 20 September 2026**, with a follow-up to the spike run on the same app in
+Solved on 20 September 2026, with a follow-up to the spike run on the same app in
 `probe` mode (it reads the authorisation state and nothing else: asking for authorisation
 would make the two outcomes indistinguishable). The mechanism can be read off the
 *designated requirement* that `codesign` writes into the bundle:
@@ -113,16 +113,16 @@ The four builds of the test, in order:
 | 4 | Apple Development | `05ef1db6…` | `authorized` |
 
 Build 2 is the proof: different `cdhash`, authorisation intact. Build 3 is the control that
-rules out the alternative explanation — "TCC simply does not notice rebuilds" — because
-there it notices perfectly well, with the same bundle id and the same path.
+rules out the alternative explanation, that TCC simply does not notice rebuilds: there it
+notices perfectly well, with the same bundle id and the same path.
 
-**Build 4 proves nothing**, and that has to be said: restoring the source brought the
+Build 4 proves nothing: restoring the source brought the
 `cdhash` back to exactly the one of build 1, so its `authorized` could equally be explained
 by a hypothetical match on the hash. It is an observation, not a datum.
 
-One operational detail: the first change I made in order to alter the `cdhash` was **only a
-comment**, and in an optimised build it did not change a single byte of the binary — same
-`cdhash`, proof of nothing. To make the hash change, the edit has to actually reach the
+One operational detail: the first change I made to alter the `cdhash` was only a comment,
+and in an optimised build it did not change a single byte of the binary: same `cdhash`,
+proof of nothing. To make the hash change, the edit has to actually reach the
 compiled code.
 
 The recipe lives in `scripts/sign.sh`, which every `build.sh` now uses. The identity can be
@@ -132,9 +132,9 @@ forced with `MOSAIC_CODESIGN_IDENTITY`, which is how the control was run.
 
 **Indexing the whole library is neither necessary nor worthwhile.** With `R = 20` a mosaic
 uses 400 tiles; a few thousand photos are an ample pool. Against that, 54,000 photos cost
-2.1 GB and minutes of waiting — only to draw 400 at a time from them.
+2.1 GB and minutes of waiting, only to draw 400 at a time from them.
 
-So M5 has to index **by subset and incrementally**: become usable quickly with the first N
+So M5 has to index by subset and incrementally: become usable quickly with the first N
 photos and carry on in the background, saving its progress. It is also the cure for the
 historical flaw of the original, which barred the way with "Creating photo database" until
 it was done.
