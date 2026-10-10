@@ -2,10 +2,11 @@ import SwiftUI
 
 /// `PreviewMetalView` in SwiftUI. It builds a new engine only when
 /// `preferences` or `isReady` change — not when SwiftUI merely redraws.
+/// `play` is nil while a click could not start anything.
 struct LivePreview: NSViewRepresentable {
     let preferences: AppPreferences
     let isReady: Bool
-    let play: () -> Void
+    let play: (() -> Void)?
 
     func makeNSView(context: Context) -> PreviewMetalView {
         let view = PreviewMetalView()

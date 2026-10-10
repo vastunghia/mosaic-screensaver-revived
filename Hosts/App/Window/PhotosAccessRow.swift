@@ -28,10 +28,10 @@ struct PhotosAccessRow: View {
         case .denied, .restricted:
             VStack(alignment: .leading) {
                 HStack {
-                    Label(model.access == .denied ? "Access was refused" : "Access is restricted on this Mac",
+                    Label(model.access == .denied ? "Access was refused." : "Access is restricted on this Mac.",
                           systemImage: "xmark.circle")
                     Spacer()
-                    Button("Open System Settings…", action: model.openPrivacySettings)
+                    Button("Open Privacy Settings…", action: model.openPrivacySettings)
                 }
                 if model.access == .denied {
                     // macOS gives the access to a Mosaic opened afresh, not to

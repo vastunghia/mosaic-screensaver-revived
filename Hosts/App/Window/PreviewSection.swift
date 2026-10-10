@@ -20,16 +20,27 @@ struct PreviewSection: View {
                 // The index on disk is enough, as for the screen saver: also
                 // while the Photos grant is missing, which Play needs.
                 if model.hasIndex {
-                    LivePreview(preferences: model.preferences, isReady: model.hasIndex, play: play)
+                    // A button only while it can play: otherwise a click,
+                    // or VoiceOver's action, would do nothing at all.
+                    let preview = LivePreview(preferences: model.preferences, isReady: model.hasIndex,
+                                              play: model.canPlay ? play : nil)
                         .accessibilityLabel("Preview of the mosaic")
-                        .accessibilityAddTraits(.isButton)
-                        .accessibilityAction(named: "Play", play)
+                    if model.canPlay {
+                        preview
+                            .accessibilityAddTraits(.isButton)
+                            .accessibilityAction(named: "Play", play)
+                    } else {
+                        preview
+                    }
                     // Full screen needs the library, for its close-ups. Without
                     // it the button is not shown: disabled over a moving
                     // mosaic it could not be read, and the step above says why.
                     if model.canPlay {
+                        // Dark rather than the accent colour, which some
+                        // photographs under it would share.
                         Button("Play", systemImage: "play.fill", action: play)
                             .buttonStyle(.borderedProminent)
+                            .tint(.black.opacity(0.6))
                             .padding()
                             .help("Full screen. Any key or click ends it.")
                     }

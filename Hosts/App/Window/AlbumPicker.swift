@@ -16,8 +16,7 @@ struct AlbumPicker: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            TextField("Search", text: $filter)
-                .textFieldStyle(.roundedBorder)
+            SearchField(prompt: "Search Albums", text: $filter)
                 .padding()
             if query.isEmpty {
                 List(model.albums.roots, children: \.children) { node in

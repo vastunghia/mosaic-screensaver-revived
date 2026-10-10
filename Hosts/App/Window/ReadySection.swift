@@ -10,7 +10,7 @@ struct ReadySection: View {
         Section {
             LabeledContent("Photographs") {
                 if let progress = model.progress, model.isIndexing {
-                    Text("updating · \(progress.summary)")
+                    Text("Updating · \(progress.summary)")
                         .monospacedDigit()
                 } else {
                     Text("\(model.indexedCount.formatted()) ready")
@@ -20,7 +20,7 @@ struct ReadySection: View {
             HStack {
                 Text("Screen saver installed")
                 Spacer()
-                Button("Open System Settings…", action: model.openScreenSaverSettings)
+                Button("Open Screen Saver Settings…", action: model.openScreenSaverSettings)
             }
         } header: {
             Label {

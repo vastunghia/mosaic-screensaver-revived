@@ -86,6 +86,10 @@ enum MosaicApplication {
         window.addItem(.separator())
         window.addItem(withTitle: "Bring All to Front", action: #selector(NSApplication.arrangeInFront(_:)), keyEquivalent: "")
         NSApp.windowsMenu = window
+
+        let help = submenu(of: menu, titled: "Help")
+        help.addItem(withTitle: "Mosaic Help", action: #selector(AppDelegate.showHelp(_:)), keyEquivalent: "?")
+        NSApp.helpMenu = help
         return menu
     }
 
@@ -217,6 +221,13 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
             alert.messageText = "The mosaic could not start."
             alert.informativeText = "\(error)"
             alert.runModal()
+        }
+    }
+
+    /// No Help Book: the README says everything there is to say.
+    @objc func showHelp(_ sender: Any?) {
+        if let url = URL(string: "https://github.com/vastunghia/mosaic-screensaver-revived#readme") {
+            NSWorkspace.shared.open(url)
         }
     }
 

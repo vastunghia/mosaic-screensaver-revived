@@ -14,7 +14,7 @@ struct LoginItemOption: View {
             .disabled(model.isTranslocated)
             if model.loginItem == .requiresApproval {
                 HStack {
-                    Text("Waiting for approval in System Settings.")
+                    Text("Waiting for approval in System Settings")
                         .foregroundStyle(.secondary)
                     Spacer()
                     Button("Open Login Items…", action: model.openLoginItemsSettings)

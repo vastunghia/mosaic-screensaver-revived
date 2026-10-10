@@ -6,6 +6,7 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
+            SourceOptions(model: model)
             if model.preferences.source == .photos, model.access.isGranted {
                 LibraryOptions(model: model)
             }

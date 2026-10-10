@@ -19,15 +19,16 @@ struct ScreenSaverStep: View {
                 }
             case .different:
                 HStack {
-                    Label("The installed screen saver is not this version", systemImage: "arrow.triangle.2.circlepath")
+                    Label("The installed screen saver is not this version.", systemImage: "arrow.triangle.2.circlepath")
                     Spacer()
                     Button("Update", action: model.installSaver)
                 }
             case .installed:
                 HStack {
-                    Label("Installed", systemImage: "checkmark.circle")
+                    // The header already shows the check mark.
+                    Text("Installed")
                     Spacer()
-                    Button("Open System Settings…", action: model.openScreenSaverSettings)
+                    Button("Open Screen Saver Settings…", action: model.openScreenSaverSettings)
                 }
             }
             ProblemRow(model: model, place: .screenSaver)
