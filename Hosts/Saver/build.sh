@@ -10,6 +10,7 @@ cd "$(dirname "$0")/../.."
 
 source scripts/identity.sh
 source scripts/sign.sh
+source scripts/toolchain.sh
 
 CONFIG="release"
 INSTALL=0
@@ -25,6 +26,8 @@ done
 
 BUILD=".build/bundle"
 SAVER="$BUILD/$SAVER_NAME.saver"
+
+require_metal_toolchain
 
 echo "==> swift build ($CONFIG)"
 swift build -c "$CONFIG" ${ARCHS[@]+"${ARCHS[@]}"} --product MosaicSaver

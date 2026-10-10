@@ -74,7 +74,14 @@ and remove Mosaic from **System Settings › General › Login Items & Extension
 
 ## Building from source
 
-You need Xcode 26 or later.
+You need Xcode 26 or later, selected as the active developer directory, and its Metal
+Toolchain, which Xcode downloads separately; the Command Line Tools alone cannot compile
+the shaders. The build scripts check for both before compiling anything.
+
+```sh
+sudo xcode-select -s /Applications/Xcode.app
+xcodebuild -downloadComponent MetalToolchain
+```
 
 ```sh
 ./Hosts/App/build.sh --install   # builds the app (with the screen saver inside) into /Applications

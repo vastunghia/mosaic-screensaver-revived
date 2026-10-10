@@ -10,6 +10,7 @@ cd "$(dirname "$0")/../.."
 
 source scripts/identity.sh
 source scripts/sign.sh
+source scripts/toolchain.sh
 
 CONFIG="release"
 ARCHS=()
@@ -25,6 +26,8 @@ for argument in "$@"; do
 done
 BUILD=".build/bundle"
 APP="$BUILD/$APP_NAME.app"
+
+require_metal_toolchain
 
 echo "==> swift build ($CONFIG)"
 swift build -c "$CONFIG" ${ARCHS[@]+"${ARCHS[@]}"} --product MosaicApp
