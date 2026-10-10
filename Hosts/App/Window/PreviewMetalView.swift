@@ -88,7 +88,7 @@ final class PreviewMetalView: NSView {
         else { return }
         let started = ProcessInfo.processInfo.systemUptime
         let box = EngineBox()
-        DispatchQueue.global(qos: .userInitiated).async {
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             do {
                 box.engine = try makeEngine(device)
             } catch {
