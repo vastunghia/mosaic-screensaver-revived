@@ -30,7 +30,7 @@ struct ReadySection: View {
                     .foregroundStyle(.green)
             }
         } footer: {
-            Footnote("Mosaic keeps the photographs up to date. Choose it in System Settings, under Screen Saver › Other.")
+            Footnote("Mosaic keeps the photographs up to date. Choose it in System Settings, under \(SaverInstaller.whereToChoose).")
         }
     }
 }

@@ -69,10 +69,27 @@ enum SaverInstaller {
         if replacing { restartHost(then: ready) } else { ready() }
     }
 
-    /// The Screen Saver pane, where Mosaic is chosen.
+    /// The pane where Mosaic is chosen. macOS 26 has no Screen Saver pane: the
+    /// screen saver is chosen in a sheet behind the Wallpaper pane's Screen
+    /// Saver button, which no link reaches, and the old link lands on General
+    /// (2026-10-10).
     static func openSettings() {
-        if let url = URL(string: "x-apple.systempreferences:com.apple.ScreenSaver-Settings.extension") {
+        let pane = if #available(macOS 26, *) {
+            "com.apple.Wallpaper-Settings.extension"
+        } else {
+            "com.apple.ScreenSaver-Settings.extension"
+        }
+        if let url = URL(string: "x-apple.systempreferences:\(pane)") {
             NSWorkspace.shared.open(url)
+        }
+    }
+
+    /// Where in System Settings Mosaic is chosen, for the window's footnotes.
+    static var whereToChoose: String {
+        if #available(macOS 26, *) {
+            "Wallpaper › Screen Saver"
+        } else {
+            "Screen Saver › Other"
         }
     }
 

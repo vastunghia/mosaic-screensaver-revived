@@ -38,7 +38,8 @@ It shows its mosaic on the main display; other displays stay black.
    - **Preparation** — Mosaic makes a small copy of each photograph to build mosaics from;
      this runs by itself, and the mosaic appears in the window as soon as 100 are ready;
    - **Screen Saver** — **Install**, then choose **Mosaic** in the Screen Saver settings,
-     under *Other*.
+     under *Other*. On macOS 26 they are behind the **Screen Saver** button of
+     **System Settings › Wallpaper**, which is where Mosaic takes you.
 
 Why step 3: Mosaic is signed, but not notarized by Apple, which takes a paid developer
 membership. macOS therefore asks you, once, whether you trust it. If you would rather not,

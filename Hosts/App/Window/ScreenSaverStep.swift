@@ -35,7 +35,7 @@ struct ScreenSaverStep: View {
         } header: {
             StepHeader(number: number, title: "Screen Saver", isDone: model.saver == .installed)
         } footer: {
-            Footnote("Then choose Mosaic in System Settings, under Screen Saver › Other. Mosaic also opens at login, without a window, to keep the photographs up to date; Mosaic Settings turns that off.")
+            Footnote("Then choose Mosaic in System Settings, under \(SaverInstaller.whereToChoose). Mosaic also opens at login, without a window, to keep the photographs up to date; Mosaic Settings turns that off.")
         }
     }
 }
