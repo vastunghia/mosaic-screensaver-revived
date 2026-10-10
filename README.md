@@ -30,7 +30,8 @@ It shows its mosaic on the main display; other displays stay black.
    open it and drag **Mosaic** to **Applications**.
 2. Open Mosaic from Applications. macOS says *"Mosaic" Not Opened*: choose **Done**.
 3. Open **System Settings › Privacy & Security**, scroll down to *"Mosaic" was blocked
-   to protect your Mac* and choose **Open Anyway**, then confirm with your password.
+   to protect your Mac* and choose **Open Anyway**, then confirm with your password
+   (an administrator's, on an account that is not one).
    You only do this once.
 4. Mosaic opens on its setup steps:
    - **Photographs** — allow access to your Photos library, or choose a folder;
@@ -88,6 +89,9 @@ xcodebuild -downloadComponent MetalToolchain
 ./scripts/release.sh             # the universal app on a disk image, as released
 swift test
 ```
+
+On an account that is not an administrator, `--install` asks for an administrator's name
+and password, since only administrators can write to `/Applications`.
 
 Signing matters more than usual here, because the Photos permission is tied to the app's
 signature. With an *Apple Development* certificate in your keychain the build is signed

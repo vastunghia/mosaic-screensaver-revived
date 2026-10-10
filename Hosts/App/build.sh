@@ -141,8 +141,25 @@ if [ "$INSTALL" = 1 ]; then
         pkill -TERM -x "$APP_NAME" || true
         for _ in $(seq 50); do pgrep -xq "$APP_NAME" || break; sleep 0.1; done
     fi
-    rm -rf "$DEST"
-    ditto "$APP" "$DEST"
+    # A standard user cannot write to /Applications, nor sudo: macOS's own
+    # dialog asks for an administrator's name and password instead.
+    if [ -w /Applications ] && { [ ! -e "$DEST" ] || [ -w "$DEST" ]; }; then
+        rm -rf "$DEST"
+        ditto "$APP" "$DEST"
+    else
+        echo "==> /Applications is not writable by $(id -un): asking for an administrator"
+        if ! osascript - "$PWD/$APP" "$DEST" >/dev/null <<'APPLESCRIPT'
+on run argv
+    set source to quoted form of item 1 of argv
+    set destination to quoted form of item 2 of argv
+    do shell script "/bin/rm -rf " & destination & " && /usr/bin/ditto " & source & " " & destination with administrator privileges
+end run
+APPLESCRIPT
+        then
+            echo "error: not installed; the build is still in $APP" >&2
+            exit 1
+        fi
+    fi
     APP="$DEST"
     echo "==> installed in $DEST; the app updates the screen saver from its window"
 fi
