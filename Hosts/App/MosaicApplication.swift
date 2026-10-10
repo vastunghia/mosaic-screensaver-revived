@@ -30,6 +30,13 @@ enum MosaicApplication {
         exit(0)
     }
 
+    /// Quits without the warning a login item gives: for the app's own
+    /// restarts, which open it again straight away.
+    static func quitWithoutAsking() {
+        delegate?.asksBeforeQuitting = false
+        NSApp.terminate(nil)
+    }
+
     /// The window's own way to Settings, besides the menu item and ⌘,.
     static func showSettings() {
         delegate?.showSettings(nil)
@@ -105,6 +112,9 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
     private var model: AppModel?
 
     private var launchedAtLogin = false
+    /// Off for the app's own restarts (`MosaicApplication.quitWithoutAsking`).
+    var asksBeforeQuitting = true
+    private static let quietQuitKey = "quitsWithoutWarning"
     /// URLs that arrive before the model exists, during launch.
     private var earlyCalls: [MosaicURL] = []
 
@@ -231,6 +241,52 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         settingsWindow?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    /// A login item that quits stops watching the library until the next
+    /// login, and the screen saver's photographs fall behind it: say so, and
+    /// offer what keeps them current — closing the window, the default.
+    /// Not when the system quits the app to log out, restart or shut down,
+    /// which it says in the quit event.
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard asksBeforeQuitting, let model,
+              !UserDefaults.standard.bool(forKey: Self.quietQuitKey)
+        else { return .terminateNow }
+        if let event = NSAppleEventManager.shared().currentAppleEvent,
+           event.eventClass == AEEventClass(kCoreEventClass),
+           event.eventID == AEEventID(kAEQuitApplication),
+           event.paramDescriptor(forKeyword: AEKeyword(kAEQuitReason)) != nil {
+            return .terminateNow
+        }
+        model.refreshLoginItem()
+        guard model.opensAtLogin else { return .terminateNow }
+
+        // Without a window there is nothing to close: Quit is the default.
+        let windows = [window, settingsWindow].compactMap { $0 }.filter(\.isVisible)
+        NSApp.activate(ignoringOtherApps: true)
+        let alert = NSAlert()
+        alert.messageText = "Quit Mosaic?"
+        alert.informativeText = "The screen saver won't pick up new photographs until you next log in."
+        let close = windows.isEmpty ? nil : alert.addButton(withTitle: "Close Window")
+        let quit = alert.addButton(withTitle: "Quit")
+        alert.addButton(withTitle: "Cancel")
+        alert.showsSuppressionButton = true
+        let answer = alert.runModal()
+
+        // Responses count the buttons from the first one added.
+        let index = answer.rawValue - NSApplication.ModalResponse.alertFirstButtonReturn.rawValue
+        let chosen = alert.buttons.indices.contains(index) ? alert.buttons[index] : nil
+        guard let chosen, chosen === close || chosen === quit else { return .terminateCancel }
+        if alert.suppressionButton?.state == .on {
+            UserDefaults.standard.set(true, forKey: Self.quietQuitKey)
+        }
+        if chosen === close {
+            Self.log.notice("quit turned into closing the window")
+            windows.forEach { $0.performClose(nil) }
+            return .terminateCancel
+        }
+        Self.log.notice("quit by the user while a login item")
+        return .terminateNow
     }
 
     /// A login item outlives its window, to keep watching the library; an app

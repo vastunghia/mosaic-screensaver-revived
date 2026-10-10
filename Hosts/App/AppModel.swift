@@ -124,7 +124,7 @@ final class AppModel: ObservableObject {
         Task {
             do {
                 try await AppLocation.moveToApplications()
-                NSApp.terminate(nil)
+                MosaicApplication.quitWithoutAsking()
             } catch {
                 report(.location, """
                     Mosaic could not be moved to Applications (\(error.localizedDescription)). \
@@ -193,7 +193,7 @@ final class AppModel: ObservableObject {
         refreshLoginItem()
         guard !opensAtLogin else { return }
         Self.log.notice("nothing left to do without a window: quitting")
-        NSApp.terminate(nil)
+        MosaicApplication.quitWithoutAsking()
     }
 
     private static let pendingKey = "pendingSaverRequest"
@@ -282,7 +282,7 @@ final class AppModel: ObservableObject {
                 if let error {
                     Self.log.error("could not open Mosaic again: \(error, privacy: .public)")
                 } else {
-                    NSApp.terminate(nil)
+                    MosaicApplication.quitWithoutAsking()
                 }
             }
         }

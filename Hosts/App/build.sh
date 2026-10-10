@@ -101,8 +101,10 @@ echo "==> $APP"
 # be used rather than tried.
 if [ "$INSTALL" = 1 ]; then
     DEST="/Applications/$APP_NAME.app"
+    # A signal, not a quit event: a login item asks before quitting, and a
+    # build has nobody to answer. Indexing resumes from its checkpoints.
     if pgrep -xq "$APP_NAME"; then
-        osascript -e "tell application id \"$APP_BUNDLE_ID\" to quit" || true
+        pkill -TERM -x "$APP_NAME" || true
         for _ in $(seq 50); do pgrep -xq "$APP_NAME" || break; sleep 0.1; done
     fi
     rm -rf "$DEST"
