@@ -55,6 +55,35 @@ cp "$(swift build -c "$CONFIG" ${ARCHS[@]+"${ARCHS[@]}"} --show-bin-path)/Mosaic
 cp "$BUILD/default.metallib" "$APP/Contents/Resources/default.metallib"
 cp -R "$BUILD/$SAVER_NAME.saver" "$APP/Contents/Resources/"
 
+# The user guide travels in the bundle, so it always describes this build:
+# an Apple Help Book, opened from the Help menu, which searches it.
+echo "==> help book"
+HELP="$APP/Contents/Resources/$APP_NAME.help"
+mkdir -p "$HELP/Contents/Resources/en.lproj"
+cp Hosts/App/Help/*.html Hosts/App/Help/*.css "$HELP/Contents/Resources/en.lproj/"
+hiutil -I corespotlight -Caf "$HELP/Contents/Resources/en.lproj/$APP_NAME.cshelpindex" -s en \
+    "$HELP/Contents/Resources/en.lproj"
+HELP_BOOK="$APP_BUNDLE_ID.help"
+cat > "$HELP/Contents/Info.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key><string>en</string>
+    <key>CFBundleIdentifier</key><string>$HELP_BOOK</string>
+    <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
+    <key>CFBundleName</key><string>$APP_NAME</string>
+    <key>CFBundlePackageType</key><string>BNDL</string>
+    <key>CFBundleShortVersionString</key><string>$VERSION</string>
+    <key>CFBundleVersion</key><string>$BUILD_NUMBER</string>
+    <key>HPDBookAccessPath</key><string>index.html</string>
+    <key>HPDBookIndexPath</key><string>$APP_NAME.cshelpindex</string>
+    <key>HPDBookTitle</key><string>$APP_NAME Help</string>
+    <key>HPDBookType</key><string>3</string>
+</dict>
+</plist>
+PLIST
+
 # The Info.plist of an app whose TCC identity has to stay stable is not a file
 # to keep changing. LSUIElement keeps the app out of the Dock until it opens a
 # window (launched at login it opens none); the URL scheme is how the .saver
@@ -66,6 +95,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <dict>
     <key>CFBundleDevelopmentRegion</key><string>en</string>
     <key>CFBundleExecutable</key><string>$APP_NAME</string>
+    <key>CFBundleHelpBookFolder</key><string>$APP_NAME.help</string>
+    <key>CFBundleHelpBookName</key><string>$HELP_BOOK</string>
     <key>CFBundleIconFile</key><string>AppIcon</string>
     <key>CFBundleIdentifier</key><string>$APP_BUNDLE_ID</string>
     <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>

@@ -14,6 +14,15 @@ struct SettingsView: View {
             LoginItemOption(model: model)
         }
         .formStyle(.grouped)
+        // The window's one help button, in its lower trailing corner (HIG,
+        // "Help buttons"): the guide's page on these settings.
+        .safeAreaInset(edge: .bottom) {
+            HStack {
+                Spacer()
+                HelpLink { MosaicApplication.showHelp(anchor: "settings") }
+            }
+            .padding([.horizontal, .bottom])
+        }
         .frame(width: 480)
         .fixedSize(horizontal: false, vertical: true)
     }

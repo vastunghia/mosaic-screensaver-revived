@@ -52,6 +52,9 @@ picked over time), how many rows a mosaic has, and how long each zoom lasts.
 Mosaic opens at login, without a window, to keep the screen saver's photographs up to
 date as your library changes. You can turn that off in Settings.
 
+The full guide is inside the app, under **Help › Mosaic Help**, and always matches the
+version you have.
+
 ## Your photographs
 
 They never leave your Mac. Mosaic reads them through the Photos library (or the folder you

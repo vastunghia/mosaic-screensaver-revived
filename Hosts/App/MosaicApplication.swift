@@ -37,6 +37,13 @@ enum MosaicApplication {
         NSApp.terminate(nil)
     }
 
+    /// One place of the user guide, for a help button.
+    static func showHelp(anchor: String) {
+        guard let book = Bundle.main.object(forInfoDictionaryKey: "CFBundleHelpBookName") as? String
+        else { return }
+        NSHelpManager.shared.openHelpAnchor(anchor, inBook: book)
+    }
+
     /// The window's own way to Settings, besides the menu item and ⌘,.
     static func showSettings() {
         delegate?.showSettings(nil)
@@ -88,7 +95,7 @@ enum MosaicApplication {
         NSApp.windowsMenu = window
 
         let help = submenu(of: menu, titled: "Help")
-        help.addItem(withTitle: "Mosaic Help", action: #selector(AppDelegate.showHelp(_:)), keyEquivalent: "?")
+        help.addItem(withTitle: "Mosaic Help", action: #selector(NSApplication.showHelp(_:)), keyEquivalent: "?")
         NSApp.helpMenu = help
         return menu
     }
@@ -221,13 +228,6 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
             alert.messageText = "The mosaic could not start."
             alert.informativeText = "\(error)"
             alert.runModal()
-        }
-    }
-
-    /// No Help Book: the README says everything there is to say.
-    @objc func showHelp(_ sender: Any?) {
-        if let url = URL(string: "https://github.com/vastunghia/mosaic-screensaver-revived#readme") {
-            NSWorkspace.shared.open(url)
         }
     }
 

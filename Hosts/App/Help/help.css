@@ -1,0 +1,31 @@
+/* System font and colours, so the guide follows light and dark appearance. */
+:root {
+    color-scheme: light dark;
+    /* 5.1:1 and 5.6:1 on white. */
+    --secondary: #6e6e73;
+    --link: #0066cc;
+}
+@media (prefers-color-scheme: dark) {
+    /* 5.8:1 and 6.4:1 on #1e1e1e. */
+    :root { --secondary: #98989d; --link: #4da3ff; }
+}
+body {
+    font-family: -apple-system, sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    max-width: 40em;
+    margin: 2.5em auto 4em;
+    padding: 0 1.5em;
+}
+h1 { font-size: 1.9em; line-height: 1.2; margin-bottom: 0.4em; }
+h2 { font-size: 1.25em; margin-top: 1.8em; }
+p.lead { font-size: 1.1em; margin-top: 0; }
+a { color: var(--link); }
+kbd { font-family: inherit; }
+ul.pages { padding-left: 0; list-style: none; }
+ul.pages li { margin: 0.7em 0; }
+ul.pages a { font-weight: 600; text-decoration: none; }
+ul.pages span { display: block; color: var(--secondary); }
+dt { font-weight: 600; margin-top: 1em; }
+dd { margin-left: 0; }
+nav.next { margin-top: 3em; padding-top: 1em; border-top: 1px solid color-mix(in srgb, CanvasText 15%, transparent); }
