@@ -347,8 +347,8 @@ final class MosaicSaverView: ScreenSaverView {
     /// and it builds its engine again.
     private static let unseenLimit: TimeInterval = 5
     private static let probeInterval: TimeInterval = 2
-    private static let probeBurst = 10
-    private static let probeShownToWake = 8
+    nonisolated private static let probeBurst = 10
+    nonisolated private static let probeShownToWake = 8
 
     /// One in ten of the frames the display would show in `unseenLimit`.
     private var fewestSeenFrames: Int {

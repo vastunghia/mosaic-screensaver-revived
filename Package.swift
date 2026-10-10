@@ -90,9 +90,10 @@ let package = Package(
                 "MosaicEngine", "MosaicCore", "MosaicPhotos", "MosaicPhotoKit", "PhotoIndex", "SharedStore",
             ],
             path: "Hosts/App",
-            // build.sh lives next to the sources it builds; SwiftPM only needs
-            // telling that it is not one of them.
-            exclude: ["build.sh"]
+            // build.sh and the Help Book live next to the sources; build.sh
+            // copies the Help Book into the bundle, so SwiftPM only needs
+            // telling that neither is one of them.
+            exclude: ["build.sh", "Help"]
         ),
 
         // M10 — the screen saver: a thin shell over MosaicEngine that reads the

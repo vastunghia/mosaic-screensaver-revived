@@ -28,7 +28,7 @@ final class PreviewMetalView: NSView {
     private var generation = 0
     private var occlusionObserver: NSObjectProtocol?
 
-    private static let log = Logger(subsystem: "com.vastunghia.Mosaic", category: "app")
+    nonisolated private static let log = Logger(subsystem: "com.vastunghia.Mosaic", category: "app")
 
     override init(frame: NSRect) {
         super.init(frame: frame)

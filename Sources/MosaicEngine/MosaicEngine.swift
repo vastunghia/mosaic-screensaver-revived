@@ -81,11 +81,9 @@ public final class MosaicEngine {
 
     /// The rebuild in progress, shared with the thread that does it and with
     /// whichever thread Metal reports a device removal on.
-    private let rebuildLock = NSLock()
-    private var rebuilding = false
-    private var replacement: GPUResources?
-    private var rebuildStarted: TimeInterval?
-    private var rebuildFinished: TimeInterval?
+    /// Its lock also guards `currentDeviceID` and `provider`.
+    private let rebuildState = RebuildState()
+    private var rebuildLock: NSLock { rebuildState.lock }
     private var currentDeviceID: UInt64
     private var deviceObserver: NSObjectProtocol?
 
@@ -392,9 +390,9 @@ public final class MosaicEngine {
             ))
         }
         rebuildLock.lock()
-        let rebuild = rebuildStarted.map { ($0, rebuildFinished) }
+        let rebuildSpan = rebuildState.started.map { ($0, rebuildState.finished) }
         rebuildLock.unlock()
-        if let (from, to) = rebuild, overlaps(from, to) {
+        if let (from, to) = rebuildSpan, overlaps(from, to) {
             lines.append("rebuild on another GPU \(span(from, to))")
         }
         return lines
@@ -565,19 +563,20 @@ public final class MosaicEngine {
 
     private func startRebuild(avoiding lost: MTLDevice?) {
         rebuildLock.lock()
-        guard !rebuilding else {
+        guard !rebuildState.running else {
             rebuildLock.unlock()
             return
         }
-        rebuilding = true
-        rebuildStarted = ProcessInfo.processInfo.systemUptime
-        rebuildFinished = nil
+        rebuildState.running = true
+        rebuildState.started = ProcessInfo.processInfo.systemUptime
+        rebuildState.finished = nil
         let provider = provider
         rebuildLock.unlock()
 
         let recipe = recipe
         let statisticsBox = statisticsBox
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+        let rebuildState = rebuildState
+        DispatchQueue.global(qos: .userInitiated).async {
             let started = Date()
             var device = provider?(lost)
             if device == nil || device?.registryID == lost?.registryID {
@@ -592,12 +591,11 @@ public final class MosaicEngine {
                 statisticsBox.update { $0.lastError = "could not rebuild on another GPU: \(error)" }
             }
 
-            guard let self else { return }
             let seconds = Date().timeIntervalSince(started)
-            self.rebuildLock.lock()
-            self.replacement = fresh
-            if fresh == nil { self.rebuilding = false }
-            self.rebuildLock.unlock()
+            rebuildState.lock.lock()
+            rebuildState.replacement = fresh
+            if fresh == nil { rebuildState.running = false }
+            rebuildState.lock.unlock()
             if let fresh {
                 statisticsBox.update {
                     $0.rebuilds += 1
@@ -615,12 +613,12 @@ public final class MosaicEngine {
     ///   drawn: the old device may already be gone.
     private func adoptReplacement() -> Bool {
         rebuildLock.lock()
-        let fresh = replacement
-        let busy = rebuilding
+        let fresh = rebuildState.replacement
+        let busy = rebuildState.running
         if let fresh {
-            replacement = nil
-            rebuilding = false
-            rebuildFinished = ProcessInfo.processInfo.systemUptime
+            rebuildState.replacement = nil
+            rebuildState.running = false
+            rebuildState.finished = ProcessInfo.processInfo.systemUptime
             currentDeviceID = fresh.device.registryID
         }
         rebuildLock.unlock()
@@ -749,4 +747,14 @@ public final class MosaicEngine {
             $0.stalls = stalls
         }
     }
+}
+
+/// A rebuild on another GPU, shared with the thread that does it, which hands
+/// its result back here and never touches the engine.
+private final class RebuildState: @unchecked Sendable {
+    let lock = NSLock()
+    var running = false
+    var replacement: GPUResources?
+    var started: TimeInterval?
+    var finished: TimeInterval?
 }

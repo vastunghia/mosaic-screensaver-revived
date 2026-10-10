@@ -46,8 +46,8 @@ final class HarnessDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate(ignoringOtherApps: true)
 
         if let interval = options.rebuildEvery {
-            Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [engine] _ in
-                engine.rebuild()
+            Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+                MainActor.assumeIsolated { self?.engine.rebuild() }
             }
         }
         if let interval = options.injectFreezeEvery {
@@ -58,7 +58,7 @@ final class HarnessDelegate: NSObject, NSApplicationDelegate {
         }
         if let seconds = options.quitAfter {
             Timer.scheduledTimer(withTimeInterval: seconds, repeats: false) { _ in
-                NSApp.terminate(nil)
+                MainActor.assumeIsolated { NSApp.terminate(nil) }
             }
         }
     }
