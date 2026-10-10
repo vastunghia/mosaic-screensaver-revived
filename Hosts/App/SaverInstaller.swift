@@ -87,7 +87,7 @@ enum SaverInstaller {
     /// Where in System Settings Mosaic is chosen, for the window's footnotes.
     static var whereToChoose: String {
         if #available(macOS 26, *) {
-            "Wallpaper › Screen Saver"
+            "Wallpaper › Screen Saver › Other"
         } else {
             "Screen Saver › Other"
         }
