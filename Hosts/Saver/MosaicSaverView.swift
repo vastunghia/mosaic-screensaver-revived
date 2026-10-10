@@ -369,13 +369,14 @@ final class MosaicSaverView: ScreenSaverView {
         lastTimestamp = nil
         guard let metalLayer = layer as? CAMetalLayer, let queue = device.makeCommandQueue() else { return }
         let run = generation
+        let target = ProbeTarget(layer: metalLayer)
         probe = Timer.scheduledTimer(withTimeInterval: Self.probeInterval, repeats: true) { [weak self] _ in
             // Blank frames, one a refresh, from another thread: nextDrawable
             // may wait.
             DispatchQueue.global(qos: .utility).async {
                 let tally = ProbeTally()
                 for _ in 0..<Self.probeBurst {
-                    guard let drawable = metalLayer.nextDrawable(), let commands = queue.makeCommandBuffer() else { return }
+                    guard let drawable = target.layer.nextDrawable(), let commands = queue.makeCommandBuffer() else { return }
                     let pass = MTLRenderPassDescriptor()
                     pass.colorAttachments[0].texture = drawable.texture
                     pass.colorAttachments[0].loadAction = .clear
@@ -617,6 +618,13 @@ private final class Built: @unchecked Sendable {
     var engine: MosaicEngine?
     var closeUps: ShelvedPhotoSource?
     var failure: Error?
+}
+
+/// The layer the probe draws into from a background thread: nextDrawable is
+/// safe to call off the main thread, which the compiler cannot know.
+private final class ProbeTarget: @unchecked Sendable {
+    let layer: CAMetalLayer
+    init(layer: CAMetalLayer) { self.layer = layer }
 }
 
 /// Shown frames of one probe burst, counted from Metal's handler threads.

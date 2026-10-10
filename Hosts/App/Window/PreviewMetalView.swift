@@ -79,7 +79,7 @@ final class PreviewMetalView: NSView {
     }
 
     private func start() {
-        guard let makeEngine, let metalLayer = layer as? CAMetalLayer else { return }
+        guard let makeEngine, layer is CAMetalLayer else { return }
         generation += 1
         let run = generation
         let display = (window?.screen?.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)
@@ -96,7 +96,10 @@ final class PreviewMetalView: NSView {
             }
             DispatchQueue.main.async { [weak self] in
                 MainActor.assumeIsolated {
-                    guard let self, self.generation == run, let engine = box.engine else { return }
+                    // The layer is read again here rather than carried through
+                    // the background thread, which must not touch it.
+                    guard let self, self.generation == run, let engine = box.engine,
+                          let metalLayer = self.layer as? CAMetalLayer else { return }
                     let elapsed = ProcessInfo.processInfo.systemUptime - started
                     Self.log.notice("window preview started in \(elapsed, format: .fixed(precision: 2), privacy: .public) s")
                     self.begin(engine, on: metalLayer)
