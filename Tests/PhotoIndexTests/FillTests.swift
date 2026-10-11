@@ -17,6 +17,7 @@ private final class PatchyLibrary: PhotoSource, @unchecked Sendable {
     private var _asked: [String] = []
     private var _askedAt: [String] = []
     private var _localWidths: [String: Int] = [:]
+    private var _originalWidths: [String: Int] = [:]
 
     init(count: Int, away: Set<String> = [], broken: Set<String> = []) {
         synthetic = SyntheticPhotoSource(count: count)
@@ -61,6 +62,13 @@ private final class PatchyLibrary: PhotoSource, @unchecked Sendable {
         set { lock.lock(); _localWidths = newValue; lock.unlock() }
     }
 
+    /// Photographs whose original is this narrow: whatever is asked, this
+    /// is all there is, and it is not "elsewhere".
+    var originalWidths: [String: Int] {
+        get { lock.lock(); defer { lock.unlock() }; return _originalWidths }
+        set { lock.lock(); _originalWidths = newValue; lock.unlock() }
+    }
+
     func photos() throws -> [PhotoDescriptor] { descriptors }
 
     func canonicalImage(for id: PhotoID, maxPixelWidth: Int) throws -> CGImage {
@@ -69,10 +77,11 @@ private final class PatchyLibrary: PhotoSource, @unchecked Sendable {
         _askedAt.append("\(id.rawValue)@\(maxPixelWidth)")
         let elsewhere = _away.contains(id.rawValue) || (_localWidths[id.rawValue].map { $0 < maxPixelWidth } ?? false)
         let isBroken = _broken.contains(id.rawValue)
+        let original = _originalWidths[id.rawValue]
         lock.unlock()
         if elsewhere { throw PhotoSourceError.unavailable(id) }
         if isBroken { throw PhotoSourceError.couldNotRender(id) }
-        return try synthetic.canonicalImage(for: id, maxPixelWidth: maxPixelWidth)
+        return try synthetic.canonicalImage(for: id, maxPixelWidth: min(maxPixelWidth, original ?? maxPixelWidth))
     }
 }
 
@@ -405,5 +414,24 @@ struct FillTests {
         )
         #expect(later.entries.first { $0.id == first }?.canFillScreen == true)
         #expect(later.entries.count == 80)
+    }
+
+    @Test("a small original is a tile too: filling the screen takes the full width")
+    func smallOriginalsAreTiles() throws {
+        let library = PatchyLibrary(count: 200)
+        let small = Set(library.ids.prefix(100))
+        library.originalWidths = Dictionary(uniqueKeysWithValues: small.map { ($0, 24) })
+        let index = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: index) }
+
+        let manifest = try builder().build(
+            from: SubsetPhotoSource(library, rule: .random, count: 80, seed: 9),
+            into: PhotoIndexStore(directory: index), root: "library"
+        )
+        #expect(manifest.entries.count == 80)
+        for entry in manifest.entries {
+            #expect(entry.canFillScreen == !small.contains(entry.id), "\(entry.id)")
+        }
+        #expect(manifest.entries.filter(\.canFillScreen).count >= 20)
     }
 }

@@ -89,6 +89,17 @@ do {
         exit(0)
     }
 
+    if let count = options.probeDownload {
+        guard let indexable = try PhotoSourceFactory.indexable(options: options) else {
+            throw HarnessError.verifyingWithoutPhotographs
+        }
+        try DownloadProbe.probe(
+            index: PhotoIndexStore(directory: options.resolvedIndexDirectory), source: indexable.source,
+            count: count, width: options.closeUpOptions.anchorWidth ?? 1920, seed: options.seed
+        )
+        exit(0)
+    }
+
     if options.play {
         let application = NSApplication.shared
         application.setActivationPolicy(.regular)

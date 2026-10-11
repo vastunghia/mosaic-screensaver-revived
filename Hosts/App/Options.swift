@@ -59,6 +59,9 @@ struct Options {
     var probeLocal: Int?
     /// Where `--probe-local` writes one row per photograph, if anywhere.
     var probeCSV: URL?
+    /// Fetches this many of the index's photographs that fill the screen from
+    /// iCloud at 1920 px, one at a time, and says what it cost.
+    var probeDownload: Int?
 
     /// Checks that close-ups from the originals are cut where the index cut
     /// the thumbnails, on this many photographs whose window moved.
@@ -266,6 +269,7 @@ struct Options {
             case "--verify-canonical": options.verifyCanonical = next().flatMap(Int.init)
             case "--probe-local": options.probeLocal = next().flatMap(Int.init)
             case "--probe-csv": options.probeCSV = path()
+            case "--probe-download": options.probeDownload = next().flatMap(Int.init)
             case "--verify-windows": options.verifyWindows = next().flatMap(Int.init)
             case "--list-photos": options.listPhotos = path()
             case "--export-faces": options.exportFaces = path()
@@ -345,7 +349,7 @@ struct Options {
 
         let exporting = options.exportMosaic != nil || options.exportBatch != nil
             || options.exportDirectory != nil || options.buildIndex || options.verifyCanonical != nil || options.verifyWindows != nil
-            || options.probeLocal != nil
+            || options.probeLocal != nil || options.probeDownload != nil
             || options.listPhotos != nil || options.exportFaces != nil
         if !options.seedGiven && !exporting {
             options.seed = UInt64.random(in: .min ... .max)

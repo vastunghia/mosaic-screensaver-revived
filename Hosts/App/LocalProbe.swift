@@ -2,6 +2,7 @@ import Foundation
 import MosaicCore
 import MosaicPhotoKit
 import MosaicPhotos
+import PhotoIndex
 
 /// `--probe-local N`: what this Mac holds of the library without asking iCloud.
 ///
@@ -115,5 +116,64 @@ private final class Rows: @unchecked Sendable {
     var sorted: [Row] {
         lock.lock(); defer { lock.unlock() }
         return rows.sorted { $0.0.rawValue < $1.0.rawValue }
+    }
+}
+
+/// `--probe-download N`: what fetching from iCloud costs, for the photographs
+/// that fill the screen.
+///
+/// On an optimised library almost none of them is here larger than 854 px, so
+/// full screen they are soft (2026-10-11). Asked at 1920 with the network
+/// allowed, does PhotoKit fetch the whole original or only what was asked for?
+/// For `N` photographs of the index that fill the screen, one at a time: what
+/// is here before, the request and how long it took, and what is here after.
+/// The space it took is not measured here: compare the Photos library on disk
+/// before and after.
+enum DownloadProbe {
+    static func probe(index store: PhotoIndexStore, source: any PhotoSource, count: Int, width: Int, seed: UInt64) throws {
+        guard let library = (source as? SubsetPhotoSource<PhotoKitPhotoSource>)?.base ?? source as? PhotoKitPhotoSource else {
+            print("probe-download: only the Photos library can be probed")
+            return
+        }
+        let index = try IndexedPhotoSource(store: store)
+        _ = try library.photos()
+        let fetching = PhotoKitPhotoSource(scope: library.scope, allowsNetworkAccess: true)
+        _ = try fetching.photos()
+
+        var rng = SplitMix64(seed: seed)
+        // Full width only: a small original has nothing more to fetch.
+        let narrowest = index.manifest.thumbnailWidth - 1
+        let filling = index.entries.filter { $0.canFillScreen && $0.pixelWidth >= narrowest }
+        let sample = Array(rng.shuffled(filling).prefix(count))
+        print("probe-download: \(sample.count) of the \(filling.count) photographs that fill the screen, at \(width) px")
+        print("id,original,before_bytes,before_crop,fetched,seconds,after_bytes,after_crop")
+
+        var fetched = 0, originalsAfter = 0, seconds = 0.0
+        for entry in sample {
+            let id = entry.photoID
+            let original = library.pixelSize(of: id).map { "\($0.width)x\($0.height)" } ?? ""
+            let before = try library.localAvailability(of: id)
+            let started = Date()
+            let result: String
+            do {
+                let image = try fetching.uprightImage(for: id, cropWidth: width)
+                result = "\(image.width)x\(image.height)"
+                fetched += 1
+            } catch {
+                result = "\(error)"
+            }
+            let elapsed = Date().timeIntervalSince(started)
+            seconds += elapsed
+            let after = try library.localAvailability(of: id)
+            if after.originalBytes != nil { originalsAfter += 1 }
+            func text(_ value: Int?) -> String { value.map { "\($0)" } ?? "" }
+            let columns: [String] = [
+                id.rawValue, original, text(before.originalBytes), text(before.largestCropWidth),
+                result, String(format: "%.1f", elapsed), text(after.originalBytes), text(after.largestCropWidth),
+            ]
+            print(columns.joined(separator: ","))
+        }
+        print(String(format: "  %d of %d fetched in %.1f s; %d have their original here afterwards",
+                     fetched, sample.count, seconds, originalsAfter))
     }
 }

@@ -330,11 +330,22 @@ public struct PhotoIndexBuilder: Sendable {
         var unavailable: [String] = []
         var short: [String] = []
 
+        // Filling the screen takes `thumbnailWidth` across, from an original as
+        // from a derivative: a 350 px original shown full screen is as soft as
+        // a 350 px derivative (2026-10-11, 27 of them on an optimised library).
+        // A folder is indexed as it always was.
+        let tiered: Bool = if case .plain = tier { false } else { true }
+        let narrowest = thumbnailWidth - 1
+        let narrow: @Sendable (Int) -> Bool = { crop in tiered && crop < narrowest }
+
         for descriptor in descriptors {
             let id = descriptor.id.rawValue
             if let entry = known[id],
                entry.versionToken == descriptor.versionToken,
                store.hasThumbnail(named: entry.thumbnail),
+               // Indexed before narrow originals were tiles: read again, to be
+               // marked as one.
+               !(entry.canFillScreen && narrow(entry.pixelWidth)),
                entry.canFillScreen || !Self.isFullScreen(tier) {
                 kept[id] = entry
             } else if alreadySkipped.contains(id), known[id] == nil {
@@ -383,6 +394,10 @@ public struct PhotoIndexBuilder: Sendable {
                         } catch PhotoSourceError.unavailable {
                             continue
                         }
+                        if case .fullScreen = tier, narrow(image.width) {
+                            collector.short(id)
+                            return
+                        }
                         let signature = try ImageSampling.signature(of: image, side: side)
                         let name = IndexEntry.thumbnailName(id: id, versionToken: descriptor.versionToken)
                         try store.writeThumbnail(image, named: name)
@@ -394,7 +409,7 @@ public struct PhotoIndexBuilder: Sendable {
                             pixelWidth: image.width,
                             pixelHeight: image.height,
                             cropStart: cropStart,
-                            tileOnly: asked < width
+                            tileOnly: asked < width || narrow(image.width)
                         ))
                         return
                     }
