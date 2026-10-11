@@ -38,4 +38,10 @@ struct TargetSizeTests {
         let exact = PhotoKitPhotoSource.targetSize(pixelWidth: 854, pixelHeight: 480, cropWidth: 854)
         #expect(exact == CGSize(width: 854, height: 480))
     }
+
+    @Test func aPhotographOfUnknownSizeNeedsTheWholeWidth() {
+        #expect(PhotoKitPhotoSource.neededCropWidth(pixelWidth: 0, pixelHeight: 0, cropWidth: 854) == 854)
+        #expect(PhotoKitPhotoSource.neededCropWidth(pixelWidth: 3840, pixelHeight: 2160, cropWidth: 854) == 854)
+        #expect(PhotoKitPhotoSource.neededCropWidth(pixelWidth: 350, pixelHeight: 233, cropWidth: 854) == 350)
+    }
 }

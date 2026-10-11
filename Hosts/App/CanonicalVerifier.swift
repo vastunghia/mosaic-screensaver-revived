@@ -55,7 +55,8 @@ enum CanonicalVerifier {
         // narrower too; anything else is PhotoKit handing back a derivative.
         let library = (source as? SubsetPhotoSource<PhotoKitPhotoSource>)?.base ?? source as? PhotoKitPhotoSource
         for (id, got) in report.narrowerOnes.sorted(by: { $0.1 < $1.1 }).prefix(30) {
-            let original = library?.pixelSize(of: id)
+            // 0×0 for a photograph whose size PhotoKit does not know yet.
+            let original = library?.pixelSize(of: id).flatMap { $0.width > 0 && $0.height > 0 ? $0 : nil }
             let cropWidth = original.map { Int(CanonicalCrop.rect(width: $0.width, height: $0.height).width) }
             // One pixel short is PhotoKit's rounding, seen on originals of every
             // size; more than that would be a derivative smaller than asked for.

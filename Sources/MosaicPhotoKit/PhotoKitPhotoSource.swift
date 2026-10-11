@@ -129,7 +129,8 @@ public final class PhotoKitPhotoSource: PhotoSource, @unchecked Sendable {
             if delivered != nil { break }
         }
         let image = delivered?.cgImage(forProposedRect: nil, context: nil, hints: nil)
-        let needed = min(maxPixelWidth, Int(CanonicalCrop.rect(width: asset.pixelWidth, height: asset.pixelHeight).width))
+        let needed = Self.neededCropWidth(pixelWidth: asset.pixelWidth, pixelHeight: asset.pixelHeight,
+                                          cropWidth: maxPixelWidth)
         let got = image.map { Int(CanonicalCrop.rect(width: $0.width, height: $0.height).width) }
         // One pixel short is PhotoKit's rounding (`targetSize`); more is a
         // derivative smaller than the photograph allows.
@@ -149,6 +150,17 @@ public final class PhotoKitPhotoSource: PhotoSource, @unchecked Sendable {
         guard !short else { throw PhotoSourceError.unavailable(id) }
         guard got > maxPixelWidth + 1 else { return image }
         return try Self.scaled(image, by: Double(maxPixelWidth + 1) / Double(got), id: id)
+    }
+
+    /// The narrowest crop that is the photograph's own and not a smaller
+    /// derivative: `cropWidth`, or less when the original is that small.
+    ///
+    /// PhotoKit reports 0×0 for some photographs of a library still coming
+    /// down from iCloud (2026-10-11, a crash: `CanonicalCrop.rect` requires a
+    /// size). Not knowing how large the original is, the whole width is asked.
+    public static func neededCropWidth(pixelWidth: Int, pixelHeight: Int, cropWidth: Int) -> Int {
+        guard pixelWidth > 0, pixelHeight > 0 else { return cropWidth }
+        return min(cropWidth, Int(CanonicalCrop.rect(width: pixelWidth, height: pixelHeight).width))
     }
 
     /// `.fast` may hand back more than was asked for; the contract is a crop at
