@@ -107,6 +107,44 @@ struct SubsetRuleTests {
         #expect(february == 29)
     }
 
+    /// What filling a subset to its target rests on (SPEC § 5): taking
+    /// photographs out of the library never pushes out a chosen one that
+    /// stayed. Without it every round of the fill would throw away photographs
+    /// indexed in the round before.
+    @Test("removing photographs never pushes out a chosen one that stayed")
+    func monotone() {
+        var rng = SplitMix64(seed: 11)
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        for trial in 0..<200 {
+            // Months of very different sizes, some undated photographs.
+            var photos: [PhotoDescriptor] = []
+            for month in 0..<Int(rng.next() % 30 + 1) {
+                for index in 0..<Int(rng.next() % 40) {
+                    let date = calendar.date(from: DateComponents(
+                        year: 2000 + month / 12, month: 1 + month % 12, day: 1 + index % 28, second: index
+                    ))!
+                    photos.append(PhotoDescriptor(
+                        id: PhotoID("t\(trial)-m\(month)-\(index)"), versionToken: "1", creationDate: date
+                    ))
+                }
+            }
+            photos += (0..<Int(rng.next() % 10)).map {
+                PhotoDescriptor(id: PhotoID("t\(trial)-u\($0)"), versionToken: "1")
+            }
+            let count = Int(rng.next() % UInt64(max(photos.count, 1))) + 1
+            let removedShare = rng.next() % 90 + 5
+            let removed = Set(photos.map(\.id).filter { _ in rng.next() % 100 < removedShare })
+
+            for rule in SubsetRule.allCases {
+                let before = Set(rule.choose(from: photos, count: count, seed: 5).map(\.id))
+                let after = Set(rule.choose(from: photos.filter { !removed.contains($0.id) }, count: count, seed: 5).map(\.id))
+                let lost = before.subtracting(removed).subtracting(after)
+                #expect(lost.isEmpty, "\(rule), trial \(trial): \(lost.count) chosen photographs pushed out")
+            }
+        }
+    }
+
     @Test("the subset source passes only the chosen photographs")
     func subsetSource() throws {
         let base = SyntheticPhotoSource(count: 40)

@@ -167,6 +167,19 @@ public struct IndexManifest: Codable, Equatable, Sendable {
     /// would throw away an index that is still exactly right.
     public var unavailable: [String]
 
+    /// When `unavailable` was last found out from scratch, for a source filled
+    /// to its target (`FillablePhotoSource`). There it lists every photograph
+    /// of the library known to be elsewhere, not only those of the subset, and
+    /// they are left out of the choice without being asked for again — an
+    /// optimised library can have tens of thousands, and asking costs half a
+    /// minute — until a day has passed, or `unavailableContext` changes.
+    /// Nil for a folder, whose unavailable photographs are asked for every time.
+    public var unavailableCheckedAt: Date?
+
+    /// What `unavailable` was found out under: whether downloads were allowed.
+    /// Turning them on makes every one worth asking for again at once.
+    public var unavailableContext: String?
+
     public init(
         formatVersion: Int = IndexManifest.currentFormatVersion,
         root: String,
@@ -176,7 +189,9 @@ public struct IndexManifest: Codable, Equatable, Sendable {
         cropRule: CropRule = .standard,
         entries: [IndexEntry] = [],
         skipped: [String] = [],
-        unavailable: [String] = []
+        unavailable: [String] = [],
+        unavailableCheckedAt: Date? = nil,
+        unavailableContext: String? = nil
     ) {
         self.formatVersion = formatVersion
         self.root = root
@@ -187,11 +202,13 @@ public struct IndexManifest: Codable, Equatable, Sendable {
         self.entries = entries
         self.skipped = skipped
         self.unavailable = unavailable
+        self.unavailableCheckedAt = unavailableCheckedAt
+        self.unavailableContext = unavailableContext
     }
 
     private enum CodingKeys: String, CodingKey {
         case formatVersion, root, thumbnailWidth, thumbnailHeight, signatureSide, cropRule
-        case entries, skipped, unavailable
+        case entries, skipped, unavailable, unavailableCheckedAt, unavailableContext
     }
 
     public init(from decoder: any Decoder) throws {
@@ -207,6 +224,8 @@ public struct IndexManifest: Codable, Equatable, Sendable {
         entries = try container.decode([IndexEntry].self, forKey: .entries)
         skipped = try container.decode([String].self, forKey: .skipped)
         unavailable = try container.decodeIfPresent([String].self, forKey: .unavailable) ?? []
+        unavailableCheckedAt = try container.decodeIfPresent(Date.self, forKey: .unavailableCheckedAt)
+        unavailableContext = try container.decodeIfPresent(String.self, forKey: .unavailableContext)
     }
 
     /// Whether an index on disk can be continued rather than rebuilt.

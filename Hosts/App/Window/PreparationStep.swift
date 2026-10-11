@@ -27,6 +27,13 @@ struct PreparationStep: View {
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
+                // Filling to the number chosen ran out of photographs: say why
+                // there are fewer, or it looks like the setting was ignored.
+                if let progress = model.progress, progress.fellShort {
+                    Text("That is every photograph this Mac can use: the others are only in iCloud or unreadable.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
             }
             ProblemRow(model: model, place: .preparing)
         } header: {

@@ -38,6 +38,9 @@ struct Options {
     var collectionIdentifiers: [String] = []
     /// Download photographs kept only in iCloud (SPEC § 5, off by default).
     var allowsDownloads = false
+    /// What a photograph found unavailable was found so under, for the index
+    /// to ask again at once when downloads are turned on or off.
+    var availability: String { allowsDownloads ? "downloads" : "local" }
 
     /// Which photographs of the library get indexed (SPEC § 5): spread over
     /// time, chosen by looking at the `subset` specimen; the size is the pool's

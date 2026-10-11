@@ -168,7 +168,7 @@ enum PhotoSourceFactory {
         let reported = Reported()
 
         let manifest = try builder.build(
-            from: source, into: store, root: root,
+            from: source, into: store, root: root, availability: options.availability,
             progress: { progress in
                 guard progress.total > 0 else { return }
                 let percent = progress.completed * 100 / progress.total

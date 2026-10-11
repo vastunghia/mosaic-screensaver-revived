@@ -3,6 +3,12 @@ import Foundation
 import MosaicCore
 import MosaicPhotos
 
+/// How far a build has gone.
+///
+/// For a folder, `completed` of `total` are the photographs looked at, ready or
+/// not. For a source filled to its target (`FillablePhotoSource`) the two are
+/// `ready` of the target, since the photographs looked at have no fixed total:
+/// every one passed over brings in another.
 public struct IndexProgress: Equatable, Sendable {
     public var completed: Int
     public var reused: Int
@@ -10,13 +16,23 @@ public struct IndexProgress: Equatable, Sendable {
     /// Not on this Mac, and not allowed to be fetched: see `PhotoSourceError.unavailable`.
     public var unavailable: Int
     public var total: Int
+    /// Indexed and usable.
+    public var ready: Int
+    /// Filling to a target, and the library ran out of photographs that can be
+    /// read here before reaching it — not merely smaller than the target.
+    public var fellShort: Bool
 
-    public init(completed: Int = 0, reused: Int = 0, skipped: Int = 0, unavailable: Int = 0, total: Int = 0) {
+    public init(
+        completed: Int = 0, reused: Int = 0, skipped: Int = 0, unavailable: Int = 0, total: Int = 0,
+        ready: Int = 0, fellShort: Bool = false
+    ) {
         self.completed = completed
         self.reused = reused
         self.skipped = skipped
         self.unavailable = unavailable
         self.total = total
+        self.ready = ready
+        self.fellShort = fellShort
     }
 }
 
@@ -66,16 +82,32 @@ public struct PhotoIndexBuilder: Sendable {
         self.checkpointEvery = checkpointEvery
     }
 
+    /// How long a photograph found to be elsewhere is left out of a filled
+    /// subset before it is asked for again (`IndexManifest.unavailableCheckedAt`).
+    public static let unavailableRetryInterval: TimeInterval = 24 * 60 * 60
+
+    /// Indexes `source` into `store`, keeping whatever is still good.
+    ///
+    /// A source filled to its target (`FillablePhotoSource`) is built in
+    /// rounds: the photographs that turn out to be elsewhere or broken are
+    /// left out, the choice is made again, and the newcomers are read, until a
+    /// round brings in nothing missing or the library has no more. Leaving
+    /// photographs out never pushes out a chosen one, so every round only adds.
+    /// Any other source is one round, as it always was.
+    ///
+    /// `availability` names what made a photograph unavailable — whether
+    /// downloads were allowed — and `now` dates the check; both are for a
+    /// filled source only.
     @discardableResult
     public func build(
         from source: some PhotoSource,
         into store: PhotoIndexStore,
         root: String,
+        availability: String = "",
+        now: Date = Date(),
         progress: (@Sendable (IndexProgress) -> Void)? = nil,
         isCancelled: (@Sendable () -> Bool)? = nil
     ) throws -> IndexManifest {
-        let descriptors = try source.photos()
-
         let existing = try store.load()
         var manifest: IndexManifest
         var known: [String: IndexEntry] = [:]
@@ -99,6 +131,97 @@ public struct PhotoIndexBuilder: Sendable {
             )
         }
 
+        guard let fillable = source as? any FillablePhotoSource else {
+            let round = try self.round(
+                over: try source.photos(), from: source, into: store, manifest: &manifest,
+                known: known, alreadySkipped: alreadySkipped, leftOut: ([], []),
+                report: { kept, skipped, unavailable, total, reused in
+                    progress?(IndexProgress(
+                        completed: kept + skipped + unavailable, reused: reused, skipped: skipped,
+                        unavailable: unavailable, total: total, ready: kept
+                    ))
+                },
+                isCancelled: isCancelled
+            )
+            return try finish(&manifest, kept: round.kept, skipped: round.skipped,
+                              unavailable: round.unavailable, store: store)
+        }
+
+        // What is known to be missing, left out of the choice. The broken stay
+        // left out as long as they are remembered; the elsewhere until a day has
+        // passed or downloads were turned on or off, then all are asked again.
+        let fresh = manifest.unavailableCheckedAt.map { now.timeIntervalSince($0) < Self.unavailableRetryInterval } ?? false
+        let carried = fresh && manifest.unavailableContext == availability
+        var skipped = Set(manifest.skipped)
+        var elsewhere = carried ? Set(manifest.unavailable) : []
+        manifest.unavailableCheckedAt = carried ? manifest.unavailableCheckedAt : now
+        manifest.unavailableContext = availability
+
+        let target = fillable.target
+        let library = try fillable.library()
+        // What the index had already, of the first choice: the later rounds'
+        // reuse is their own earlier work.
+        var reused: Int?
+        var kept: [String: IndexEntry] = [:]
+        var fellShort = false
+        var total = target
+        while true {
+            let chosen = fillable.choose(from: library, excluding: skipped.union(elsewhere))
+            // Short because photographs were left out, not because the
+            // library or the albums are smaller than the target.
+            fellShort = chosen.count < target && !(skipped.isEmpty && elsewhere.isEmpty)
+            total = min(target, chosen.count)
+            let round = try self.round(
+                over: chosen, from: source, into: store, manifest: &manifest,
+                known: known, alreadySkipped: alreadySkipped,
+                leftOut: (skipped, elsewhere),
+                report: { ready, newlySkipped, newlyElsewhere, _, reusedHere in
+                    if reused == nil { reused = reusedHere }
+                    progress?(IndexProgress(
+                        completed: ready, reused: reused ?? 0,
+                        skipped: skipped.count + newlySkipped, unavailable: elsewhere.count + newlyElsewhere,
+                        total: min(target, chosen.count), ready: ready, fellShort: false
+                    ))
+                },
+                isCancelled: isCancelled
+            )
+            kept = round.kept
+            for (id, entry) in round.kept { known[id] = entry }
+            let missing = round.skipped.count + round.unavailable.count
+            skipped.formUnion(round.skipped)
+            elsewhere.formUnion(round.unavailable)
+            if missing == 0 || round.cancelled { break }
+        }
+        progress?(IndexProgress(
+            completed: kept.count, reused: reused ?? 0, skipped: skipped.count,
+            unavailable: elsewhere.count, total: total, ready: kept.count,
+            fellShort: fellShort
+        ))
+        return try finish(&manifest, kept: kept, skipped: Array(skipped), unavailable: Array(elsewhere), store: store)
+    }
+
+    private struct Round {
+        var kept: [String: IndexEntry]
+        var skipped: [String]
+        var unavailable: [String]
+        var cancelled: Bool
+    }
+
+    /// One pass over `descriptors`: what is still good is kept, the rest read
+    /// on every core, a checkpoint saved every `checkpointEvery`. `leftOut` is
+    /// what earlier rounds found missing, written into every checkpoint so a
+    /// manifest on disk never forgets it.
+    private func round(
+        over descriptors: [PhotoDescriptor],
+        from source: some PhotoSource,
+        into store: PhotoIndexStore,
+        manifest: inout IndexManifest,
+        known: [String: IndexEntry],
+        alreadySkipped: Set<String>,
+        leftOut: (skipped: Set<String>, unavailable: Set<String>),
+        report: (_ kept: Int, _ skipped: Int, _ unavailable: Int, _ total: Int, _ reused: Int) -> Void,
+        isCancelled: (@Sendable () -> Bool)?
+    ) throws -> Round {
         // What is still good, and what has to be read.
         var kept: [String: IndexEntry] = [:]
         var outstanding: [PhotoDescriptor] = []
@@ -119,19 +242,20 @@ public struct PhotoIndexBuilder: Sendable {
             }
         }
 
-        var state = IndexProgress(
-            completed: kept.count, reused: kept.count, skipped: skipped.count,
-            total: descriptors.count
-        )
-        progress?(state)
+        let reused = kept.count
+        report(kept.count, skipped.count, unavailable.count, descriptors.count, reused)
 
         let collector = Collector()
         let width = thumbnailWidth
         let side = signatureSide
         let rule = cropRule
+        var cancelled = false
 
         for batch in stride(from: 0, to: outstanding.count, by: checkpointEvery) {
-            if isCancelled?() == true { break }
+            if isCancelled?() == true {
+                cancelled = true
+                break
+            }
             let slice = Array(outstanding[batch..<min(batch + checkpointEvery, outstanding.count)])
 
             // Decoding is the whole cost and the photographs are independent, so
@@ -170,20 +294,23 @@ public struct PhotoIndexBuilder: Sendable {
             for entry in fresh { kept[entry.id] = entry }
             skipped.append(contentsOf: failed)
             unavailable.append(contentsOf: elsewhere)
-
-            state.completed = kept.count + skipped.count + unavailable.count
-            state.skipped = skipped.count
-            state.unavailable = unavailable.count
-            progress?(state)
+            report(kept.count, skipped.count, unavailable.count, descriptors.count, reused)
 
             // The thumbnail is on disk before the manifest names it, so a
             // checkpoint never promises pixels that are not there.
             manifest.entries = Array(kept.values)
-            manifest.skipped = skipped
-            manifest.unavailable = unavailable
+            manifest.skipped = Array(leftOut.skipped.union(skipped))
+            manifest.unavailable = Array(leftOut.unavailable.union(unavailable))
             try store.save(manifest)
         }
+        if isCancelled?() == true { cancelled = true }
+        return Round(kept: kept, skipped: skipped, unavailable: unavailable, cancelled: cancelled)
+    }
 
+    private func finish(
+        _ manifest: inout IndexManifest, kept: [String: IndexEntry], skipped: [String], unavailable: [String],
+        store: PhotoIndexStore
+    ) throws -> IndexManifest {
         manifest.entries = Array(kept.values)
         manifest.skipped = skipped
         manifest.unavailable = unavailable
@@ -197,11 +324,7 @@ public struct PhotoIndexBuilder: Sendable {
 
         return manifest
     }
-}
 
-extension PhotoIndexBuilder {
-    /// One photograph's canonical crop, and where its window was put.
-    ///
     /// Decoded once, whole: faces are looked for in the upright photograph and
     /// the crop is cut from the same pixels, so the face-aware crop costs Vision
     /// (~40 ms a photograph at 854 px, measured 2026-10-02) and no second decode.

@@ -87,6 +87,12 @@ public enum SubsetRule: String, CaseIterable, Sendable {
         return rng.next()
     }
 
+    /// A month's place in the order the remainder is handed out in, made like
+    /// a photograph's.
+    static func rank(ofMonth key: Int, seed: UInt64) -> UInt64 {
+        rank(of: PhotoID("month-\(key)"), seed: seed)
+    }
+
     /// Equal shares per calendar month (UTC, so the answer does not depend on
     /// the Mac's time zone), filled like water: every month gives at most what
     /// it has, and the share is the level at which the months together reach
@@ -112,15 +118,26 @@ public enum SubsetRule: String, CaseIterable, Sendable {
         let sizes = keys.map { months[$0]!.count }
 
         // The smallest level that reaches `count`; then one below it
-        // everywhere, and the remainder handed out one each, spread evenly
-        // across the months that have that many.
+        // everywhere, and the remainder handed out one each to the months that
+        // have that many, in an order fixed by the seed.
+        //
+        // Not spread by position among those months, as it first was: taking
+        // photographs out of the library changes which months qualify, and a
+        // positional spread then moved the extra one from a month to another,
+        // pushing out a photograph that had been chosen. Filling the subset
+        // to its target rests on that never happening (`monotone` in the
+        // tests); a fixed order keeps a month that had the extra one ahead of
+        // every month that did not.
         var level = 0
         while sizes.reduce(0, { $0 + min($1, level) }) < count { level += 1 }
         var shares = sizes.map { min($0, level - 1) }
         let eligible = sizes.indices.filter { sizes[$0] >= level }
+            .map { (rank: Self.rank(ofMonth: keys[$0], seed: seed), month: $0) }
+            .sorted { $0.rank != $1.rank ? $0.rank < $1.rank : $0.month < $1.month }
+            .map(\.month)
         let remainder = count - shares.reduce(0, +)
-        for step in 0..<remainder {
-            shares[eligible[step * eligible.count / remainder]] += 1
+        for month in eligible.prefix(remainder) {
+            shares[month] += 1
         }
 
         var chosen: [PhotoDescriptor] = []
@@ -132,9 +149,28 @@ public enum SubsetRule: String, CaseIterable, Sendable {
     }
 }
 
+/// A source that stands for `target` photographs chosen from a larger whole,
+/// and can choose again leaving some out (SPEC § 5).
+///
+/// What an index is filled to its target with: a photograph that cannot be
+/// read here — kept only in iCloud, or broken — is left out and the choice is
+/// made again, so another takes its place instead of the subset thinning out.
+/// Leaving photographs out must never push out one that was chosen and stays
+/// (`SubsetRule`'s `monotone` test), or every round would undo the last.
+///
+/// The whole is read once (`library`) and chosen from as often as it takes
+/// (`choose`): a round of filling must not fetch 54,000 photographs again.
+public protocol FillablePhotoSource: PhotoSource {
+    var target: Int { get }
+    /// Everything the subset is chosen from.
+    func library() throws -> [PhotoDescriptor]
+    /// The subset of `library`, leaving out the identifiers in `excluded`.
+    func choose(from library: [PhotoDescriptor], excluding excluded: Set<String>) -> [PhotoDescriptor]
+}
+
 /// A source narrowed to the subset a rule picks. Everything but the list of
 /// photographs passes straight through.
-public struct SubsetPhotoSource<Base: PhotoSource>: PhotoSource {
+public struct SubsetPhotoSource<Base: PhotoSource>: FillablePhotoSource {
     public let base: Base
     public let rule: SubsetRule
     public let count: Int
@@ -147,8 +183,19 @@ public struct SubsetPhotoSource<Base: PhotoSource>: PhotoSource {
         self.seed = seed
     }
 
+    public var target: Int { count }
+
     public func photos() throws -> [PhotoDescriptor] {
-        rule.choose(from: try base.photos(), count: count, seed: seed)
+        choose(from: try library(), excluding: [])
+    }
+
+    public func library() throws -> [PhotoDescriptor] {
+        try base.photos()
+    }
+
+    public func choose(from library: [PhotoDescriptor], excluding excluded: Set<String>) -> [PhotoDescriptor] {
+        let candidates = excluded.isEmpty ? library : library.filter { !excluded.contains($0.id.rawValue) }
+        return rule.choose(from: candidates, count: count, seed: seed)
     }
 
     public func canonicalImage(for id: PhotoID, maxPixelWidth: Int) throws -> CGImage {

@@ -516,6 +516,7 @@ final class AppModel: ObservableObject {
             from: indexable.source,
             into: store,
             root: indexable.root,
+            availability: options.availability,
             progress: progress,
             isCancelled: { flag.isSet }
         )
@@ -539,7 +540,7 @@ final class AppModel: ObservableObject {
 
     private func progressed(_ progress: IndexProgress) {
         self.progress = progress
-        indexedCount = progress.completed - progress.skipped - progress.unavailable
+        indexedCount = progress.ready
     }
 
     private func finished(error: Error?, seconds: Double) {
