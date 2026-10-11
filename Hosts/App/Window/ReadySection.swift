@@ -22,6 +22,21 @@ struct ReadySection: View {
                 Spacer()
                 Button("Open Screen Saver Settings…", action: model.openScreenSaverSettings)
             }
+            // Whatever the invitation got for an answer, the window says what
+            // it means for the photographs.
+            if !model.opensAtLogin {
+                HStack {
+                    Text("Updated only while Mosaic is open")
+                    Spacer()
+                    Button("Open at Login") { model.setOpensAtLogin(true, reportingAt: .screenSaver) }
+                }
+            } else if model.loginItem == .requiresApproval {
+                HStack {
+                    Text("Waiting for approval in System Settings")
+                    Spacer()
+                    Button("Open Login Items…", action: model.openLoginItemsSettings)
+                }
+            }
         } header: {
             Label {
                 Text("Ready")
@@ -30,7 +45,9 @@ struct ReadySection: View {
                     .foregroundStyle(.green)
             }
         } footer: {
-            Footnote("Mosaic keeps the photographs up to date. Choose it in System Settings, under \(SaverInstaller.whereToChoose).")
+            Footnote(model.loginItem == .enabled
+                ? "Mosaic keeps the photographs up to date. Choose it in System Settings, under \(SaverInstaller.whereToChoose)."
+                : "Choose Mosaic in System Settings, under \(SaverInstaller.whereToChoose).")
         }
     }
 }

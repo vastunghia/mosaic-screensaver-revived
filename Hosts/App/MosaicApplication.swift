@@ -215,6 +215,38 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
         model.windowOpened()
         window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+        inviteToOpenAtLogin()
+    }
+
+    private var invitedToOpenAtLogin = false
+
+    /// Once a launch, as the window opens: without opening at login, the
+    /// screen saver's photographs fall behind the library unseen. A sheet,
+    /// not a step: everything else may be done, and it can be declined.
+    private func inviteToOpenAtLogin() {
+        guard let model, let window, !invitedToOpenAtLogin, window.attachedSheet == nil else { return }
+        model.refreshLoginItem()
+        guard model.invitesToOpenAtLogin else { return }
+        invitedToOpenAtLogin = true
+        Self.log.notice("inviting to open at login")
+
+        let alert = NSAlert()
+        alert.messageText = "Open Mosaic at login?"
+        alert.informativeText = "Mosaic keeps the screen saver’s photographs up to date only while it runs. At login it opens without a window and stays in the background."
+        alert.addButton(withTitle: "Open at Login")
+        alert.addButton(withTitle: "Not Now")
+        alert.showsSuppressionButton = true
+        alert.suppressionButton?.title = "Don’t ask again"
+        alert.beginSheetModal(for: window) { [weak self, weak alert] answer in
+            guard let model = self?.model else { return }
+            if answer == .alertFirstButtonReturn {
+                model.setOpensAtLogin(true, reportingAt: .screenSaver)
+            } else if alert?.suppressionButton?.state == .on {
+                model.declineOpeningAtLogin()
+            } else {
+                Self.log.notice("opening at login put off until the next launch")
+            }
+        }
     }
 
     // MARK: Commands

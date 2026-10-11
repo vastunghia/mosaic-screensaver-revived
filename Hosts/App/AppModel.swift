@@ -236,6 +236,9 @@ final class AppModel: ObservableObject {
     }
 
     func setOpensAtLogin(_ on: Bool, reportingAt place: Problem.Place = .settings) {
+        // Turned off by hand is an answer: the window stops asking. Turned on
+        // again, it may ask once more if the system later loses it.
+        UserDefaults.standard.set(!on, forKey: Self.declinedLoginKey)
         do {
             if on {
                 try SMAppService.mainApp.register()
@@ -257,6 +260,26 @@ final class AppModel: ObservableObject {
     func openLoginItemsSettings() {
         SMAppService.openSystemSettingsLoginItems()
     }
+
+    /// Whether to invite the user, as a window opens, to let Mosaic open at
+    /// login: without it the index is brought up to date only while the app
+    /// happens to run, and the screen saver falls behind the library unseen.
+    /// Installing the saver turns it on, but a saver installed some other way
+    /// (`build.sh --install`), or a login item removed in System Settings,
+    /// leaves it off with nobody saying so. Not once the user has said no:
+    /// "Don't ask again" in the invitation, or the switch in Settings.
+    var invitesToOpenAtLogin: Bool {
+        !isTranslocated && saver == .installed && !opensAtLogin
+            && !UserDefaults.standard.bool(forKey: Self.declinedLoginKey)
+    }
+
+    /// "Don't ask again", in the invitation.
+    func declineOpeningAtLogin() {
+        UserDefaults.standard.set(true, forKey: Self.declinedLoginKey)
+        Self.log.notice("opening at login declined: no more invitations")
+    }
+
+    private static let declinedLoginKey = "declinesOpeningAtLogin"
 
     // MARK: Permission
 
