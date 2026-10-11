@@ -99,15 +99,23 @@ public final class PhotoKitPhotoSource: PhotoSource, @unchecked Sendable {
         // Not `.fastFormat`: spike 3 found it returns a small ready-made
         // derivative whatever size is asked for, and never checked how small.
         options.deliveryMode = .highQualityFormat
-        options.resizeMode = .exact
+        // Not `.exact`: without the original, `.exact` scales a smaller local
+        // derivative up to the size asked for, and the result passes for the
+        // real thing. On an optimised library (2026-10-11) about 108 of 257
+        // thumbnails were 640 px derivatives scaled up to 854. `.fast` hands
+        // back what PhotoKit has, at its own size, so a short one shows.
+        options.resizeMode = .fast
         options.isNetworkAccessAllowed = allowsNetworkAccess
         options.version = .current
 
         var delivered: NSImage?
         var inCloud = false
         var degraded = false
+        // `.fast` comes back a little short of the size asked for even from a
+        // local original: 850 for 855, 1914 for 1921 (measured 2026-10-11). So
+        // it is asked for 5 % more, and `scaled` takes the excess off.
         let asked = Self.targetSize(pixelWidth: asset.pixelWidth, pixelHeight: asset.pixelHeight,
-                                    cropWidth: maxPixelWidth)
+                                    cropWidth: maxPixelWidth + (maxPixelWidth + 19) / 20)
         let started = Date()
         manager.requestImage(for: asset, targetSize: asked, contentMode: .aspectFill, options: options) { image, info in
             delivered = image
@@ -115,28 +123,54 @@ public final class PhotoKitPhotoSource: PhotoSource, @unchecked Sendable {
             degraded = (info?[PHImageResultIsDegradedKey] as? Bool) == true
         }
         let image = delivered?.cgImage(forProposedRect: nil, context: nil, hints: nil)
-        logIfUnusual(id, asset: asset, asked: asked, got: image, inCloud: inCloud, degraded: degraded,
+        let needed = min(maxPixelWidth, Int(CanonicalCrop.rect(width: asset.pixelWidth, height: asset.pixelHeight).width))
+        let got = image.map { Int(CanonicalCrop.rect(width: $0.width, height: $0.height).width) }
+        // One pixel short is PhotoKit's rounding (`targetSize`); more is a
+        // derivative smaller than the photograph allows.
+        let short = got.map { $0 < needed - 1 } ?? false
+        logIfUnusual(id, asset: asset, asked: asked, got: image, short: short, inCloud: inCloud, degraded: degraded,
                      seconds: Date().timeIntervalSince(started))
 
+        // With downloads off, nothing is always "not on this Mac": PhotoKit
+        // leaves out `PHImageResultIsInCloudKey` now and then (19 times in one
+        // optimised library) for a photograph it rendered at a smaller size.
         guard delivered != nil else {
-            throw inCloud && !allowsNetworkAccess
+            throw inCloud || !allowsNetworkAccess
                 ? PhotoSourceError.unavailable(id)
                 : PhotoSourceError.couldNotRender(id)
         }
-        guard let image else { throw PhotoSourceError.couldNotRender(id) }
-        return image
+        guard let image, let got else { throw PhotoSourceError.couldNotRender(id) }
+        guard !short else { throw PhotoSourceError.unavailable(id) }
+        guard got > maxPixelWidth + 1 else { return image }
+        return try Self.scaled(image, by: Double(maxPixelWidth + 1) / Double(got), id: id)
+    }
+
+    /// `.fast` may hand back more than was asked for; the contract is a crop at
+    /// most `cropWidth` across, and Vision's time grows with the pixels.
+    private static func scaled(_ image: CGImage, by scale: Double, id: PhotoID) throws -> CGImage {
+        let width = max(1, Int((Double(image.width) * scale).rounded(.up)))
+        let height = max(1, Int((Double(image.height) * scale).rounded(.up)))
+        let space = image.colorSpace.flatMap { $0.model == .rgb ? $0 : nil } ?? CGColorSpace(name: CGColorSpace.sRGB)!
+        guard let context = CGContext(
+            data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+            space: space, bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue
+        ) else { throw PhotoSourceError.couldNotRender(id) }
+        context.interpolationQuality = .high
+        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        guard let result = context.makeImage() else { throw PhotoSourceError.couldNotRender(id) }
+        return result
     }
 
     /// One line in the unified log for every request that did not go the
-    /// ordinary way: nothing delivered, more than a pixel narrower than asked,
+    /// ordinary way: nothing delivered, a crop narrower than the photograph allows,
     /// flagged as in iCloud or degraded, or slow enough to be a download. None
     /// of these stops indexing, and each would otherwise pass unseen: a smaller
     /// derivative still makes a mosaic, only a softer one.
     private func logIfUnusual(
-        _ id: PhotoID, asset: PHAsset, asked: CGSize, got: CGImage?, inCloud: Bool, degraded: Bool, seconds: Double
+        _ id: PhotoID, asset: PHAsset, asked: CGSize, got: CGImage?, short: Bool, inCloud: Bool, degraded: Bool,
+        seconds: Double
     ) {
-        let narrower = got.map { Double($0.width) < asked.width - 1 } ?? true
-        guard narrower || inCloud || degraded || seconds > 1 else { return }
+        guard got == nil || short || inCloud || degraded || seconds > 1 else { return }
         let delivered = got.map { "\($0.width)x\($0.height)" } ?? "nothing"
         Self.log.notice("""
             request \(id.rawValue, privacy: .public): original \(asset.pixelWidth, privacy: .public)x\(asset.pixelHeight, privacy: .public), \

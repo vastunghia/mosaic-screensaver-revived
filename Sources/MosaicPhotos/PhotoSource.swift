@@ -73,7 +73,8 @@ public enum PhotoSourceError: Error, CustomStringConvertible {
 
     /// The photograph exists but its pixels are not on this Mac, and fetching
     /// them was not allowed — an iCloud photograph with downloads turned off
-    /// (SPEC § 5). Not a failure of the photograph: it is worth asking again
+    /// (SPEC § 5), or here only as a derivative smaller than was asked for.
+    /// Not a failure of the photograph: it is worth asking again
     /// once downloads are allowed, so an index must not remember it as broken.
     case unavailable(PhotoID)
 
