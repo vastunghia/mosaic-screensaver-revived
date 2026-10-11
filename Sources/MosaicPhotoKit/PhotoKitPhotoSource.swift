@@ -4,6 +4,7 @@ import Foundation
 import MosaicCore
 import MosaicPhotos
 import Photos
+import os
 
 /// The Photos library, as a `PhotoSource`.
 ///
@@ -104,27 +105,93 @@ public final class PhotoKitPhotoSource: PhotoSource, @unchecked Sendable {
 
         var delivered: NSImage?
         var inCloud = false
-        manager.requestImage(
-            for: asset,
-            targetSize: Self.targetSize(pixelWidth: asset.pixelWidth, pixelHeight: asset.pixelHeight,
-                                        cropWidth: maxPixelWidth),
-            contentMode: .aspectFill,
-            options: options
-        ) { image, info in
+        var degraded = false
+        let asked = Self.targetSize(pixelWidth: asset.pixelWidth, pixelHeight: asset.pixelHeight,
+                                    cropWidth: maxPixelWidth)
+        let started = Date()
+        manager.requestImage(for: asset, targetSize: asked, contentMode: .aspectFill, options: options) { image, info in
             delivered = image
             inCloud = (info?[PHImageResultIsInCloudKey] as? Bool) == true
+            degraded = (info?[PHImageResultIsDegradedKey] as? Bool) == true
         }
+        let image = delivered?.cgImage(forProposedRect: nil, context: nil, hints: nil)
+        logIfUnusual(id, asset: asset, asked: asked, got: image, inCloud: inCloud, degraded: degraded,
+                     seconds: Date().timeIntervalSince(started))
 
-        guard let delivered else {
+        guard delivered != nil else {
             throw inCloud && !allowsNetworkAccess
                 ? PhotoSourceError.unavailable(id)
                 : PhotoSourceError.couldNotRender(id)
         }
-        guard let image = delivered.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
-            throw PhotoSourceError.couldNotRender(id)
-        }
+        guard let image else { throw PhotoSourceError.couldNotRender(id) }
         return image
     }
+
+    /// One line in the unified log for every request that did not go the
+    /// ordinary way: nothing delivered, more than a pixel narrower than asked,
+    /// flagged as in iCloud or degraded, or slow enough to be a download. None
+    /// of these stops indexing, and each would otherwise pass unseen: a smaller
+    /// derivative still makes a mosaic, only a softer one.
+    private func logIfUnusual(
+        _ id: PhotoID, asset: PHAsset, asked: CGSize, got: CGImage?, inCloud: Bool, degraded: Bool, seconds: Double
+    ) {
+        let narrower = got.map { Double($0.width) < asked.width - 1 } ?? true
+        guard narrower || inCloud || degraded || seconds > 1 else { return }
+        let delivered = got.map { "\($0.width)x\($0.height)" } ?? "nothing"
+        Self.log.notice("""
+            request \(id.rawValue, privacy: .public): original \(asset.pixelWidth, privacy: .public)x\(asset.pixelHeight, privacy: .public), \
+            asked \(Int(asked.width), privacy: .public)x\(Int(asked.height), privacy: .public), \
+            got \(delivered, privacy: .public), in iCloud \(inCloud, privacy: .public), \
+            degraded \(degraded, privacy: .public), network \(self.allowsNetworkAccess, privacy: .public), \
+            \(Int(seconds * 1000), privacy: .public) ms
+            """)
+    }
+
+    /// What this Mac holds of a photograph without asking iCloud, for
+    /// `--probe-local`: whether the original's data is here, and the largest
+    /// image PhotoKit will render from what is here.
+    public struct LocalAvailability: Sendable {
+        public var originalBytes: Int?
+        public var largest: (width: Int, height: Int)?
+        public var inCloud: Bool
+        public var degraded: Bool
+        public var seconds: Double
+    }
+
+    public func localAvailability(of id: PhotoID) throws -> LocalAvailability {
+        guard let asset = asset(for: id) else { throw PhotoSourceError.unknownPhoto(id) }
+        let started = Date()
+
+        let dataOptions = PHImageRequestOptions()
+        dataOptions.isSynchronous = true
+        dataOptions.isNetworkAccessAllowed = false
+        dataOptions.version = .original
+        var bytes: Int?
+        manager.requestImageDataAndOrientation(for: asset, options: dataOptions) { data, _, _, _ in
+            bytes = data?.count
+        }
+
+        let options = PHImageRequestOptions()
+        options.isSynchronous = true
+        options.deliveryMode = .highQualityFormat
+        options.resizeMode = .none
+        options.isNetworkAccessAllowed = false
+        options.version = .current
+        var probe = LocalAvailability(originalBytes: bytes, largest: nil, inCloud: false, degraded: false, seconds: 0)
+        manager.requestImage(
+            for: asset, targetSize: PHImageManagerMaximumSize, contentMode: .default, options: options
+        ) { image, info in
+            if let image = image?.cgImage(forProposedRect: nil, context: nil, hints: nil) {
+                probe.largest = (image.width, image.height)
+            }
+            probe.inCloud = (info?[PHImageResultIsInCloudKey] as? Bool) == true
+            probe.degraded = (info?[PHImageResultIsDegradedKey] as? Bool) == true
+        }
+        probe.seconds = Date().timeIntervalSince(started)
+        return probe
+    }
+
+    private static let log = Logger(subsystem: "com.vastunghia.Mosaic", category: "photokit")
 
     /// The size to ask PhotoKit for so that the **canonical crop** of what comes
     /// back is `cropWidth` across.

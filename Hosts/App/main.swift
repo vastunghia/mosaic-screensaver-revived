@@ -78,6 +78,14 @@ do {
         exit(passed ? 0 : 1)
     }
 
+    if let count = options.probeLocal {
+        guard let indexable = try PhotoSourceFactory.indexable(options: options) else {
+            throw HarnessError.verifyingWithoutPhotographs
+        }
+        try LocalProbe.probe(indexable.source, name: indexable.name, count: count, seed: options.seed, csv: options.probeCSV)
+        exit(0)
+    }
+
     if options.play {
         let application = NSApplication.shared
         application.setActivationPolicy(.regular)

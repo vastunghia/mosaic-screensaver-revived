@@ -51,6 +51,12 @@ struct Options {
     /// source and times it, instead of running anything.
     var verifyCanonical: Int?
 
+    /// Asks PhotoKit, with no network, for the largest image it makes of this
+    /// many photographs of the source, and whether their originals are here.
+    var probeLocal: Int?
+    /// Where `--probe-local` writes one row per photograph, if anywhere.
+    var probeCSV: URL?
+
     /// Checks that close-ups from the originals are cut where the index cut
     /// the thumbnails, on this many photographs whose window moved.
     var verifyWindows: Int?
@@ -255,6 +261,8 @@ struct Options {
             case "--subset-size": options.subsetSize = next().flatMap(Int.init) ?? options.subsetSize
             case "--subset-seed": options.subsetSeed = next().flatMap(UInt64.init) ?? options.subsetSeed
             case "--verify-canonical": options.verifyCanonical = next().flatMap(Int.init)
+            case "--probe-local": options.probeLocal = next().flatMap(Int.init)
+            case "--probe-csv": options.probeCSV = path()
             case "--verify-windows": options.verifyWindows = next().flatMap(Int.init)
             case "--list-photos": options.listPhotos = path()
             case "--export-faces": options.exportFaces = path()
@@ -334,6 +342,7 @@ struct Options {
 
         let exporting = options.exportMosaic != nil || options.exportBatch != nil
             || options.exportDirectory != nil || options.buildIndex || options.verifyCanonical != nil || options.verifyWindows != nil
+            || options.probeLocal != nil
             || options.listPhotos != nil || options.exportFaces != nil
         if !options.seedGiven && !exporting {
             options.seed = UInt64.random(in: .min ... .max)
