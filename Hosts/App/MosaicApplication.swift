@@ -1,6 +1,9 @@
 import AppKit
+import AppUpdate
+import Combine
 import SharedStore
 import SwiftUI
+import UserNotifications
 import os
 
 /// M9 as a user sees it: launched with no flags — from the Finder, or with a
@@ -49,6 +52,11 @@ enum MosaicApplication {
         delegate?.showSettings(nil)
     }
 
+    /// The window's own way to the update it shows as available.
+    static func offerUpdate() {
+        delegate?.offerUpdate()
+    }
+
     /// The menu bar a Mac app is expected to have (HIG, "The menu bar"):
     /// every command of the window is here too, with its shortcut.
     static func mainMenu() -> NSMenu {
@@ -57,6 +65,7 @@ enum MosaicApplication {
         let app = submenu(of: menu, titled: "Mosaic")
         app.addItem(withTitle: "About Mosaic",
                     action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        app.addItem(withTitle: "Check for Updates…", action: #selector(AppDelegate.checkForUpdates(_:)), keyEquivalent: "")
         app.addItem(.separator())
         app.addItem(withTitle: "Settings…", action: #selector(AppDelegate.showSettings(_:)), keyEquivalent: ",")
         app.addItem(.separator())
@@ -121,6 +130,9 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
     private var window: NSWindow?
     private var settingsWindow: NSWindow?
     private var model: AppModel?
+    private let updater = Updater()
+    private var updateWatch: AnyCancellable?
+    private var loginWatch: AnyCancellable?
 
     private var launchedAtLogin = false
     /// Off for the app's own restarts (`MosaicApplication.quitWithoutAsking`).
@@ -132,6 +144,8 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
     private static let log = Logger(subsystem: "com.vastunghia.Mosaic", category: "app")
 
     func applicationWillFinishLaunching(_ notification: Notification) {
+        // Before launch ends, so that a click that launched the app arrives.
+        UNUserNotificationCenter.current().delegate = self
         // The launch event arrives after this and before
         // applicationDidFinishLaunching, so it is read in a handler: no event
         // is current here yet, and by applicationDidFinishLaunching it is gone.
@@ -153,7 +167,25 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let model = AppModel(foreground: wantsWindow)
         self.model = model
+        model.finishUpdate()
         if wantsWindow { showWindow() }
+        // An update prepared in the background is offered as soon as there is
+        // a window to offer it in.
+        // Without a window — the login item nobody looks at — a notification.
+        updateWatch = updater.$state.dropFirst().receive(on: DispatchQueue.main).sink { [weak self] state in
+            guard let self, case .ready(let release, _) = state else { return }
+            if window?.isVisible == true {
+                showNextSheet()
+            } else {
+                UpdateNotice.post(release)
+            }
+        }
+        // Opening at login turned on with the window open, however it was.
+        loginWatch = model.$loginItem.receive(on: DispatchQueue.main).sink { [weak self] status in
+            guard self?.window?.isVisible == true else { return }
+            UpdateNotice.requestPermissionIfUseful(opensAtLogin: status == .enabled || status == .requiresApproval)
+        }
+        updater.start()
         if launchedAtLogin { model.updateRequested(reason: "login") }
         for call in earlyCalls { handle(call) }
         earlyCalls = []
@@ -198,7 +230,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
         if window == nil {
             NSApp.mainMenu = MosaicApplication.mainMenu()
             // Sized by its content, which grows and shrinks with the steps.
-            let controller = NSHostingController(rootView: AppView(model: model) { [weak self] in
+            let controller = NSHostingController(rootView: AppView(model: model, updater: updater) { [weak self] in
                 self?.play(nil)
             })
             controller.sizingOptions = [.preferredContentSize]
@@ -215,18 +247,32 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
         model.windowOpened()
         window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
-        inviteToOpenAtLogin()
+        showNextSheet()
     }
 
+    // MARK: Sheets on the window
+
     private var invitedToOpenAtLogin = false
+    private var offeredUpdate: ReleaseVersion?
+
+    /// One sheet at a time, each at most once a launch: the invitation to
+    /// open at login, then an update. Called again as each one ends.
+    private func showNextSheet() {
+        guard let window, window.isVisible, window.attachedSheet == nil else { return }
+        if inviteToOpenAtLogin() { return }
+        if let release = updater.readyRelease, offeredUpdate != release.version {
+            offerUpdate()
+        }
+    }
 
     /// Once a launch, as the window opens: without opening at login, the
     /// screen saver's photographs fall behind the library unseen. A sheet,
     /// not a step: everything else may be done, and it can be declined.
-    private func inviteToOpenAtLogin() {
-        guard let model, let window, !invitedToOpenAtLogin, window.attachedSheet == nil else { return }
+    /// Whether it was shown.
+    private func inviteToOpenAtLogin() -> Bool {
+        guard let model, let window, !invitedToOpenAtLogin else { return false }
         model.refreshLoginItem()
-        guard model.invitesToOpenAtLogin else { return }
+        guard model.invitesToOpenAtLogin else { return false }
         invitedToOpenAtLogin = true
         Self.log.notice("inviting to open at login")
 
@@ -245,6 +291,111 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
                 model.declineOpeningAtLogin()
             } else {
                 Self.log.notice("opening at login put off until the next launch")
+            }
+            self?.showNextSheet()
+        }
+        return true
+    }
+
+    /// The prepared update, with its notes: install and relaunch, later, or
+    /// never for this version.
+    func offerUpdate() {
+        guard let window, let release = updater.readyRelease, let current = updater.current else { return }
+        guard window.attachedSheet == nil else { return }
+        offeredUpdate = release.version
+        UpdateNotice.withdraw()
+
+        let alert = NSAlert()
+        alert.messageText = "Mosaic \(release.version) is available"
+        var text = "You have \(current). Mosaic will relaunch in the new version and update the screen saver too."
+        if updater.needsAdministrator {
+            text += " Replacing it in Applications needs an administrator’s name and password."
+        }
+        alert.informativeText = text
+        if let notes = Self.notesView(release.notes) { alert.accessoryView = notes }
+        alert.addButton(withTitle: "Install and Relaunch")
+        alert.addButton(withTitle: "Not Now")
+        alert.addButton(withTitle: "Skip This Version")
+        alert.beginSheetModal(for: window) { [weak self] answer in
+            guard let self else { return }
+            switch answer {
+            case .alertFirstButtonReturn:
+                Task {
+                    do {
+                        try await self.updater.install()
+                    } catch {
+                        self.show(error: error, about: "Mosaic \(release.version) could not be installed.")
+                    }
+                }
+            case .alertThirdButtonReturn:
+                updater.skip()
+            default:
+                Self.log.notice("update put off")
+            }
+        }
+    }
+
+    /// The release notes, as on the release page, in a box that scrolls.
+    private static func notesView(_ notes: String) -> NSView? {
+        let trimmed = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        let options = AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
+        let parsed = (try? AttributedString(markdown: trimmed, options: options)) ?? AttributedString(trimmed)
+        let text = NSMutableAttributedString(parsed)
+        let whole = NSRange(location: 0, length: text.length)
+        let size = NSFont.smallSystemFontSize
+        // Markdown marks bold with an inline intent, which AppKit does not draw.
+        text.addAttributes([.font: NSFont.systemFont(ofSize: size), .foregroundColor: NSColor.labelColor], range: whole)
+        parsed.runs.forEach { run in
+            guard let intent = run.inlinePresentationIntent else { return }
+            let range = NSRange(run.range, in: parsed)
+            if intent.contains(.stronglyEmphasized) {
+                text.addAttribute(.font, value: NSFont.boldSystemFont(ofSize: size), range: range)
+            }
+            if intent.contains(.code) {
+                text.addAttribute(.font, value: NSFont.monospacedSystemFont(ofSize: size, weight: .regular), range: range)
+            }
+        }
+        let scroll = NSTextView.scrollableTextView()
+        scroll.frame = NSRect(x: 0, y: 0, width: 360, height: 160)
+        scroll.borderType = .bezelBorder
+        if let view = scroll.documentView as? NSTextView {
+            view.isEditable = false
+            view.drawsBackground = false
+            view.textContainerInset = NSSize(width: 4, height: 4)
+            view.textStorage?.setAttributedString(text)
+        }
+        return scroll
+    }
+
+    private func show(error: Error, about message: String) {
+        let alert = NSAlert()
+        alert.messageText = message
+        let reason = error.localizedDescription
+        alert.informativeText = reason.prefix(1).uppercased() + String(reason.dropFirst()) + "."
+        if let window, window.attachedSheet == nil {
+            alert.beginSheetModal(for: window) { _ in }
+        } else {
+            alert.runModal()
+        }
+    }
+
+    /// Check for Updates…: says what it found, even "nothing", and offers a
+    /// version the user once skipped.
+    @objc func checkForUpdates(_ sender: Any?) {
+        showWindow()
+        Task {
+            switch await updater.check(byUser: true) {
+            case .available:
+                offeredUpdate = nil
+                offerUpdate()
+            case .upToDate(let version):
+                let alert = NSAlert()
+                alert.messageText = "Mosaic is up to date"
+                alert.informativeText = "Mosaic \(version) is the newest version."
+                if let window { alert.beginSheetModal(for: window) { _ in } } else { alert.runModal() }
+            case .failed(let reason):
+                show(error: UpdateCheckFailure(reason: reason), about: "Mosaic couldn’t check for updates.")
             }
         }
     }
@@ -347,6 +498,7 @@ extension AppDelegate: NSMenuItemValidation {
         case #selector(play(_:)): model?.canPlay ?? false
         case #selector(updatePhotographs(_:)):
             model.map { !$0.isIndexing && $0.hasPhotographs } ?? false
+        case #selector(checkForUpdates(_:)): updater.isAvailable && !updater.isBusy
         default: true
         }
     }
@@ -362,5 +514,31 @@ extension AppDelegate: NSWindowDelegate {
             // Back out of the Dock, after the window has gone.
             DispatchQueue.main.async { NSApp.setActivationPolicy(.accessory) }
         }
+    }
+}
+
+private struct UpdateCheckFailure: LocalizedError {
+    let reason: String
+    var errorDescription: String? { reason }
+}
+
+extension AppDelegate: UNUserNotificationCenterDelegate {
+    /// The update notification, clicked: the window, with the update in it.
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse
+    ) async {
+        guard response.notification.request.identifier == UpdateNotice.identifier else { return }
+        await MainActor.run {
+            Self.log.notice("update notification clicked")
+            showWindow()
+            offerUpdate()
+        }
+    }
+
+    /// With the window in front the sheet says it already.
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter, willPresent notification: UNNotification
+    ) async -> UNNotificationPresentationOptions {
+        await MainActor.run { window?.isVisible == true ? [] : [.banner, .list] }
     }
 }

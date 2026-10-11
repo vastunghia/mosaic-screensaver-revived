@@ -6,6 +6,7 @@ import SwiftUI
 /// Above them, the mosaic itself. The options are in Settings.
 struct AppView: View {
     @ObservedObject var model: AppModel
+    let updater: Updater
     let play: () -> Void
     @State private var showingSteps = false
 
@@ -13,7 +14,7 @@ struct AppView: View {
         Form {
             PreviewSection(model: model, play: play, stepsToggle: stepsToggle)
             if model.isSetUp, !showingSteps {
-                ReadySection(model: model)
+                ReadySection(model: model, updater: updater)
             } else {
                 // Numbered from 1 whether or not the move is one of them.
                 let first = model.isTranslocated ? 2 : 1

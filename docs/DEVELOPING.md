@@ -82,6 +82,30 @@ A batch also solves each target with every variety constraint off: that *floor* 
 closest the photographs can get at all, and the gap above it is the price of variety. A
 batch is deterministic — the same folder and options give the same files, byte for byte.
 
+## Trying an update
+
+The app reads GitHub's `releases/latest` once a day; `-updateFeed <url>` (one dash: two
+open the harness) points it at a server of your own, which serves the same JSON. The new
+version has to be signed with the same certificate as the running one.
+
+```sh
+echo 0.5 > VERSION && ./scripts/release.sh --allow-dirty; git checkout VERSION
+mkdir -p /tmp/feed && mv .build/dist/Mosaic-0.5.dmg* /tmp/feed/
+cat > /tmp/feed/latest.json <<'JSON'
+{"tag_name": "v0.5", "body": "Notes, in Markdown.", "assets": [
+ {"name": "Mosaic-0.5.dmg", "browser_download_url": "http://127.0.0.1:8765/Mosaic-0.5.dmg"},
+ {"name": "Mosaic-0.5.dmg.sha256", "browser_download_url": "http://127.0.0.1:8765/Mosaic-0.5.dmg.sha256"}]}
+JSON
+(cd /tmp/feed && python3 -m http.server 8765 --bind 127.0.0.1) &
+./Hosts/App/build.sh --install
+open /Applications/Mosaic.app --args -updateFeed http://127.0.0.1:8765/latest.json
+```
+
+Without a window, as a login item does, the update comes as a notification: write the
+feed with `defaults write com.vastunghia.Mosaic updateFeed …`, delete `lastUpdateCheck`,
+and launch with `open "mosaic://update?reason=test"`. Delete `updateFeed` afterwards.
+The update category of the log says what happened.
+
 ## The README's video
 
 The loop in the README is an export of four cycles whose subjects come round again, so

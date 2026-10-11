@@ -41,6 +41,9 @@ It shows its mosaic on the main display; other displays stay black.
      under *Other*. On macOS 26 they are behind the **Screen Saver** button of
      **System Settings › Wallpaper**, which is where Mosaic takes you.
 
+From then on Mosaic checks for new versions once a day and offers to install them;
+**Mosaic › Check for Updates…** checks at once.
+
 Why step 3: Mosaic is signed, but not notarized by Apple, which takes a paid developer
 membership. macOS therefore asks you, once, whether you trust it. If you would rather not,
 [build it yourself](#building-from-source).

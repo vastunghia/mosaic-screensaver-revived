@@ -24,39 +24,56 @@ enum AppLocation {
     /// dialog asks for one here (2026-10-10).
     @MainActor
     static func moveToApplications() async throws {
-        if canWriteApplications {
-            try copyIntoApplications()
+        try place(Bundle.main.bundleURL, at: applications)
+        try await openAnew(applications)
+    }
+
+    /// Puts a copy of `source` at `destination`, in one step, replacing what
+    /// is there; with an administrator if the user cannot write there. The
+    /// move above, and an update (`Updater`), which replaces this very app
+    /// where it runs.
+    @MainActor
+    static func place(_ source: URL, at destination: URL) throws {
+        if canWrite(destination) {
+            try copy(source, to: destination)
         } else {
-            try copyIntoApplicationsAsAdministrator()
+            try copyAsAdministrator(source, to: destination)
         }
-        log.notice("copied to \(applications.path, privacy: .public)")
+        log.notice("copied \(source.path, privacy: .public) to \(destination.path, privacy: .public)")
+    }
+
+    /// Opens the app at `url` while this one still runs, for this one to quit.
+    @MainActor
+    static func openAnew(_ url: URL) async throws {
         let configuration = NSWorkspace.OpenConfiguration()
         // Same bundle identifier as this one, which is still running.
         configuration.createsNewApplicationInstance = true
-        try await NSWorkspace.shared.openApplication(at: applications, configuration: configuration)
+        try await NSWorkspace.shared.openApplication(at: url, configuration: configuration)
     }
 
+    /// Whether `destination` can be replaced without an administrator.
     /// Replacing an older copy also means removing it, so that has to be
     /// allowed too.
-    private static var canWriteApplications: Bool {
+    static func canWrite(_ destination: URL) -> Bool {
         let manager = FileManager.default
-        let folder = applications.deletingLastPathComponent().path
+        let folder = destination.deletingLastPathComponent().path
         return manager.isWritableFile(atPath: folder)
-            && (!manager.fileExists(atPath: applications.path) || manager.isWritableFile(atPath: applications.path))
+            && (!manager.fileExists(atPath: destination.path) || manager.isWritableFile(atPath: destination.path))
     }
 
-    private static func copyIntoApplications() throws {
+    private static func copy(_ source: URL, to destination: URL) throws {
         let manager = FileManager.default
-        let staging = applications.deletingLastPathComponent()
-            .appendingPathComponent(".\(applications.lastPathComponent).\(UUID().uuidString)", isDirectory: true)
-        try manager.copyItem(at: Bundle.main.bundleURL, to: staging)
+        let staging = destination.deletingLastPathComponent()
+            .appendingPathComponent(".\(destination.lastPathComponent).\(UUID().uuidString)", isDirectory: true)
+        try manager.copyItem(at: source, to: staging)
         do {
-            // The user has let this very code run already.
+            // The user has let this very code run already, or an update
+            // signed as it is.
             try Quarantine.remove(from: staging)
-            if manager.fileExists(atPath: applications.path) {
-                _ = try manager.replaceItemAt(applications, withItemAt: staging)
+            if manager.fileExists(atPath: destination.path) {
+                _ = try manager.replaceItemAt(destination, withItemAt: staging)
             } else {
-                try manager.moveItem(at: staging, to: applications)
+                try manager.moveItem(at: staging, to: destination)
             }
         } catch {
             try? manager.removeItem(at: staging)
@@ -68,16 +85,16 @@ enum AppLocation {
     /// lets only the swap into Applications run as root. `do shell script`
     /// raises the standard administrator dialog, in the name of this app.
     @MainActor
-    private static func copyIntoApplicationsAsAdministrator() throws {
+    private static func copyAsAdministrator(_ source: URL, to destination: URL) throws {
         let manager = FileManager.default
         let folder = manager.temporaryDirectory.appendingPathComponent("Mosaic-\(UUID().uuidString)", isDirectory: true)
-        let staging = folder.appendingPathComponent(applications.lastPathComponent, isDirectory: true)
+        let staging = folder.appendingPathComponent(destination.lastPathComponent, isDirectory: true)
         try manager.createDirectory(at: folder, withIntermediateDirectories: true)
         defer { try? manager.removeItem(at: folder) }
-        try manager.copyItem(at: Bundle.main.bundleURL, to: staging)
+        try manager.copyItem(at: source, to: staging)
         try Quarantine.remove(from: staging)
 
-        let command = "/bin/rm -rf \(quoted(applications.path)) && /usr/bin/ditto \(quoted(staging.path)) \(quoted(applications.path))"
+        let command = "/bin/rm -rf \(quoted(destination.path)) && /usr/bin/ditto \(quoted(staging.path)) \(quoted(destination.path))"
         let source = "do shell script \(appleScriptString(command)) with administrator privileges"
         var failure: NSDictionary?
         guard let script = NSAppleScript(source: source) else { throw MoveError.scriptNotCompiled }

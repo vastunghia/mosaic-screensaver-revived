@@ -227,6 +227,23 @@ final class AppModel: ObservableObject {
         SaverInstaller.openSettings()
     }
 
+    /// The first launch after an update (`Updater`): the saver this app
+    /// carries is new as well, and the installed one is brought in line
+    /// without a click — if there is one; a user who never installed it is
+    /// not given one.
+    func finishUpdate() {
+        guard Updater.takeJustUpdated() else { return }
+        refreshSaver()
+        guard saver == .different else { return }
+        do {
+            try SaverInstaller.install {}
+            clearProblem(at: .screenSaver)
+        } catch {
+            report(.screenSaver, "The screen saver could not be updated: \(error.localizedDescription)")
+        }
+        refreshSaver()
+    }
+
     // MARK: Login item
 
     /// Read from the system every time: the user can change it in System

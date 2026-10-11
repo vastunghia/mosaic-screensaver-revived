@@ -80,6 +80,10 @@ let package = Package(
         // only: the saver links it.
         .target(name: "SharedStore"),
 
+        // The app's own updates: which release is newer, read from GitHub.
+        // Foundation only and pure; downloading and installing are the app's.
+        .target(name: "AppUpdate"),
+
         // M9 — the development harness. A thin shell over MosaicEngine.
         .executableTarget(
             name: "MosaicApp",
@@ -88,6 +92,7 @@ let package = Package(
             // that there is a renderer behind it.
             dependencies: [
                 "MosaicEngine", "MosaicCore", "MosaicPhotos", "MosaicPhotoKit", "PhotoIndex", "SharedStore",
+                "AppUpdate",
             ],
             path: "Hosts/App",
             // build.sh and the Help Book live next to the sources; build.sh
@@ -113,5 +118,6 @@ let package = Package(
         .testTarget(name: "MosaicEngineTests", dependencies: ["MosaicEngine", "MosaicSolver", "MosaicCore"]),
         .testTarget(name: "CycleEngineTests", dependencies: ["CycleEngine", "MosaicCore"]),
         .testTarget(name: "SharedStoreTests", dependencies: ["SharedStore"]),
+        .testTarget(name: "AppUpdateTests", dependencies: ["AppUpdate"]),
     ]
 )

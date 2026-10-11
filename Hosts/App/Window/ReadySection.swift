@@ -1,3 +1,4 @@
+import AppUpdate
 import PhotoIndex
 import SwiftUI
 
@@ -5,6 +6,7 @@ import SwiftUI
 /// something new at every launch after the first.
 struct ReadySection: View {
     @ObservedObject var model: AppModel
+    @ObservedObject var updater: Updater
 
     var body: some View {
         Section {
@@ -36,6 +38,19 @@ struct ReadySection: View {
                     Spacer()
                     Button("Open Login Items…", action: model.openLoginItemsSettings)
                 }
+            }
+            switch updater.state {
+            case .preparing(let version):
+                Text("Downloading Mosaic \(version.description)…")
+                    .foregroundStyle(.secondary)
+            case .ready(let release, _):
+                HStack {
+                    Text("Mosaic \(release.version.description) is available")
+                    Spacer()
+                    Button("Install…", action: MosaicApplication.offerUpdate)
+                }
+            case .idle, .checking, .installing:
+                EmptyView()
             }
         } header: {
             Label {
