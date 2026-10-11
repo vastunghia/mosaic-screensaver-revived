@@ -18,13 +18,15 @@ public struct IndexProgress: Equatable, Sendable {
     public var total: Int
     /// Indexed and usable.
     public var ready: Int
+    /// Of `ready`, those that can fill the screen; the others are tiles only.
+    public var fullScreen: Int
     /// Filling to a target, and the library ran out of photographs that can be
     /// read here before reaching it — not merely smaller than the target.
     public var fellShort: Bool
 
     public init(
         completed: Int = 0, reused: Int = 0, skipped: Int = 0, unavailable: Int = 0, total: Int = 0,
-        ready: Int = 0, fellShort: Bool = false
+        ready: Int = 0, fullScreen: Int? = nil, fellShort: Bool = false
     ) {
         self.completed = completed
         self.reused = reused
@@ -32,6 +34,7 @@ public struct IndexProgress: Equatable, Sendable {
         self.unavailable = unavailable
         self.total = total
         self.ready = ready
+        self.fullScreen = fullScreen ?? ready
         self.fellShort = fellShort
     }
 }
@@ -65,6 +68,8 @@ public struct PhotoIndexBuilder: Sendable {
     public var thumbnailWidth: Int
     public var signatureSide: Int
     public var cropRule: CropRule
+    /// See `defaultTileWidths`; only those narrower than `thumbnailWidth` count.
+    public var tileWidths: [Int]
 
     /// How often progress is written down. Small enough that a crash loses
     /// seconds, large enough that the manifest is not rewritten per photograph.
@@ -74,8 +79,10 @@ public struct PhotoIndexBuilder: Sendable {
         thumbnailWidth: Int = PhotoIndexBuilder.defaultThumbnailWidth,
         signatureSide: Int = PhotoIndexBuilder.defaultSignatureSide,
         cropRule: CropRule = .standard,
+        tileWidths: [Int] = PhotoIndexBuilder.defaultTileWidths,
         checkpointEvery: Int = 250
     ) {
+        self.tileWidths = tileWidths
         self.thumbnailWidth = thumbnailWidth
         self.signatureSide = signatureSide
         self.cropRule = cropRule
@@ -86,14 +93,27 @@ public struct PhotoIndexBuilder: Sendable {
     /// subset before it is asked for again (`IndexManifest.unavailableCheckedAt`).
     public static let unavailableRetryInterval: TimeInterval = 24 * 60 * 60
 
+    /// Of a filled subset, the share guaranteed to fill the screen: a quarter,
+    /// 512 of 2048, so the subjects come round again after three and a half
+    /// hours at 25 s a cycle (SPEC § 5, decided 2026-10-11). Without it an
+    /// optimised library gave about 150.
+    public static let fullScreenShare = 4
+
+    /// The narrower crops a photograph is asked at when it is not here at
+    /// `thumbnailWidth`, widest first, down to the atlas's 256: a derivative
+    /// that small still makes a tile (SPEC § 5).
+    public static let defaultTileWidths = [640, 427, 256]
+
     /// Indexes `source` into `store`, keeping whatever is still good.
     ///
-    /// A source filled to its target (`FillablePhotoSource`) is built in
-    /// rounds: the photographs that turn out to be elsewhere or broken are
-    /// left out, the choice is made again, and the newcomers are read, until a
-    /// round brings in nothing missing or the library has no more. Leaving
-    /// photographs out never pushes out a chosen one, so every round only adds.
-    /// Any other source is one round, as it always was.
+    /// A source filled to its target (`FillablePhotoSource`) is built in two
+    /// phases of rounds. First the photographs that fill the screen, a quarter
+    /// of the target, chosen among those not known to be short of it. Then the
+    /// rest, chosen among all the others and taken at the largest size this Mac
+    /// has, down to `tileWidths`: below `thumbnailWidth` they are tiles only.
+    /// In each round the photographs found missing are left out and the choice
+    /// made again; leaving photographs out never pushes out a chosen one, so
+    /// every round only adds. Any other source is one round, as it always was.
     ///
     /// `availability` names what made a photograph unavailable — whether
     /// downloads were allowed — and `now` dates the check; both are for a
@@ -133,93 +153,174 @@ public struct PhotoIndexBuilder: Sendable {
 
         guard let fillable = source as? any FillablePhotoSource else {
             let round = try self.round(
-                over: try source.photos(), from: source, into: store, manifest: &manifest,
-                known: known, alreadySkipped: alreadySkipped, leftOut: ([], []),
-                report: { kept, skipped, unavailable, total, reused in
+                over: try source.photos(), tier: .plain, from: source, into: store, manifest: &manifest,
+                known: known, alreadySkipped: alreadySkipped, carry: [:], leftOut: LeftOut(),
+                report: { kept, _, skipped, unavailable, short, total, reused in
                     progress?(IndexProgress(
-                        completed: kept + skipped + unavailable, reused: reused, skipped: skipped,
+                        completed: kept + skipped + unavailable + short, reused: reused, skipped: skipped,
                         unavailable: unavailable, total: total, ready: kept
                     ))
                 },
                 isCancelled: isCancelled
             )
-            return try finish(&manifest, kept: round.kept, skipped: round.skipped,
-                              unavailable: round.unavailable, store: store)
+            return try finish(&manifest, entries: round.kept, leftOut: LeftOut(
+                skipped: Set(round.skipped), unavailable: Set(round.unavailable)
+            ), store: store)
         }
 
         // What is known to be missing, left out of the choice. The broken stay
-        // left out as long as they are remembered; the elsewhere until a day has
-        // passed or downloads were turned on or off, then all are asked again.
+        // left out as long as they are remembered; the elsewhere and the short
+        // until a day has passed or downloads were turned on or off, then all
+        // are asked again — tiles included, which may have grown.
         let fresh = manifest.unavailableCheckedAt.map { now.timeIntervalSince($0) < Self.unavailableRetryInterval } ?? false
         let carried = fresh && manifest.unavailableContext == availability
-        var skipped = Set(manifest.skipped)
-        var elsewhere = carried ? Set(manifest.unavailable) : []
+        var leftOut = LeftOut(
+            skipped: Set(manifest.skipped),
+            unavailable: carried ? Set(manifest.unavailable) : [],
+            belowFullScreen: carried
+                ? Set(manifest.belowFullScreen).union(known.values.filter { !$0.canFillScreen }.map(\.id))
+                : []
+        )
         manifest.unavailableCheckedAt = carried ? manifest.unavailableCheckedAt : now
         manifest.unavailableContext = availability
 
         let target = fillable.target
+        let fullScreenTarget = min(target, max(1, target / Self.fullScreenShare))
         let library = try fillable.library()
-        // What the index had already, of the first choice: the later rounds'
-        // reuse is their own earlier work.
+        // What the index had: kept in every checkpoint until the build has
+        // settled, so a reader never sees the index shrink while it runs.
+        let previous = known.filter { id, entry in
+            store.hasThumbnail(named: entry.thumbnail) && !leftOut.skipped.contains(id)
+        }
         var reused: Int?
-        var kept: [String: IndexEntry] = [:]
-        var fellShort = false
-        var total = target
+        var cancelled = false
+
+        // Phase A: the photographs that fill the screen.
+        var screen: [String: IndexEntry] = [:]
         while true {
-            let chosen = fillable.choose(from: library, excluding: skipped.union(elsewhere))
-            // Short because photographs were left out, not because the
-            // library or the albums are smaller than the target.
-            fellShort = chosen.count < target && !(skipped.isEmpty && elsewhere.isEmpty)
-            total = min(target, chosen.count)
+            let chosen = fillable.choose(
+                from: library, excluding: leftOut.skipped.union(leftOut.unavailable).union(leftOut.belowFullScreen),
+                count: fullScreenTarget
+            )
             let round = try self.round(
-                over: chosen, from: source, into: store, manifest: &manifest,
-                known: known, alreadySkipped: alreadySkipped,
-                leftOut: (skipped, elsewhere),
-                report: { ready, newlySkipped, newlyElsewhere, _, reusedHere in
+                over: chosen, tier: .fullScreen, from: source, into: store, manifest: &manifest,
+                known: known, alreadySkipped: alreadySkipped, carry: previous, leftOut: leftOut,
+                report: { ready, _, skipped, unavailable, _, _, reusedHere in
                     if reused == nil { reused = reusedHere }
                     progress?(IndexProgress(
                         completed: ready, reused: reused ?? 0,
-                        skipped: skipped.count + newlySkipped, unavailable: elsewhere.count + newlyElsewhere,
-                        total: min(target, chosen.count), ready: ready, fellShort: false
+                        skipped: leftOut.skipped.count + skipped,
+                        unavailable: leftOut.unavailable.count + unavailable,
+                        total: target, ready: ready, fullScreen: ready
                     ))
                 },
                 isCancelled: isCancelled
             )
-            kept = round.kept
+            screen = round.kept
             for (id, entry) in round.kept { known[id] = entry }
-            let missing = round.skipped.count + round.unavailable.count
-            skipped.formUnion(round.skipped)
-            elsewhere.formUnion(round.unavailable)
-            if missing == 0 || round.cancelled { break }
+            leftOut.skipped.formUnion(round.skipped)
+            leftOut.belowFullScreen.formUnion(round.short)
+            cancelled = round.cancelled
+            if round.skipped.isEmpty && round.short.isEmpty || cancelled { break }
         }
+
+        // Phase B: the rest, as large as this Mac has them.
+        var tiles: [String: IndexEntry] = [:]
+        var fellShort = false
+        var total = target
+        while !cancelled {
+            let count = target - screen.count
+            let chosen = fillable.choose(
+                from: library, excluding: leftOut.skipped.union(leftOut.unavailable).union(screen.keys),
+                count: count
+            )
+            // Short because photographs were left out, not because the
+            // library or the albums are smaller than the target.
+            fellShort = chosen.count < count && !leftOut.isEmpty
+            total = screen.count + min(count, chosen.count)
+            let carry = previous.merging(screen) { _, new in new }
+            let round = try self.round(
+                over: chosen, tier: .any(belowFullScreen: leftOut.belowFullScreen), from: source, into: store,
+                manifest: &manifest, known: known, alreadySkipped: alreadySkipped, carry: carry, leftOut: leftOut,
+                report: { ready, readyFullScreen, skipped, unavailable, _, _, _ in
+                    progress?(IndexProgress(
+                        completed: screen.count + ready, reused: reused ?? 0,
+                        skipped: leftOut.skipped.count + skipped,
+                        unavailable: leftOut.unavailable.count + unavailable,
+                        total: total, ready: screen.count + ready, fullScreen: screen.count + readyFullScreen
+                    ))
+                },
+                isCancelled: isCancelled
+            )
+            tiles = round.kept
+            for (id, entry) in round.kept { known[id] = entry }
+            leftOut.skipped.formUnion(round.skipped)
+            leftOut.unavailable.formUnion(round.unavailable)
+            leftOut.belowFullScreen.formUnion(round.kept.values.filter { !$0.canFillScreen }.map(\.id))
+            cancelled = round.cancelled
+            if round.skipped.isEmpty && round.unavailable.isEmpty || cancelled { break }
+        }
+
+        // Stopped half way, nothing is thrown away: what the index had stays,
+        // with what this build added, and the next one settles it.
+        var entries = screen.merging(tiles) { first, _ in first }
+        if cancelled { entries = previous.merging(entries) { _, new in new } }
         progress?(IndexProgress(
-            completed: kept.count, reused: reused ?? 0, skipped: skipped.count,
-            unavailable: elsewhere.count, total: total, ready: kept.count,
-            fellShort: fellShort
+            completed: entries.count, reused: reused ?? 0, skipped: leftOut.skipped.count,
+            unavailable: leftOut.unavailable.count, total: cancelled ? target : total, ready: entries.count,
+            fullScreen: entries.values.filter(\.canFillScreen).count, fellShort: fellShort
         ))
-        return try finish(&manifest, kept: kept, skipped: Array(skipped), unavailable: Array(elsewhere), store: store)
+        return try finish(&manifest, entries: entries, leftOut: leftOut, store: store)
+    }
+
+    /// What a filled build leaves out of the choice, by reason.
+    private struct LeftOut {
+        var skipped: Set<String> = []
+        var unavailable: Set<String> = []
+        var belowFullScreen: Set<String> = []
+
+        var isEmpty: Bool { skipped.isEmpty && unavailable.isEmpty }
+    }
+
+    /// What a round asks of each photograph.
+    private enum Tier {
+        /// At `thumbnailWidth` only, as a folder always was: not there is
+        /// unavailable.
+        case plain
+        /// At `thumbnailWidth` only, for the photographs that fill the screen:
+        /// not there is short, and a tile already indexed is asked again.
+        case fullScreen
+        /// At `thumbnailWidth`, then down `tileWidths`; a photograph known to
+        /// be short starts below. Not there even at the last is unavailable.
+        case any(belowFullScreen: Set<String>)
     }
 
     private struct Round {
         var kept: [String: IndexEntry]
         var skipped: [String]
         var unavailable: [String]
+        var short: [String]
         var cancelled: Bool
     }
 
     /// One pass over `descriptors`: what is still good is kept, the rest read
-    /// on every core, a checkpoint saved every `checkpointEvery`. `leftOut` is
-    /// what earlier rounds found missing, written into every checkpoint so a
-    /// manifest on disk never forgets it.
+    /// on every core, a checkpoint saved every `checkpointEvery`. `carry` and
+    /// `leftOut` are what earlier work found, written into every checkpoint so
+    /// a manifest on disk never forgets it.
     private func round(
         over descriptors: [PhotoDescriptor],
+        tier: Tier,
         from source: some PhotoSource,
         into store: PhotoIndexStore,
         manifest: inout IndexManifest,
         known: [String: IndexEntry],
         alreadySkipped: Set<String>,
-        leftOut: (skipped: Set<String>, unavailable: Set<String>),
-        report: (_ kept: Int, _ skipped: Int, _ unavailable: Int, _ total: Int, _ reused: Int) -> Void,
+        carry: [String: IndexEntry],
+        leftOut: LeftOut,
+        report: (
+            _ kept: Int, _ keptFullScreen: Int, _ skipped: Int, _ unavailable: Int, _ short: Int,
+            _ total: Int, _ reused: Int
+        ) -> Void,
         isCancelled: (@Sendable () -> Bool)?
     ) throws -> Round {
         // What is still good, and what has to be read.
@@ -227,12 +328,14 @@ public struct PhotoIndexBuilder: Sendable {
         var outstanding: [PhotoDescriptor] = []
         var skipped: [String] = []
         var unavailable: [String] = []
+        var short: [String] = []
 
         for descriptor in descriptors {
             let id = descriptor.id.rawValue
             if let entry = known[id],
                entry.versionToken == descriptor.versionToken,
-               store.hasThumbnail(named: entry.thumbnail) {
+               store.hasThumbnail(named: entry.thumbnail),
+               entry.canFillScreen || !Self.isFullScreen(tier) {
                 kept[id] = entry
             } else if alreadySkipped.contains(id), known[id] == nil {
                 // Known bad and unchanged: not worth another failed decode.
@@ -242,13 +345,15 @@ public struct PhotoIndexBuilder: Sendable {
             }
         }
 
+        func tally() -> Int { kept.values.filter(\.canFillScreen).count }
         let reused = kept.count
-        report(kept.count, skipped.count, unavailable.count, descriptors.count, reused)
+        report(kept.count, tally(), skipped.count, unavailable.count, short.count, descriptors.count, reused)
 
         let collector = Collector()
         let width = thumbnailWidth
         let side = signatureSide
         let rule = cropRule
+        let tileWidths = self.tileWidths.filter { $0 < width }.sorted(by: >)
         var cancelled = false
 
         for batch in stride(from: 0, to: outstanding.count, by: checkpointEvery) {
@@ -263,26 +368,39 @@ public struct PhotoIndexBuilder: Sendable {
             DispatchQueue.concurrentPerform(iterations: slice.count) { offset in
                 let descriptor = slice[offset]
                 let id = descriptor.id.rawValue
+                let widths: [Int] = switch tier {
+                case .plain, .fullScreen: [width]
+                case .any(let below): (below.contains(id) ? [] : [width]) + tileWidths
+                }
                 do {
-                    let (image, cropStart) = try Self.canonicalImage(
-                        of: descriptor.id, from: source, width: width, rule: rule
-                    )
-                    let signature = try ImageSampling.signature(of: image, side: side)
-                    let name = IndexEntry.thumbnailName(id: id, versionToken: descriptor.versionToken)
-                    try store.writeThumbnail(image, named: name)
-                    collector.add(IndexEntry(
-                        id: id,
-                        versionToken: descriptor.versionToken,
-                        thumbnail: name,
-                        signature: signature,
-                        pixelWidth: image.width,
-                        pixelHeight: image.height,
-                        cropStart: cropStart
-                    ))
-                } catch PhotoSourceError.unavailable {
+                    for asked in widths {
+                        let image: CGImage
+                        let cropStart: Double?
+                        do {
+                            (image, cropStart) = try Self.canonicalImage(
+                                of: descriptor.id, from: source, width: asked, rule: rule
+                            )
+                        } catch PhotoSourceError.unavailable {
+                            continue
+                        }
+                        let signature = try ImageSampling.signature(of: image, side: side)
+                        let name = IndexEntry.thumbnailName(id: id, versionToken: descriptor.versionToken)
+                        try store.writeThumbnail(image, named: name)
+                        collector.add(IndexEntry(
+                            id: id,
+                            versionToken: descriptor.versionToken,
+                            thumbnail: name,
+                            signature: signature,
+                            pixelWidth: image.width,
+                            pixelHeight: image.height,
+                            cropStart: cropStart,
+                            tileOnly: asked < width
+                        ))
+                        return
+                    }
                     // Not broken, only elsewhere: counted, and asked for again
                     // next time.
-                    collector.unavailable(id)
+                    if case .fullScreen = tier { collector.short(id) } else { collector.unavailable(id) }
                 } catch {
                     // A folder of three thousand files that dies on the corrupt
                     // one is unusable. A failure is a recorded skip.
@@ -290,33 +408,39 @@ public struct PhotoIndexBuilder: Sendable {
                 }
             }
 
-            let (fresh, failed, elsewhere) = collector.drain()
-            for entry in fresh { kept[entry.id] = entry }
-            skipped.append(contentsOf: failed)
-            unavailable.append(contentsOf: elsewhere)
-            report(kept.count, skipped.count, unavailable.count, descriptors.count, reused)
+            let drained = collector.drain()
+            for entry in drained.entries { kept[entry.id] = entry }
+            skipped.append(contentsOf: drained.failures)
+            unavailable.append(contentsOf: drained.elsewhere)
+            short.append(contentsOf: drained.short)
+            report(kept.count, tally(), skipped.count, unavailable.count, short.count, descriptors.count, reused)
 
             // The thumbnail is on disk before the manifest names it, so a
             // checkpoint never promises pixels that are not there.
-            manifest.entries = Array(kept.values)
+            manifest.entries = Array(carry.merging(kept) { _, new in new }.values)
             manifest.skipped = Array(leftOut.skipped.union(skipped))
             manifest.unavailable = Array(leftOut.unavailable.union(unavailable))
+            manifest.belowFullScreen = Array(leftOut.belowFullScreen.union(short).union(
+                kept.values.filter { !$0.canFillScreen }.map(\.id)
+            ))
             try store.save(manifest)
         }
         if isCancelled?() == true { cancelled = true }
-        return Round(kept: kept, skipped: skipped, unavailable: unavailable, cancelled: cancelled)
+        return Round(kept: kept, skipped: skipped, unavailable: unavailable, short: short, cancelled: cancelled)
+    }
+
+    private static func isFullScreen(_ tier: Tier) -> Bool {
+        if case .fullScreen = tier { return true }
+        return false
     }
 
     private func finish(
-        _ manifest: inout IndexManifest, kept: [String: IndexEntry], skipped: [String], unavailable: [String],
-        store: PhotoIndexStore
+        _ manifest: inout IndexManifest, entries: [String: IndexEntry], leftOut: LeftOut, store: PhotoIndexStore
     ) throws -> IndexManifest {
-        manifest.entries = Array(kept.values)
-        manifest.skipped = skipped
-        manifest.unavailable = unavailable
-        manifest.entries.sort { $0.id < $1.id }
-        manifest.skipped.sort()
-        manifest.unavailable.sort()
+        manifest.entries = entries.values.sorted { $0.id < $1.id }
+        manifest.skipped = leftOut.skipped.sorted()
+        manifest.unavailable = leftOut.unavailable.sorted()
+        manifest.belowFullScreen = leftOut.belowFullScreen.sorted()
         try store.save(manifest)
 
         // Only once the manifest is the truth on disk.
@@ -355,29 +479,39 @@ public struct PhotoIndexBuilder: Sendable {
 
 /// The one piece of shared state in a concurrent build.
 private final class Collector: @unchecked Sendable {
+    struct Drained {
+        var entries: [IndexEntry] = []
+        var failures: [String] = []
+        var elsewhere: [String] = []
+        var short: [String] = []
+    }
+
     private let lock = NSLock()
-    private var entries: [IndexEntry] = []
-    private var failures: [String] = []
-    private var elsewhere: [String] = []
+    private var current = Drained()
 
     func add(_ entry: IndexEntry) {
         lock.lock(); defer { lock.unlock() }
-        entries.append(entry)
+        current.entries.append(entry)
     }
 
     func skip(_ id: String) {
         lock.lock(); defer { lock.unlock() }
-        failures.append(id)
+        current.failures.append(id)
     }
 
     func unavailable(_ id: String) {
         lock.lock(); defer { lock.unlock() }
-        elsewhere.append(id)
+        current.elsewhere.append(id)
     }
 
-    func drain() -> ([IndexEntry], [String], [String]) {
+    func short(_ id: String) {
         lock.lock(); defer { lock.unlock() }
-        defer { entries = []; failures = []; elsewhere = [] }
-        return (entries, failures, elsewhere)
+        current.short.append(id)
+    }
+
+    func drain() -> Drained {
+        lock.lock(); defer { lock.unlock() }
+        defer { current = Drained() }
+        return current
     }
 }

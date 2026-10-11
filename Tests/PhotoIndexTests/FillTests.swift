@@ -15,6 +15,8 @@ private final class PatchyLibrary: PhotoSource, @unchecked Sendable {
     private var _away: Set<String>
     private var _broken: Set<String>
     private var _asked: [String] = []
+    private var _askedAt: [String] = []
+    private var _localWidths: [String: Int] = [:]
 
     init(count: Int, away: Set<String> = [], broken: Set<String> = []) {
         synthetic = SyntheticPhotoSource(count: count)
@@ -43,7 +45,20 @@ private final class PatchyLibrary: PhotoSource, @unchecked Sendable {
 
     var asked: [String] {
         get { lock.lock(); defer { lock.unlock() }; return _asked }
-        set { lock.lock(); _asked = newValue; lock.unlock() }
+        set { lock.lock(); _asked = newValue; _askedAt = []; lock.unlock() }
+    }
+
+    /// Every request, as "id@width".
+    var askedAt: [String] {
+        lock.lock(); defer { lock.unlock() }
+        return _askedAt
+    }
+
+    /// The widest crop this Mac has of a photograph, as an optimised library
+    /// keeps a derivative; none means the original is here.
+    var localWidths: [String: Int] {
+        get { lock.lock(); defer { lock.unlock() }; return _localWidths }
+        set { lock.lock(); _localWidths = newValue; lock.unlock() }
     }
 
     func photos() throws -> [PhotoDescriptor] { descriptors }
@@ -51,7 +66,8 @@ private final class PatchyLibrary: PhotoSource, @unchecked Sendable {
     func canonicalImage(for id: PhotoID, maxPixelWidth: Int) throws -> CGImage {
         lock.lock()
         _asked.append(id.rawValue)
-        let elsewhere = _away.contains(id.rawValue)
+        _askedAt.append("\(id.rawValue)@\(maxPixelWidth)")
+        let elsewhere = _away.contains(id.rawValue) || (_localWidths[id.rawValue].map { $0 < maxPixelWidth } ?? false)
         let isBroken = _broken.contains(id.rawValue)
         lock.unlock()
         if elsewhere { throw PhotoSourceError.unavailable(id) }
@@ -84,7 +100,29 @@ struct FillTests {
     }
 
     private func builder() -> PhotoIndexBuilder {
-        PhotoIndexBuilder(thumbnailWidth: 64, signatureSide: 4, cropRule: .centre, checkpointEvery: 8)
+        PhotoIndexBuilder(
+            thumbnailWidth: 64, signatureSide: 4, cropRule: .centre, tileWidths: [32, 16], checkpointEvery: 8
+        )
+    }
+
+    /// An optimised library in miniature: a fifth whole, half with a
+    /// derivative good for a tile at 32, a tenth only at 16, the rest nothing.
+    private func optimised(_ count: Int) -> PatchyLibrary {
+        let library = PatchyLibrary(count: count)
+        var rng = SplitMix64(seed: 77)
+        var widths: [String: Int] = [:]
+        var away: Set<String> = []
+        for id in library.ids {
+            switch rng.next() % 10 {
+            case 0, 1: break
+            case 2, 3, 4, 5, 6: widths[id] = 40
+            case 7: widths[id] = 20
+            default: away.insert(id)
+            }
+        }
+        library.localWidths = widths
+        library.away = away
+        return library
     }
 
     /// About every other photograph, drawn with the seed.
@@ -123,7 +161,7 @@ struct FillTests {
         }
     }
 
-    @Test("rounds only add: no photograph is read twice")
+    @Test("rounds only add: no photograph is asked twice at the same size")
     func roundsOnlyAdd() throws {
         for rule in SubsetRule.allCases {
             let library = PatchyLibrary(count: 160)
@@ -135,8 +173,10 @@ struct FillTests {
                 from: SubsetPhotoSource(library, rule: rule, count: 40, seed: 9),
                 into: PhotoIndexStore(directory: index), root: "library"
             )
-            let asked = library.asked
-            #expect(asked.count == Set(asked).count, "\(rule): \(asked.count - Set(asked).count) read again")
+            // A photograph that is not here is asked at every size down to the
+            // smallest tile, but at each only once.
+            let asked = library.askedAt
+            #expect(asked.count == Set(asked).count, "\(rule): \(asked.count - Set(asked).count) asked again")
         }
     }
 
@@ -259,5 +299,111 @@ struct FillTests {
         )
         #expect(Set(downloaded.entries.map(\.id)) == Set(try source.photos().map(\.id.rawValue)))
         #expect(downloaded.unavailable.isEmpty)
+    }
+
+    @Test("a quarter fills the screen, the rest are tiles as large as this Mac has them")
+    func twoTiers() throws {
+        for rule in SubsetRule.allCases {
+            let library = optimised(400)
+            let index = temporaryDirectory()
+            defer { try? FileManager.default.removeItem(at: index) }
+
+            let last = LastProgress()
+            let manifest = try builder().build(
+                from: SubsetPhotoSource(library, rule: rule, count: 80, seed: 9),
+                into: PhotoIndexStore(directory: index), root: "library",
+                progress: { last.record($0) }
+            )
+            #expect(manifest.entries.count == 80, "\(rule)")
+            let fullScreen = manifest.entries.filter(\.canFillScreen)
+            #expect(fullScreen.count >= 20, "\(rule): \(fullScreen.count) fill the screen")
+            #expect(last.value?.fullScreen == fullScreen.count, "\(rule)")
+            for entry in manifest.entries {
+                let local = library.localWidths[entry.id]
+                #expect(entry.canFillScreen == (local == nil), "\(rule) \(entry.id)")
+                if let local {
+                    #expect(entry.pixelWidth == (local >= 32 ? 32 : 16), "\(rule) \(entry.id)")
+                }
+                #expect(!library.away.contains(entry.id), "\(rule)")
+            }
+            #expect(Set(manifest.belowFullScreen).isSuperset(of: manifest.entries.filter { !$0.canFillScreen }.map(\.id)))
+        }
+    }
+
+    @Test("the quarter that fills the screen is the rule's own choice among those that can")
+    func fullScreenIsTheRulesChoice() throws {
+        let library = optimised(400)
+        let index = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: index) }
+        let source = SubsetPhotoSource(library, rule: .random, count: 80, seed: 9)
+
+        let manifest = try builder().build(from: source, into: PhotoIndexStore(directory: index), root: "library")
+        let whole = library.descriptors.filter { library.localWidths[$0.id.rawValue] == nil && !library.away.contains($0.id.rawValue) }
+        let expected = Set(SubsetRule.random.choose(from: whole, count: 20, seed: 9).map(\.id.rawValue))
+        #expect(expected.isSubset(of: Set(manifest.entries.filter(\.canFillScreen).map(\.id))))
+    }
+
+    @Test("with every photograph here, two tiers change nothing")
+    func wholeLibrary() throws {
+        for rule in [SubsetRule.random, .recent] {
+            let library = PatchyLibrary(count: 200)
+            let index = temporaryDirectory()
+            defer { try? FileManager.default.removeItem(at: index) }
+            let source = SubsetPhotoSource(library, rule: rule, count: 60, seed: 9)
+
+            let manifest = try builder().build(from: source, into: PhotoIndexStore(directory: index), root: "library")
+            let chosen = Set(try source.photos().map(\.id.rawValue))
+            #expect(Set(manifest.entries.map(\.id)) == chosen, "\(rule)")
+            #expect(manifest.entries.allSatisfy { $0.canFillScreen }, "\(rule)")
+            #expect(library.asked.count == 60, "\(rule): read \(library.asked.count)")
+        }
+    }
+
+    @Test("no photograph is asked twice at the same size, and a second build asks nothing")
+    func noRequestTwice() throws {
+        let library = optimised(400)
+        let index = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: index) }
+        let store = PhotoIndexStore(directory: index)
+        let source = SubsetPhotoSource(library, rule: .uniformInTime, count: 80, seed: 9)
+        let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
+
+        _ = try builder().build(from: source, into: store, root: "library", now: now)
+        let requests = library.askedAt
+        #expect(requests.count == Set(requests).count, "\(requests.count - Set(requests).count) asked again")
+
+        let first = try Data(contentsOf: store.manifestURL)
+        library.asked = []
+        _ = try builder().build(from: source, into: store, root: "library", now: now.addingTimeInterval(60))
+        #expect(library.askedAt.isEmpty, "asked \(library.askedAt.count) again")
+        #expect(try Data(contentsOf: store.manifestURL) == first)
+    }
+
+    @Test("a tile whose original comes back fills the screen after a day")
+    func tileGrowsAfterADay() throws {
+        let library = optimised(400)
+        let source = SubsetPhotoSource(library, rule: .random, count: 80, seed: 9)
+        // The first photograph of the random order, made a tile.
+        let first = try #require(SubsetRule.random.choose(from: library.descriptors, count: 1, seed: 9).first?.id.rawValue)
+        library.away.remove(first)
+        library.localWidths[first] = 40
+        let index = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: index) }
+        let store = PhotoIndexStore(directory: index)
+        let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
+
+        let before = try builder().build(from: source, into: store, root: "library", now: now)
+        #expect(before.entries.first { $0.id == first }?.canFillScreen == false)
+
+        library.localWidths[first] = nil
+        let soon = try builder().build(from: source, into: store, root: "library", now: now.addingTimeInterval(3600))
+        #expect(soon.entries.first { $0.id == first }?.canFillScreen == false, "within the day it is not asked")
+
+        let later = try builder().build(
+            from: source, into: store, root: "library",
+            now: now.addingTimeInterval(PhotoIndexBuilder.unavailableRetryInterval + 1)
+        )
+        #expect(later.entries.first { $0.id == first }?.canFillScreen == true)
+        #expect(later.entries.count == 80)
     }
 }

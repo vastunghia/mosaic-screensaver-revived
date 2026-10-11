@@ -65,6 +65,7 @@ public struct PhotoIndexStore: Sendable {
         sorted.entries.sort { $0.id < $1.id }
         sorted.skipped.sort()
         sorted.unavailable.sort()
+        sorted.belowFullScreen.sort()
 
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]

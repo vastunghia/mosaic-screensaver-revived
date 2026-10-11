@@ -9,6 +9,12 @@ import Testing
 private struct FakeCatalog: TileCatalog {
     var signatures: [String: TileSignature]
     var targets: [String: TargetGrid] = [:]
+    /// Tiles only: never subjects.
+    var tilesOnly: Set<String> = []
+
+    func canFillScreen(_ photo: PhotoID) -> Bool {
+        !tilesOnly.contains(photo.rawValue)
+    }
 
     var photos: [PhotoID] { signatures.keys.sorted().map(PhotoID.init) }
 
@@ -147,6 +153,26 @@ struct MosaicPlannerTests {
         let planner = SolvedMosaicPlanner(catalog: partial)
         #expect(planner.isUsable)
         #expect(planner.poolSize == 27)
+    }
+
+    @Test("only photographs that can fill the screen are subjects, and every one is a tile")
+    func subjectsFillTheScreen() throws {
+        var catalog = lattice(perAxis: 4)
+        catalog.tilesOnly = Set(catalog.photos.map(\.rawValue).filter { $0.hasSuffix("0") || $0.hasSuffix("1") })
+        let planner = SolvedMosaicPlanner(catalog: catalog)
+        #expect(planner.poolSize == 64, "tiles only are still in the pool")
+
+        let subjects = (0..<200).map { planner.subject(ofCycle: $0) }
+        #expect(subjects.allSatisfy { catalog.canFillScreen($0) })
+        #expect(Set(subjects).count == 64 - catalog.tilesOnly.count, "every one that can is a subject in turn")
+
+        let layout = try planner.plan(rows: 8, subject: subjects[1], previousSubject: subjects[0], seed: 3).layout
+        #expect(layout.tiles.contains { catalog.tilesOnly.contains($0.photo.rawValue) }, "and tiles only are used as tiles")
+
+        // None that can: all are subjects, rather than none.
+        catalog.tilesOnly = Set(catalog.photos.map(\.rawValue))
+        let fallback = SolvedMosaicPlanner(catalog: catalog)
+        #expect(fallback.subject(ofCycle: 0) != PhotoID(""))
     }
 }
 

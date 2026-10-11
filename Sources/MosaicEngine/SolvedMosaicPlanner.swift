@@ -42,10 +42,14 @@ public final class SolvedMosaicPlanner: MosaicPlanner, @unchecked Sendable {
             entries.append(PoolEntry(id: photo, signature: signature))
         }
         pool = entries
-        subjects = entries.map(\.id)
+        // Every photograph is a tile; only those with the pixels to fill the
+        // screen are subjects. All of them if none has, rather than none.
+        let filling = entries.filter { catalog.canFillScreen($0.id) }
+        let candidates = filling.isEmpty ? entries : filling
+        subjects = candidates.map(\.id)
         sequence = SubjectSequence(
-            count: max(1, entries.count), seed: seed,
-            signatures: entries.map(\.signature), candidates: subjectCandidates
+            count: max(1, candidates.count), seed: seed,
+            signatures: candidates.map(\.signature), candidates: subjectCandidates
         )
     }
 

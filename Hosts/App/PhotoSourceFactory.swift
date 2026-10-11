@@ -184,6 +184,11 @@ enum PhotoSourceFactory {
             format: "  indexed %d photographs in %.1f s (%.0f/s), %d skipped, %d not on this Mac",
             manifest.entries.count, elapsed, rate, manifest.skipped.count, manifest.unavailable.count
         ))
+        let tiles = manifest.entries.filter { !$0.canFillScreen }.count
+        if tiles > 0 || !manifest.belowFullScreen.isEmpty {
+            print("  \(manifest.entries.count - tiles) fill the screen, \(tiles) tiles only; "
+                  + "\(manifest.belowFullScreen.count) known below full screen")
+        }
         print("  at \(store.directory.path)")
         return manifest
     }
@@ -215,9 +220,9 @@ extension PhotoSourceFactory {
         )
         let elapsed = Date().timeIntervalSince(started)
         print(String(
-            format: "  close-ups at %d px: %d made in %.1f s (%.1f/s), %d kept, %d failed, %d not on this Mac, %d removed",
+            format: "  close-ups at %d px: %d made in %.1f s (%.1f/s), %d kept, %d failed, %d not on this Mac, %d removed, %d tiles only",
             shelf.width, report.made, elapsed, elapsed > 0 ? Double(report.made) / elapsed : 0,
-            report.kept, report.failed, report.unavailable, report.removed
+            report.kept, report.failed, report.unavailable, report.removed, report.tilesOnly
         ))
         print("  at \(shelf.directory.path)")
         return report

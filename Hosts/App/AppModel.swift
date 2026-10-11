@@ -512,7 +512,7 @@ final class AppModel: ObservableObject {
             cropRule: options.cropRule
         )
         let store = PhotoIndexStore(directory: options.resolvedIndexDirectory)
-        _ = try builder.build(
+        let manifest = try builder.build(
             from: indexable.source,
             into: store,
             root: indexable.root,
@@ -520,6 +520,13 @@ final class AppModel: ObservableObject {
             progress: progress,
             isCancelled: { flag.isSet }
         )
+        log.notice("""
+            index: \(manifest.entries.count, privacy: .public) ready, \
+            \(manifest.entries.filter(\.canFillScreen).count, privacy: .public) fill the screen, \
+            \(manifest.unavailable.count, privacy: .public) not on this Mac, \
+            \(manifest.belowFullScreen.count, privacy: .public) below full screen, \
+            \(manifest.skipped.count, privacy: .public) unreadable
+            """)
         guard !flag.isSet else { return }
         log.notice("close-ups started")
         let report = try options.closeUpShelf.stock(
@@ -529,7 +536,8 @@ final class AppModel: ObservableObject {
         log.notice("""
             close-ups: \(report.made, privacy: .public) made, \(report.kept, privacy: .public) kept, \
             \(report.failed, privacy: .public) failed, \
-            \(report.unavailable, privacy: .public) not on this Mac, \(report.removed, privacy: .public) removed
+            \(report.unavailable, privacy: .public) not on this Mac, \(report.removed, privacy: .public) removed, \
+            \(report.tilesOnly, privacy: .public) tiles only
             """)
     }
 

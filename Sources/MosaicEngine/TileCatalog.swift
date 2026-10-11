@@ -19,4 +19,13 @@ public protocol TileCatalog: Sendable {
     /// one and from thumbnails in the other would give two different mosaics from
     /// the same index and the same seed. Originals supply pixels, never choices.
     func targetGrid(for photo: PhotoID, rows: Int, detail: Int) throws -> TargetGrid
+
+    /// Whether the photograph has the pixels to be a subject — and so, a cycle
+    /// later, the anchor that fills the screen — or is a tile only (SPEC § 5,
+    /// the two roles).
+    func canFillScreen(_ photo: PhotoID) -> Bool
+}
+
+extension TileCatalog {
+    public func canFillScreen(_ photo: PhotoID) -> Bool { true }
 }

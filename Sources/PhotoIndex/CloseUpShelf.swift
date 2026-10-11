@@ -111,6 +111,9 @@ public struct CloseUpShelf: Sendable {
         public var unavailable = 0
         public var removed = 0
         public var total = 0
+        /// Tiles only, left out: they never fill the screen (SPEC § 5), and
+        /// this Mac has nothing of them this large anyway.
+        public var tilesOnly = 0
     }
 
     /// Makes the renditions `index` has no rendition for, then removes those
@@ -128,9 +131,10 @@ public struct CloseUpShelf: Sendable {
         guard index.originals != nil else { throw CloseUpShelfError.noOriginals }
         guard width > index.manifest.thumbnailWidth else { throw CloseUpShelfError.notWiderThanThumbnails }
 
-        let entries = index.entries
+        let entries = index.entries.filter(\.canFillScreen)
         let missing = entries.filter { !has($0) }
         var report = StockReport(kept: entries.count - missing.count, total: entries.count)
+        report.tilesOnly = index.entries.count - entries.count
         progress?(report)
 
         let tally = Tally()

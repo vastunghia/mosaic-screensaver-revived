@@ -36,6 +36,15 @@ public struct IndexEntry: Codable, Equatable, Sendable {
     /// are cut from the same place — a crossfade between two windows would jump.
     public let cropStart: Double?
 
+    /// Made from a derivative narrower than the photograph allows — all an
+    /// optimised library keeps of it on this Mac — so it is a tile and never
+    /// fills the screen (SPEC § 5, the two roles). Absent, not false, for every
+    /// other photograph, a small original included: manifests that have none
+    /// are written as they always were.
+    public let tileOnly: Bool?
+
+    public var canFillScreen: Bool { tileOnly != true }
+
     public init(
         id: String,
         versionToken: String,
@@ -43,7 +52,8 @@ public struct IndexEntry: Codable, Equatable, Sendable {
         signature: TileSignature,
         pixelWidth: Int,
         pixelHeight: Int,
-        cropStart: Double? = nil
+        cropStart: Double? = nil,
+        tileOnly: Bool = false
     ) {
         self.id = id
         self.versionToken = versionToken
@@ -53,6 +63,7 @@ public struct IndexEntry: Codable, Equatable, Sendable {
         self.pixelWidth = pixelWidth
         self.pixelHeight = pixelHeight
         self.cropStart = cropStart
+        self.tileOnly = tileOnly ? true : nil
     }
 
     public var photoID: PhotoID { PhotoID(id) }
@@ -176,6 +187,12 @@ public struct IndexManifest: Codable, Equatable, Sendable {
     /// Nil for a folder, whose unavailable photographs are asked for every time.
     public var unavailableCheckedAt: Date?
 
+    /// Photographs of the library found not to be here at `thumbnailWidth`,
+    /// for a filled source: left out when the photographs that fill the screen
+    /// are chosen, though they may still be tiles. Asked for again with
+    /// `unavailable`. `unavailable` then means not here even as a tile.
+    public var belowFullScreen: [String]
+
     /// What `unavailable` was found out under: whether downloads were allowed.
     /// Turning them on makes every one worth asking for again at once.
     public var unavailableContext: String?
@@ -191,7 +208,8 @@ public struct IndexManifest: Codable, Equatable, Sendable {
         skipped: [String] = [],
         unavailable: [String] = [],
         unavailableCheckedAt: Date? = nil,
-        unavailableContext: String? = nil
+        unavailableContext: String? = nil,
+        belowFullScreen: [String] = []
     ) {
         self.formatVersion = formatVersion
         self.root = root
@@ -204,11 +222,12 @@ public struct IndexManifest: Codable, Equatable, Sendable {
         self.unavailable = unavailable
         self.unavailableCheckedAt = unavailableCheckedAt
         self.unavailableContext = unavailableContext
+        self.belowFullScreen = belowFullScreen
     }
 
     private enum CodingKeys: String, CodingKey {
         case formatVersion, root, thumbnailWidth, thumbnailHeight, signatureSide, cropRule
-        case entries, skipped, unavailable, unavailableCheckedAt, unavailableContext
+        case entries, skipped, unavailable, unavailableCheckedAt, unavailableContext, belowFullScreen
     }
 
     public init(from decoder: any Decoder) throws {
@@ -226,6 +245,27 @@ public struct IndexManifest: Codable, Equatable, Sendable {
         unavailable = try container.decodeIfPresent([String].self, forKey: .unavailable) ?? []
         unavailableCheckedAt = try container.decodeIfPresent(Date.self, forKey: .unavailableCheckedAt)
         unavailableContext = try container.decodeIfPresent(String.self, forKey: .unavailableContext)
+        belowFullScreen = try container.decodeIfPresent([String].self, forKey: .belowFullScreen) ?? []
+    }
+
+    /// As synthesised, except that an empty `belowFullScreen` is left out, so
+    /// a folder's manifest is written byte for byte as before it existed.
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(formatVersion, forKey: .formatVersion)
+        try container.encode(root, forKey: .root)
+        try container.encode(thumbnailWidth, forKey: .thumbnailWidth)
+        try container.encode(thumbnailHeight, forKey: .thumbnailHeight)
+        try container.encode(signatureSide, forKey: .signatureSide)
+        try container.encode(cropRule, forKey: .cropRule)
+        try container.encode(entries, forKey: .entries)
+        try container.encode(skipped, forKey: .skipped)
+        try container.encode(unavailable, forKey: .unavailable)
+        try container.encodeIfPresent(unavailableCheckedAt, forKey: .unavailableCheckedAt)
+        try container.encodeIfPresent(unavailableContext, forKey: .unavailableContext)
+        if !belowFullScreen.isEmpty {
+            try container.encode(belowFullScreen, forKey: .belowFullScreen)
+        }
     }
 
     /// Whether an index on disk can be continued rather than rebuilt.
