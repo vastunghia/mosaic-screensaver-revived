@@ -5,6 +5,7 @@ import PhotoIndex
 import os
 import ServiceManagement
 import SharedStore
+import UserNotifications
 
 /// What the app's window shows and does: the permission, the source, the index
 /// being built, the preferences, and the button that plays the effect.
@@ -45,6 +46,10 @@ final class AppModel: ObservableObject {
     @Published private(set) var problem: Problem?
     @Published private(set) var loginItem = SMAppService.mainApp.status
     @Published private(set) var saver = SaverInstaller.State.unavailable
+    /// The last answer known, so that the window opens on the right steps
+    /// before the system has been asked again.
+    @Published private(set) var notifications = UNAuthorizationStatus(
+        rawValue: UserDefaults.standard.integer(forKey: AppModel.notificationsKey)) ?? .notDetermined
 
     /// Why the .saver last called while there was no Photos grant, if it has
     /// not been dealt with yet.
@@ -103,8 +108,13 @@ final class AppModel: ObservableObject {
     /// Every step done: the window shows a line of status instead of them.
     /// Not while something went wrong, which belongs to a step.
     var isSetUp: Bool {
-        !isTranslocated && hasPhotographs && hasIndex && saver == .installed && problem == nil
+        !isTranslocated && hasPhotographs && hasIndex && saver == .installed && hasAnsweredNotifications
+            && problem == nil
     }
+
+    /// Step: the user has said whether Mosaic may announce new versions. A
+    /// no is an answer too, and the step is done with it.
+    var hasAnsweredNotifications: Bool { notifications != .notDetermined }
 
     /// Which photographs of the library, in one line, however many albums
     /// there are: the list itself lives in a sheet. Laid out inline, a Form
@@ -156,6 +166,7 @@ final class AppModel: ObservableObject {
         refreshAccess()
         refreshLoginItem()
         refreshSaver()
+        refreshNotifications()
         if access.isGranted {
             loadAlbums()
         } else if pendingSaverRequest != nil, access == .notDetermined, preferences.source == .photos {
@@ -297,6 +308,45 @@ final class AppModel: ObservableObject {
     }
 
     private static let declinedLoginKey = "declinesOpeningAtLogin"
+
+    // MARK: Notifications
+
+    /// Read from the system every time: the user can change it in System
+    /// Settings.
+    func refreshNotifications() {
+        Task {
+            let status = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
+            setNotifications(status)
+        }
+    }
+
+    /// Only from the button of the Updates step, or of Settings, next to what
+    /// they are for: the system's prompt cannot say it (2026-10-11).
+    func requestNotifications() {
+        Task {
+            do {
+                let granted = try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert])
+                Self.log.notice("notifications \(granted ? "allowed" : "not allowed", privacy: .public)")
+            } catch {
+                Self.log.error("notifications could not be requested: \(error.localizedDescription, privacy: .public)")
+            }
+            setNotifications(await UNUserNotificationCenter.current().notificationSettings().authorizationStatus)
+        }
+    }
+
+    func openNotificationSettings() {
+        let id = Bundle.main.bundleIdentifier ?? ""
+        if let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension?id=\(id)") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
+    private func setNotifications(_ status: UNAuthorizationStatus) {
+        notifications = status
+        UserDefaults.standard.set(status.rawValue, forKey: Self.notificationsKey)
+    }
+
+    private static let notificationsKey = "notificationsStatus"
 
     // MARK: Permission
 

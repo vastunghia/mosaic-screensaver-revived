@@ -132,7 +132,6 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
     private var model: AppModel?
     private let updater = Updater()
     private var updateWatch: AnyCancellable?
-    private var loginWatch: AnyCancellable?
 
     private var launchedAtLogin = false
     /// Off for the app's own restarts (`MosaicApplication.quitWithoutAsking`).
@@ -180,11 +179,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
                 UpdateNotice.post(release)
             }
         }
-        // Opening at login turned on with the window open, however it was.
-        loginWatch = model.$loginItem.receive(on: DispatchQueue.main).sink { [weak self] status in
-            guard self?.window?.isVisible == true else { return }
-            UpdateNotice.requestPermissionIfUseful(opensAtLogin: status == .enabled || status == .requiresApproval)
-        }
+
         updater.start()
         if launchedAtLogin { model.updateRequested(reason: "login") }
         for call in earlyCalls { handle(call) }

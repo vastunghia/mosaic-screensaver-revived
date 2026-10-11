@@ -7,25 +7,11 @@ import os
 /// Mosaic open at login and never open its window again: the sheet would
 /// wait for them for ever, so the update is announced where they will see it.
 ///
-/// The permission is asked for while a window is open and Mosaic opens at
-/// login — the one case that needs it, and a moment when the prompt has a
-/// reason the user can see. Never from the background.
+/// The permission is asked for only in the window's Updates step, or in
+/// Settings, beside a sentence that says what it is for: the system's prompt
+/// cannot say it (`AppModel.requestNotifications`).
 @MainActor
 enum UpdateNotice {
-    static func requestPermissionIfUseful(opensAtLogin: Bool) {
-        guard opensAtLogin else { return }
-        Task {
-            let center = UNUserNotificationCenter.current()
-            guard await center.notificationSettings().authorizationStatus == .notDetermined else { return }
-            do {
-                let granted = try await center.requestAuthorization(options: [.alert])
-                log.notice("notifications \(granted ? "allowed" : "not allowed", privacy: .public)")
-            } catch {
-                log.error("notifications could not be requested: \(error.localizedDescription, privacy: .public)")
-            }
-        }
-    }
-
     /// Once a version: a click on it opens the window, with the update.
     static func post(_ release: Release) {
         let version = release.version.description

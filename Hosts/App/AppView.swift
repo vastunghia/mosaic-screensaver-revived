@@ -24,6 +24,7 @@ struct AppView: View {
                 PhotographsStep(model: model, number: first)
                 PreparationStep(model: model, number: first + 1)
                 ScreenSaverStep(model: model, number: first + 2)
+                UpdatesStep(model: model, number: first + 3)
             }
         }
         .formStyle(.grouped)
@@ -36,6 +37,7 @@ struct AppView: View {
             model.refreshAccess()
             model.refreshLoginItem()
             model.refreshSaver()
+            model.refreshNotifications()
         }
     }
 

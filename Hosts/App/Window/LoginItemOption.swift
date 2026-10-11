@@ -20,13 +20,14 @@ struct LoginItemOption: View {
                     Button("Open Login Items…", action: model.openLoginItemsSettings)
                 }
             }
+            NotificationsRow(model: model)
             ProblemRow(model: model, place: .settings)
         } header: {
             Text("In the Background")
         } footer: {
             Footnote(model.isTranslocated
                  ? "Available once Mosaic is in Applications."
-                 : "Mosaic runs without a window and keeps the screen saver's photographs up to date.")
+                 : "Mosaic runs without a window and keeps the screen saver's photographs up to date. Notifications tell you only that a new version of Mosaic is ready.")
         }
     }
 }
