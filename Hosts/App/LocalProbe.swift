@@ -15,7 +15,7 @@ import MosaicPhotos
 /// The sample is drawn from the subset with the seed, as `--verify-canonical`
 /// draws it; with `N` at least the subset's size it is the whole subset.
 enum LocalProbe {
-    static func probe(_ source: any PhotoSource, name: String, count: Int, seed: UInt64, csv: URL?) throws {
+    static func probe(_ source: any PhotoSource, name: String, count: Int, width: Int, seed: UInt64, csv: URL?) throws {
         guard let library = (source as? SubsetPhotoSource<PhotoKitPhotoSource>)?.base ?? source as? PhotoKitPhotoSource else {
             print("probe-local: only the Photos library can be probed")
             return
@@ -29,7 +29,19 @@ enum LocalProbe {
         let started = Date()
         DispatchQueue.concurrentPerform(iterations: sample.count) { offset in
             let id = sample[offset].id
-            collected.append((id, library.pixelSize(of: id), Result { try library.localAvailability(of: id) }))
+            let availability = Result { try library.localAvailability(of: id) }
+            // What indexing gets, in the same breath, so the two are compared
+            // on the same photograph while the library may still be changing.
+            let indexed: String
+            do {
+                let image = try library.canonicalImage(for: id, maxPixelWidth: width)
+                indexed = "\(image.width)"
+            } catch PhotoSourceError.unavailable {
+                indexed = "unavailable"
+            } catch {
+                indexed = "failed"
+            }
+            collected.append((id, library.pixelSize(of: id), availability, indexed))
         }
         let elapsed = Date().timeIntervalSince(started)
         let rows = collected.sorted
@@ -39,8 +51,9 @@ enum LocalProbe {
         var steps: [Int?: Int] = [:]
         var sides: [Int: Int] = [:]
         var flagged = 0
-        var lines = ["id,original_width,original_height,original_bytes,largest_crop_width,largest_width,largest_height,in_cloud,ms"]
-        for (id, original, result) in rows {
+        var indexedByStep: [String: Int] = [:]
+        var lines = ["id,original_width,original_height,original_bytes,largest_crop_width,largest_width,largest_height,in_cloud,ms,indexed"]
+        for (id, original, result, indexed) in rows {
             guard case .success(let probe) = result else {
                 failed += 1
                 continue
@@ -51,8 +64,11 @@ enum LocalProbe {
                 probe.originalBytes.map { "\($0)" } ?? "",
                 probe.largestCropWidth.map { "\($0)" } ?? "",
                 probe.largest.map { "\($0.width)" } ?? "", probe.largest.map { "\($0.height)" } ?? "",
-                "\(probe.inCloud)", "\(Int(probe.seconds * 1000))",
+                "\(probe.inCloud)", "\(Int(probe.seconds * 1000))", indexed,
             ].joined(separator: ","))
+            let reached = probe.largestCropWidth.map { "\($0) px" } ?? "nothing"
+            let outcome = Int(indexed).map { $0 >= width - 1 ? "\(width)" : "narrower" } ?? indexed
+            indexedByStep["\(reached) -> \(outcome)", default: 0] += 1
 
             if probe.originalBytes != nil {
                 local += 1
@@ -75,6 +91,10 @@ enum LocalProbe {
             print("  longest side of the largest image, as PhotoKit sized it: \(top)")
             print("  \(flagged) said 'in iCloud' when they stopped, \(remote - flagged) stopped without saying")
         }
+        print("  largest crop rendered -> what indexing at \(width) px got:")
+        for (key, count) in indexedByStep.sorted(by: { $0.key < $1.key }) {
+            print("    \(key): \(count)")
+        }
         if let csv {
             try (lines.joined(separator: "\n") + "\n").write(to: csv, atomically: true, encoding: .utf8)
             print("  \(csv.path)")
@@ -83,7 +103,7 @@ enum LocalProbe {
 }
 
 private final class Rows: @unchecked Sendable {
-    typealias Row = (PhotoID, (width: Int, height: Int)?, Result<PhotoKitPhotoSource.LocalAvailability, Error>)
+    typealias Row = (PhotoID, (width: Int, height: Int)?, Result<PhotoKitPhotoSource.LocalAvailability, Error>, String)
 
     private let lock = NSLock()
     private var rows: [Row] = []

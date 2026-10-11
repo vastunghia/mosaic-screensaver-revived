@@ -82,7 +82,10 @@ do {
         guard let indexable = try PhotoSourceFactory.indexable(options: options) else {
             throw HarnessError.verifyingWithoutPhotographs
         }
-        try LocalProbe.probe(indexable.source, name: indexable.name, count: count, seed: options.seed, csv: options.probeCSV)
+        try LocalProbe.probe(
+            indexable.source, name: indexable.name, count: count, width: options.thumbnailWidth, seed: options.seed,
+            csv: options.probeCSV
+        )
         exit(0)
     }
 
