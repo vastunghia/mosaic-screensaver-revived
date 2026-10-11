@@ -113,14 +113,20 @@ public final class PhotoKitPhotoSource: PhotoSource, @unchecked Sendable {
         var degraded = false
         // `.fast` comes back a little short of the size asked for even from a
         // local original: 850 for 855, 1914 for 1921 (measured 2026-10-11). So
-        // it is asked for 5 % more, and `scaled` takes the excess off.
-        let asked = Self.targetSize(pixelWidth: asset.pixelWidth, pixelHeight: asset.pixelHeight,
-                                    cropWidth: maxPixelWidth + (maxPixelWidth + 19) / 20)
+        // it is asked for 5 % more, and `scaled` takes the excess off. But a
+        // local derivative is only handed back when it is at least as large as
+        // the request: one of 856 px gives nothing to a request of 897. So when
+        // the larger request gives nothing, the exact one is tried too.
+        var asked = CGSize.zero
         let started = Date()
-        manager.requestImage(for: asset, targetSize: asked, contentMode: .aspectFill, options: options) { image, info in
-            delivered = image
-            inCloud = (info?[PHImageResultIsInCloudKey] as? Bool) == true
-            degraded = (info?[PHImageResultIsDegradedKey] as? Bool) == true
+        for cropWidth in [maxPixelWidth + (maxPixelWidth + 19) / 20, maxPixelWidth] {
+            asked = Self.targetSize(pixelWidth: asset.pixelWidth, pixelHeight: asset.pixelHeight, cropWidth: cropWidth)
+            manager.requestImage(for: asset, targetSize: asked, contentMode: .aspectFill, options: options) { image, info in
+                delivered = image
+                inCloud = (info?[PHImageResultIsInCloudKey] as? Bool) == true
+                degraded = (info?[PHImageResultIsDegradedKey] as? Bool) == true
+            }
+            if delivered != nil { break }
         }
         let image = delivered?.cgImage(forProposedRect: nil, context: nil, hints: nil)
         let needed = min(maxPixelWidth, Int(CanonicalCrop.rect(width: asset.pixelWidth, height: asset.pixelHeight).width))
