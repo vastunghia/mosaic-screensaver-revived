@@ -150,13 +150,24 @@ public final class PhotoKitPhotoSource: PhotoSource, @unchecked Sendable {
     /// What this Mac holds of a photograph without asking iCloud, for
     /// `--probe-local`: whether the original's data is here, and the largest
     /// image PhotoKit will render from what is here.
+    ///
+    /// Not one request at `PHImageManagerMaximumSize`: without the original
+    /// that gives nothing even when a derivative of 854 px is here (measured on
+    /// an optimised library, 2026-10-11). So the request climbs `ladder`, crop
+    /// widths, with `.fast`, which may hand back more than asked for: what comes
+    /// back is the derivative's own size, not one scaled up to the request.
     public struct LocalAvailability: Sendable {
         public var originalBytes: Int?
+        /// The largest crop width of the ladder that gave an image.
+        public var largestCropWidth: Int?
+        /// The largest image any step gave, at the size PhotoKit chose.
         public var largest: (width: Int, height: Int)?
+        /// The first step that gave nothing said the photograph is in iCloud.
         public var inCloud: Bool
-        public var degraded: Bool
         public var seconds: Double
     }
+
+    public static let ladder = [128, 256, 427, 640, 854, 1024, 1280, 1600, 1920, 2560, 3840]
 
     public func localAvailability(of id: PhotoID) throws -> LocalAvailability {
         guard let asset = asset(for: id) else { throw PhotoSourceError.unknownPhoto(id) }
@@ -174,18 +185,28 @@ public final class PhotoKitPhotoSource: PhotoSource, @unchecked Sendable {
         let options = PHImageRequestOptions()
         options.isSynchronous = true
         options.deliveryMode = .highQualityFormat
-        options.resizeMode = .none
+        options.resizeMode = .fast
         options.isNetworkAccessAllowed = false
         options.version = .current
-        var probe = LocalAvailability(originalBytes: bytes, largest: nil, inCloud: false, degraded: false, seconds: 0)
-        manager.requestImage(
-            for: asset, targetSize: PHImageManagerMaximumSize, contentMode: .default, options: options
-        ) { image, info in
-            if let image = image?.cgImage(forProposedRect: nil, context: nil, hints: nil) {
-                probe.largest = (image.width, image.height)
+        var probe = LocalAvailability(originalBytes: bytes, largestCropWidth: nil, largest: nil, inCloud: false, seconds: 0)
+        var refused = false
+        for cropWidth in Self.ladder {
+            let asked = Self.targetSize(pixelWidth: asset.pixelWidth, pixelHeight: asset.pixelHeight, cropWidth: cropWidth)
+            var got: CGImage?
+            var inCloud = false
+            manager.requestImage(for: asset, targetSize: asked, contentMode: .aspectFill, options: options) { image, info in
+                got = image?.cgImage(forProposedRect: nil, context: nil, hints: nil)
+                inCloud = (info?[PHImageResultIsInCloudKey] as? Bool) == true
             }
-            probe.inCloud = (info?[PHImageResultIsInCloudKey] as? Bool) == true
-            probe.degraded = (info?[PHImageResultIsDegradedKey] as? Bool) == true
+            guard let got else {
+                if !refused { probe.inCloud = inCloud }
+                refused = true
+                continue
+            }
+            probe.largestCropWidth = cropWidth
+            if got.width * got.height > (probe.largest.map { $0.width * $0.height } ?? 0) {
+                probe.largest = (got.width, got.height)
+            }
         }
         probe.seconds = Date().timeIntervalSince(started)
         return probe

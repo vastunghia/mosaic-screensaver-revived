@@ -36,10 +36,10 @@ enum LocalProbe {
         print(String(format: "  %.1f s", elapsed))
 
         var local = 0, remote = 0, failed = 0
-        var remoteNothing = 0, remoteFull = 0
-        var remoteSides: [Int: Int] = [:]
-        var remoteRatios: [Double] = []
-        var lines = ["id,original_width,original_height,original_bytes,largest_width,largest_height,in_cloud,degraded,ms"]
+        var steps: [Int?: Int] = [:]
+        var sides: [Int: Int] = [:]
+        var flagged = 0
+        var lines = ["id,original_width,original_height,original_bytes,largest_crop_width,largest_width,largest_height,in_cloud,ms"]
         for (id, original, result) in rows {
             guard case .success(let probe) = result else {
                 failed += 1
@@ -49,8 +49,9 @@ enum LocalProbe {
                 id.rawValue,
                 original.map { "\($0.width)" } ?? "", original.map { "\($0.height)" } ?? "",
                 probe.originalBytes.map { "\($0)" } ?? "",
+                probe.largestCropWidth.map { "\($0)" } ?? "",
                 probe.largest.map { "\($0.width)" } ?? "", probe.largest.map { "\($0.height)" } ?? "",
-                "\(probe.inCloud)", "\(probe.degraded)", "\(Int(probe.seconds * 1000))",
+                "\(probe.inCloud)", "\(Int(probe.seconds * 1000))",
             ].joined(separator: ","))
 
             if probe.originalBytes != nil {
@@ -58,32 +59,21 @@ enum LocalProbe {
                 continue
             }
             remote += 1
-            guard let largest = probe.largest else {
-                remoteNothing += 1
-                continue
-            }
-            let side = max(largest.width, largest.height)
-            remoteSides[side, default: 0] += 1
-            if let original {
-                let ratio = Double(side) / Double(max(original.width, original.height))
-                remoteRatios.append(ratio)
-                if ratio > 0.99 { remoteFull += 1 }
-            }
+            steps[probe.largestCropWidth, default: 0] += 1
+            if let largest = probe.largest { sides[max(largest.width, largest.height), default: 0] += 1 }
+            if probe.inCloud { flagged += 1 }
         }
 
         print("  original here: \(local); original only in iCloud: \(remote); failed: \(failed)")
         if remote > 0 {
-            print("  of those only in iCloud: \(remoteNothing) render nothing, "
-                  + "\(remote - remoteNothing) render something, \(remoteFull) of them at full size")
-            let sides = remoteSides.sorted { $0.value > $1.value }.prefix(10)
-                .map { "\($0.key) px ×\($0.value)" }.joined(separator: ", ")
-            print("  longest side rendered without the original: \(sides)")
-            remoteRatios.sort()
-            if !remoteRatios.isEmpty {
-                func at(_ q: Double) -> Double { remoteRatios[min(remoteRatios.count - 1, Int(q * Double(remoteRatios.count)))] }
-                print(String(format: "  that side over the original's: min %.2f, median %.2f, max %.2f",
-                             remoteRatios.first!, at(0.5), remoteRatios.last!))
+            print("  of those, the largest crop width rendered (ladder \(PhotoKitPhotoSource.ladder.map(String.init).joined(separator: " ")) px):")
+            for (step, count) in steps.sorted(by: { ($0.key ?? 0) > ($1.key ?? 0) }) {
+                print("    \(step.map { "\($0) px" } ?? "nothing"): \(count)")
             }
+            let top = sides.sorted { $0.value > $1.value }.prefix(10)
+                .map { "\($0.key) px ×\($0.value)" }.joined(separator: ", ")
+            print("  longest side of the largest image, as PhotoKit sized it: \(top)")
+            print("  \(flagged) said 'in iCloud' when they stopped, \(remote - flagged) stopped without saying")
         }
         if let csv {
             try (lines.joined(separator: "\n") + "\n").write(to: csv, atomically: true, encoding: .utf8)
