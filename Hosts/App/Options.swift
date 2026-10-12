@@ -1,6 +1,7 @@
 import Foundation
 import MosaicCore
 import MosaicEngine
+import MosaicPhotoKit
 import MosaicPhotos
 import MosaicSolver
 import PhotoIndex
@@ -38,6 +39,10 @@ struct Options {
     var collectionIdentifiers: [String] = []
     /// Download photographs kept only in iCloud (SPEC § 5, off by default).
     var allowsDownloads = false
+    /// `--build-index` fetches the subjects' close-ups from iCloud as the app
+    /// does only when asked (`--fetch-close-ups`): a command run to look at
+    /// something must not spend the user's disk by default.
+    var fetchesCloseUps = false
     /// What a photograph found unavailable was found so under, for the index
     /// to ask again at once when downloads are turned on or off.
     var availability: String { allowsDownloads ? "downloads" : "local" }
@@ -229,6 +234,26 @@ struct Options {
         CloseUpShelf(directory: resolvedCloseUpDirectory, width: CloseUpOptions.standard.anchorWidth ?? 1920)
     }
 
+    /// With downloads off, what the index prefers among the subjects: those
+    /// whose close-up needs no fetch. With them on everything may be fetched,
+    /// and there is nothing to prefer.
+    var closeUpPreference: PhotoIndexBuilder.CloseUpPreference? {
+        guard photosLibrary, !allowsDownloads else { return nil }
+        let shelf = closeUpShelf
+        return PhotoIndexBuilder.CloseUpPreference(width: shelf.width, isStocked: { shelf.has($0) })
+    }
+
+    /// With downloads off, where the close-ups of the subjects this Mac does
+    /// not have come from: iCloud, within the ledger's caps (SPEC § 5). With
+    /// them on, the index's own source fetches them already.
+    func closeUpFetching(store: PhotoIndexStore) throws -> CloseUpShelf.Fetching? {
+        guard photosLibrary, !allowsDownloads else { return nil }
+        return CloseUpShelf.Fetching(
+            index: try IndexedPhotoSource(store: store, originals: PhotoKitPhotoSource(allowsNetworkAccess: true)),
+            ledger: SharedLocations.closeUpFetchLedger
+        )
+    }
+
     static func parse(_ arguments: [String]) -> Options {
         var options = Options()
         var index = 0
@@ -257,6 +282,7 @@ struct Options {
             case "--photos-library": options.photosLibrary = true
             case "--album": if let title = next() { options.albums.append(title) }
             case "--icloud": options.allowsDownloads = true
+            case "--fetch-close-ups": options.fetchesCloseUps = true
             case "--subset":
                 let value = next()
                 if let rule = value.flatMap(SubsetRule.init(rawValue:)) {

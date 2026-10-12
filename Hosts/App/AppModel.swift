@@ -517,6 +517,7 @@ final class AppModel: ObservableObject {
             into: store,
             root: indexable.root,
             availability: options.availability,
+            preferring: options.closeUpPreference,
             progress: progress,
             isCancelled: { flag.isSet }
         )
@@ -531,13 +532,14 @@ final class AppModel: ObservableObject {
         log.notice("close-ups started")
         let report = try options.closeUpShelf.stock(
             from: IndexedPhotoSource(store: store, originals: indexable.source),
+            fetching: try options.closeUpFetching(store: store),
             isCancelled: { flag.isSet }
         )
         log.notice("""
-            close-ups: \(report.made, privacy: .public) made, \(report.kept, privacy: .public) kept, \
-            \(report.failed, privacy: .public) failed, \
-            \(report.unavailable, privacy: .public) not on this Mac, \(report.removed, privacy: .public) removed, \
-            \(report.tilesOnly, privacy: .public) tiles only
+            close-ups: \(report.made, privacy: .public) made (\(report.fetched, privacy: .public) fetched), \
+            \(report.kept, privacy: .public) kept, \(report.failed, privacy: .public) failed, \
+            \(report.unavailable, privacy: .public) not on this Mac (\(report.deferred, privacy: .public) held \
+            back by the caps), \(report.removed, privacy: .public) removed, \(report.tilesOnly, privacy: .public) tiles only
             """)
     }
 

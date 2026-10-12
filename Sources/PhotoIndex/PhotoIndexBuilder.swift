@@ -93,11 +93,27 @@ public struct PhotoIndexBuilder: Sendable {
     /// subset before it is asked for again (`IndexManifest.unavailableCheckedAt`).
     public static let unavailableRetryInterval: TimeInterval = 24 * 60 * 60
 
-    /// Of a filled subset, the share guaranteed to fill the screen: a quarter,
-    /// 512 of 2048, so the subjects come round again after three and a half
-    /// hours at 25 s a cycle (SPEC § 5, decided 2026-10-11). Without it an
-    /// optimised library gave about 150.
-    public static let fullScreenShare = 4
+    /// Of a filled subset, the share guaranteed to fill the screen: a
+    /// sixteenth, 128 of 2048, so the subjects come round again after 53
+    /// minutes at 25 s a cycle (SPEC § 5). A quarter at first (2026-10-11);
+    /// cut on 2026-10-12, because on an optimised library each one's sharp
+    /// close-up has to be fetched from iCloud (`CloseUpShelf`), about 2 MB.
+    public static let fullScreenShare = 16
+
+    /// What a build prefers among the photographs that fill the screen: those
+    /// whose close-up costs no download, because the shelf has it or this Mac
+    /// has the photograph at `width` (SPEC § 5). With downloads allowed there
+    /// is nothing to prefer, and none is passed.
+    public struct CloseUpPreference: Sendable {
+        public var width: Int
+        /// Whether the shelf already holds this entry's close-up.
+        public var isStocked: @Sendable (IndexEntry) -> Bool
+
+        public init(width: Int, isStocked: @escaping @Sendable (IndexEntry) -> Bool) {
+            self.width = width
+            self.isStocked = isStocked
+        }
+    }
 
     /// The narrower crops a photograph is asked at when it is not here at
     /// `thumbnailWidth`, widest first, down to the atlas's 256: a derivative
@@ -107,8 +123,10 @@ public struct PhotoIndexBuilder: Sendable {
     /// Indexes `source` into `store`, keeping whatever is still good.
     ///
     /// A source filled to its target (`FillablePhotoSource`) is built in two
-    /// phases of rounds. First the photographs that fill the screen, a quarter
-    /// of the target, chosen among those not known to be short of it. Then the
+    /// phases of rounds. First the photographs that fill the screen, a
+    /// sixteenth of the target, chosen among those not known to be short of
+    /// it — and with `closeUps`, first among those whose close-up is here,
+    /// looking at no more photographs than the target for them. Then the
     /// rest, chosen among all the others and taken at the largest size this Mac
     /// has, down to `tileWidths`: below `thumbnailWidth` they are tiles only.
     /// In each round the photographs found missing are left out and the choice
@@ -116,8 +134,8 @@ public struct PhotoIndexBuilder: Sendable {
     /// every round only adds. Any other source is one round, as it always was.
     ///
     /// `availability` names what made a photograph unavailable — whether
-    /// downloads were allowed — and `now` dates the check; both are for a
-    /// filled source only.
+    /// downloads were allowed — and `now` dates the check; both, and
+    /// `closeUps`, are for a filled source only.
     @discardableResult
     public func build(
         from source: some PhotoSource,
@@ -125,6 +143,7 @@ public struct PhotoIndexBuilder: Sendable {
         root: String,
         availability: String = "",
         now: Date = Date(),
+        preferring closeUps: CloseUpPreference? = nil,
         progress: (@Sendable (IndexProgress) -> Void)? = nil,
         isCancelled: (@Sendable () -> Bool)? = nil
     ) throws -> IndexManifest {
@@ -179,7 +198,8 @@ public struct PhotoIndexBuilder: Sendable {
             unavailable: carried ? Set(manifest.unavailable) : [],
             belowFullScreen: carried
                 ? Set(manifest.belowFullScreen).union(known.values.filter { !$0.canFillScreen }.map(\.id))
-                : []
+                : [],
+            belowCloseUp: carried ? Set(manifest.belowCloseUp) : []
         )
         manifest.unavailableCheckedAt = carried ? manifest.unavailableCheckedAt : now
         manifest.unavailableContext = availability
@@ -195,33 +215,54 @@ public struct PhotoIndexBuilder: Sendable {
         var reused: Int?
         var cancelled = false
 
-        // Phase A: the photographs that fill the screen.
-        var screen: [String: IndexEntry] = [:]
-        while true {
-            let chosen = fillable.choose(
-                from: library, excluding: leftOut.skipped.union(leftOut.unavailable).union(leftOut.belowFullScreen),
-                count: fullScreenTarget
+        // Phase A, first: the photographs that fill the screen and need no
+        // download for their close-up.
+        let preferred = closeUps.map {
+            self.preferred(
+                count: fullScreenTarget, closeUps: $0, fillable: fillable, library: library, from: source,
+                known: known, leftOut: &leftOut, budget: target
             )
+        } ?? []
+
+        // Phase A: the photographs that fill the screen, the preferred first.
+        var screen: [String: IndexEntry] = [:]
+        var first: [String: IndexEntry] = [:]
+        var pending: [PhotoDescriptor]? = preferred.isEmpty ? nil : preferred
+        while !cancelled {
+            let chosen = pending ?? fillable.choose(
+                from: library,
+                excluding: leftOut.skipped.union(leftOut.unavailable).union(leftOut.belowFullScreen).union(first.keys),
+                count: fullScreenTarget - first.count
+            )
+            let isPreferred = pending != nil
+            pending = nil
+            let before = first
             let round = try self.round(
                 over: chosen, tier: .fullScreen, from: source, into: store, manifest: &manifest,
-                known: known, alreadySkipped: alreadySkipped, carry: previous, leftOut: leftOut,
+                known: known, alreadySkipped: alreadySkipped, carry: previous.merging(before) { _, new in new },
+                leftOut: leftOut,
                 report: { ready, _, skipped, unavailable, _, _, reusedHere in
                     if reused == nil { reused = reusedHere }
                     progress?(IndexProgress(
-                        completed: ready, reused: reused ?? 0,
+                        completed: before.count + ready, reused: reused ?? 0,
                         skipped: leftOut.skipped.count + skipped,
                         unavailable: leftOut.unavailable.count + unavailable,
-                        total: target, ready: ready, fullScreen: ready
+                        total: target, ready: before.count + ready, fullScreen: before.count + ready
                     ))
                 },
                 isCancelled: isCancelled
             )
-            screen = round.kept
+            screen = before.merging(round.kept) { first, _ in first }
             for (id, entry) in round.kept { known[id] = entry }
             leftOut.skipped.formUnion(round.skipped)
             leftOut.belowFullScreen.formUnion(round.short)
             cancelled = round.cancelled
-            if round.skipped.isEmpty && round.short.isEmpty || cancelled { break }
+            if isPreferred {
+                first = screen
+                if first.count < fullScreenTarget { continue }
+                break
+            }
+            if round.skipped.isEmpty && round.short.isEmpty { break }
         }
 
         // Phase B: the rest, as large as this Mac has them.
@@ -273,11 +314,67 @@ public struct PhotoIndexBuilder: Sendable {
         return try finish(&manifest, entries: entries, leftOut: leftOut, store: store)
     }
 
+    /// The photographs that fill the screen whose close-up this Mac has: the
+    /// rule's choice of `count` among the library less those known not to,
+    /// in rounds like the others. A photograph already indexed whose close-up
+    /// the shelf holds is taken without asking; any other is asked for at the
+    /// close-up's width, without the network, and one that is not there is
+    /// left out of the next round.
+    ///
+    /// On an optimised library few are, and the rule would walk through all
+    /// of it — 57,000 photographs, minutes. So it asks for no more than
+    /// `budget` in a day, counting those already found missing, and stops
+    /// with fewer: the rest of the subjects are then chosen as before.
+    private func preferred(
+        count: Int, closeUps: CloseUpPreference, fillable: any FillablePhotoSource, library: [PhotoDescriptor],
+        from source: some PhotoSource, known: [String: IndexEntry], leftOut: inout LeftOut, budget: Int
+    ) -> [PhotoDescriptor] {
+        var found: [PhotoDescriptor] = []
+        while true {
+            let chosen = fillable.choose(
+                from: library,
+                excluding: leftOut.skipped.union(leftOut.unavailable).union(leftOut.belowFullScreen)
+                    .union(leftOut.belowCloseUp),
+                count: count
+            )
+            var here: Set<String> = []
+            var unknown: [PhotoDescriptor] = []
+            for descriptor in chosen {
+                if let entry = known[descriptor.id.rawValue], entry.versionToken == descriptor.versionToken,
+                   entry.canFillScreen, closeUps.isStocked(entry) {
+                    here.insert(entry.id)
+                } else {
+                    unknown.append(descriptor)
+                }
+            }
+            let asking = Array(unknown.prefix(max(0, budget - leftOut.belowCloseUp.count)))
+            let missing = Missing()
+            DispatchQueue.concurrentPerform(iterations: asking.count) { offset in
+                let id = asking[offset].id
+                do {
+                    _ = try source.uprightImage(for: id, cropWidth: closeUps.width)
+                } catch {
+                    // Elsewhere or broken, it makes no close-up here.
+                    missing.insert(id.rawValue)
+                }
+            }
+            let short = missing.ids
+            here.formUnion(asking.map(\.id.rawValue).filter { !short.contains($0) })
+            leftOut.belowCloseUp.formUnion(short)
+            found = chosen.filter { here.contains($0.id.rawValue) }
+            // Done when every one chosen was here, or nothing more may be asked.
+            if short.isEmpty || asking.count < unknown.count { return found }
+        }
+    }
+
     /// What a filled build leaves out of the choice, by reason.
     private struct LeftOut {
         var skipped: Set<String> = []
         var unavailable: Set<String> = []
         var belowFullScreen: Set<String> = []
+        /// Not here at the close-up's width: left out of the preferred
+        /// subjects only (`preferred`).
+        var belowCloseUp: Set<String> = []
 
         var isEmpty: Bool { skipped.isEmpty && unavailable.isEmpty }
     }
@@ -438,6 +535,7 @@ public struct PhotoIndexBuilder: Sendable {
             manifest.belowFullScreen = Array(leftOut.belowFullScreen.union(short).union(
                 kept.values.filter { !$0.canFillScreen }.map(\.id)
             ))
+            manifest.belowCloseUp = Array(leftOut.belowCloseUp)
             try store.save(manifest)
         }
         if isCancelled?() == true { cancelled = true }
@@ -456,6 +554,7 @@ public struct PhotoIndexBuilder: Sendable {
         manifest.skipped = leftOut.skipped.sorted()
         manifest.unavailable = leftOut.unavailable.sorted()
         manifest.belowFullScreen = leftOut.belowFullScreen.sorted()
+        manifest.belowCloseUp = leftOut.belowCloseUp.sorted()
         try store.save(manifest)
 
         // Only once the manifest is the truth on disk.
@@ -489,6 +588,21 @@ public struct PhotoIndexBuilder: Sendable {
                 throw PhotoSourceError.couldNotRender(id)
             }
         }
+    }
+}
+
+/// The photographs `preferred` found without a close-up, from every core.
+private final class Missing: @unchecked Sendable {
+    private let lock = NSLock()
+    private var found: Set<String> = []
+
+    func insert(_ id: String) {
+        lock.lock(); found.insert(id); lock.unlock()
+    }
+
+    var ids: Set<String> {
+        lock.lock(); defer { lock.unlock() }
+        return found
     }
 }
 

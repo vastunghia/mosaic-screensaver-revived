@@ -31,7 +31,10 @@ do {
             source: indexable.source, store: store, root: indexable.root, options: options
         )
         // What the app does after every build: the .saver's close-ups.
-        try PhotoSourceFactory.stockCloseUps(source: indexable.source, store: store, shelf: options.closeUpShelf)
+        try PhotoSourceFactory.stockCloseUps(
+            source: indexable.source, store: store, shelf: options.closeUpShelf,
+            fetching: options.fetchesCloseUps ? try options.closeUpFetching(store: store) : nil
+        )
         exit(0)
     }
 

@@ -310,7 +310,7 @@ struct FillTests {
         #expect(downloaded.unavailable.isEmpty)
     }
 
-    @Test("a quarter fills the screen, the rest are tiles as large as this Mac has them")
+    @Test("a share fills the screen, the rest are tiles as large as this Mac has them")
     func twoTiers() throws {
         for rule in SubsetRule.allCases {
             let library = optimised(400)
@@ -325,7 +325,7 @@ struct FillTests {
             )
             #expect(manifest.entries.count == 80, "\(rule)")
             let fullScreen = manifest.entries.filter(\.canFillScreen)
-            #expect(fullScreen.count >= 20, "\(rule): \(fullScreen.count) fill the screen")
+            #expect(fullScreen.count >= 80 / PhotoIndexBuilder.fullScreenShare, "\(rule): \(fullScreen.count) fill the screen")
             #expect(last.value?.fullScreen == fullScreen.count, "\(rule)")
             for entry in manifest.entries {
                 let local = library.localWidths[entry.id]
@@ -339,7 +339,7 @@ struct FillTests {
         }
     }
 
-    @Test("the quarter that fills the screen is the rule's own choice among those that can")
+    @Test("the share that fills the screen is the rule's own choice among those that can")
     func fullScreenIsTheRulesChoice() throws {
         let library = optimised(400)
         let index = temporaryDirectory()
@@ -348,7 +348,9 @@ struct FillTests {
 
         let manifest = try builder().build(from: source, into: PhotoIndexStore(directory: index), root: "library")
         let whole = library.descriptors.filter { library.localWidths[$0.id.rawValue] == nil && !library.away.contains($0.id.rawValue) }
-        let expected = Set(SubsetRule.random.choose(from: whole, count: 20, seed: 9).map(\.id.rawValue))
+        let expected = Set(SubsetRule.random.choose(
+            from: whole, count: 80 / PhotoIndexBuilder.fullScreenShare, seed: 9
+        ).map(\.id.rawValue))
         #expect(expected.isSubset(of: Set(manifest.entries.filter(\.canFillScreen).map(\.id))))
     }
 
@@ -432,6 +434,91 @@ struct FillTests {
         for entry in manifest.entries {
             #expect(entry.canFillScreen == !small.contains(entry.id), "\(entry.id)")
         }
-        #expect(manifest.entries.filter(\.canFillScreen).count >= 20)
+        #expect(manifest.entries.filter(\.canFillScreen).count >= 80 / PhotoIndexBuilder.fullScreenShare)
+    }
+
+    /// What `Options.closeUpPreference` passes, at twice the thumbnail's
+    /// width, with a shelf that `stocked` says holds a close-up.
+    private func preference(stocked: Set<String> = []) -> PhotoIndexBuilder.CloseUpPreference {
+        PhotoIndexBuilder.CloseUpPreference(width: 128, isStocked: { stocked.contains($0.id) })
+    }
+
+    /// Every photograph fills the screen; those in `sharp` have a close-up
+    /// here too, the others are here only up to 100 px.
+    private func sharpOnly(_ count: Int, sharp: Set<String>) -> PatchyLibrary {
+        let library = PatchyLibrary(count: count)
+        library.localWidths = Dictionary(uniqueKeysWithValues: library.ids.filter { !sharp.contains($0) }.map { ($0, 100) })
+        return library
+    }
+
+    @Test("the subjects are the rule's choice among the photographs whose close-up is here")
+    func prefersSharp() throws {
+        for rule in SubsetRule.allCases {
+            let probe = PatchyLibrary(count: 400)
+            let sharp = Set(SubsetRule.random.choose(from: probe.descriptors, count: 80, seed: 3).map(\.id.rawValue))
+            let library = sharpOnly(400, sharp: sharp)
+            let index = temporaryDirectory()
+            defer { try? FileManager.default.removeItem(at: index) }
+
+            let manifest = try builder().build(
+                from: SubsetPhotoSource(library, rule: rule, count: 160, seed: 9),
+                into: PhotoIndexStore(directory: index), root: "library", preferring: preference()
+            )
+            let subjects = 160 / PhotoIndexBuilder.fullScreenShare
+            let candidates = library.descriptors.filter { sharp.contains($0.id.rawValue) }
+            let expected = Set(rule.choose(from: candidates, count: subjects, seed: 9).map(\.id.rawValue))
+            #expect(expected.count == subjects, "\(rule)")
+            #expect(expected.isSubset(of: Set(manifest.entries.map(\.id))), "\(rule)")
+            #expect(manifest.entries.count == 160, "\(rule)")
+            #expect(Set(manifest.belowCloseUp).isDisjoint(with: sharp), "\(rule)")
+        }
+    }
+
+    @Test("too few close-ups here: no more asked for than the target, then the rule as before")
+    func sharpSearchIsBounded() throws {
+        let library = sharpOnly(400, sharp: [])
+        let index = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: index) }
+        let store = PhotoIndexStore(directory: index)
+        let source = SubsetPhotoSource(library, rule: .uniformInTime, count: 40, seed: 9)
+        let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
+
+        let manifest = try builder().build(from: source, into: store, root: "library", now: now, preferring: preference())
+        let probes = library.askedAt.filter { $0.hasSuffix("@128") }
+        #expect(probes.count <= 40, "\(probes.count) asked at the close-up's width")
+        #expect(manifest.belowCloseUp.count == probes.count)
+        #expect(manifest.entries.count == 40)
+        #expect(manifest.entries.filter(\.canFillScreen).count >= 40 / PhotoIndexBuilder.fullScreenShare)
+
+        // Within the day nothing is asked again, at any width.
+        let first = try Data(contentsOf: store.manifestURL)
+        library.asked = []
+        _ = try builder().build(
+            from: source, into: store, root: "library", now: now.addingTimeInterval(60), preferring: preference()
+        )
+        #expect(library.askedAt.isEmpty, "asked \(library.askedAt)")
+        #expect(try Data(contentsOf: store.manifestURL) == first)
+    }
+
+    @Test("a subject whose close-up the shelf holds is not asked for")
+    func stockedIsNotAsked() throws {
+        let library = sharpOnly(200, sharp: [])
+        let index = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: index) }
+        let store = PhotoIndexStore(directory: index)
+        let source = SubsetPhotoSource(library, rule: .random, count: 40, seed: 9)
+        let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
+
+        let before = try builder().build(from: source, into: store, root: "library", now: now)
+        let subjects = Set(before.entries.filter(\.canFillScreen).map(\.id))
+        // Their close-ups fetched since; a day later every one is asked again.
+        library.asked = []
+        let after = try builder().build(
+            from: source, into: store, root: "library",
+            now: now.addingTimeInterval(PhotoIndexBuilder.unavailableRetryInterval + 1),
+            preferring: preference(stocked: subjects)
+        )
+        #expect(!library.askedAt.contains { $0.hasSuffix("@128") && subjects.contains(String($0.dropLast(4))) })
+        #expect(subjects.isSubset(of: Set(after.entries.filter(\.canFillScreen).map(\.id))))
     }
 }

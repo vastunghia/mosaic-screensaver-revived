@@ -33,6 +33,13 @@ public enum SharedLocations {
         supportDirectory.appendingPathComponent("closeups", isDirectory: true)
     }
 
+    /// The close-ups fetched from iCloud lately (`DownloadLedger`): one for
+    /// the Mac, whatever index or shelf an experiment points at, because the
+    /// space they take is in the one Photos library.
+    public static var closeUpFetchLedger: URL {
+        supportDirectory.appendingPathComponent("close-up-fetches.json", isDirectory: false)
+    }
+
     /// `R` and `T` as chosen in the app (`SharedSettings`).
     public static var settingsFile: URL {
         supportDirectory.appendingPathComponent("settings.json", isDirectory: false)

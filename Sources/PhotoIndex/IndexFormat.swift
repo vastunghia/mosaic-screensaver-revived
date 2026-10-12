@@ -193,6 +193,12 @@ public struct IndexManifest: Codable, Equatable, Sendable {
     /// `unavailable`. `unavailable` then means not here even as a tile.
     public var belowFullScreen: [String]
 
+    /// Photographs of the library found not to be here at the close-up's
+    /// width, for a filled source that prefers subjects whose close-up needs
+    /// no download (`PhotoIndexBuilder.CloseUpPreference`). Asked for again
+    /// with `unavailable`.
+    public var belowCloseUp: [String]
+
     /// What `unavailable` was found out under: whether downloads were allowed.
     /// Turning them on makes every one worth asking for again at once.
     public var unavailableContext: String?
@@ -209,7 +215,8 @@ public struct IndexManifest: Codable, Equatable, Sendable {
         unavailable: [String] = [],
         unavailableCheckedAt: Date? = nil,
         unavailableContext: String? = nil,
-        belowFullScreen: [String] = []
+        belowFullScreen: [String] = [],
+        belowCloseUp: [String] = []
     ) {
         self.formatVersion = formatVersion
         self.root = root
@@ -223,11 +230,13 @@ public struct IndexManifest: Codable, Equatable, Sendable {
         self.unavailableCheckedAt = unavailableCheckedAt
         self.unavailableContext = unavailableContext
         self.belowFullScreen = belowFullScreen
+        self.belowCloseUp = belowCloseUp
     }
 
     private enum CodingKeys: String, CodingKey {
         case formatVersion, root, thumbnailWidth, thumbnailHeight, signatureSide, cropRule
         case entries, skipped, unavailable, unavailableCheckedAt, unavailableContext, belowFullScreen
+        case belowCloseUp
     }
 
     public init(from decoder: any Decoder) throws {
@@ -246,9 +255,11 @@ public struct IndexManifest: Codable, Equatable, Sendable {
         unavailableCheckedAt = try container.decodeIfPresent(Date.self, forKey: .unavailableCheckedAt)
         unavailableContext = try container.decodeIfPresent(String.self, forKey: .unavailableContext)
         belowFullScreen = try container.decodeIfPresent([String].self, forKey: .belowFullScreen) ?? []
+        belowCloseUp = try container.decodeIfPresent([String].self, forKey: .belowCloseUp) ?? []
     }
 
-    /// As synthesised, except that an empty `belowFullScreen` is left out, so
+    /// As synthesised, except that an empty `belowFullScreen` or
+    /// `belowCloseUp` is left out, so
     /// a folder's manifest is written byte for byte as before it existed.
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
@@ -265,6 +276,9 @@ public struct IndexManifest: Codable, Equatable, Sendable {
         try container.encodeIfPresent(unavailableContext, forKey: .unavailableContext)
         if !belowFullScreen.isEmpty {
             try container.encode(belowFullScreen, forKey: .belowFullScreen)
+        }
+        if !belowCloseUp.isEmpty {
+            try container.encode(belowCloseUp, forKey: .belowCloseUp)
         }
     }
 

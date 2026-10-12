@@ -7,6 +7,24 @@ import Testing
 
 /// The shelf is how the .saver gets close-ups sharper than a thumbnail without
 /// ever touching an original: the app stocks it, the saver reads it.
+/// Synthetic photographs of which some are not on this Mac.
+private final class AwaySource: PhotoSource, @unchecked Sendable {
+    let base: SyntheticPhotoSource
+    let away: Set<String>
+
+    init(_ base: SyntheticPhotoSource, away: Set<String>) {
+        self.base = base
+        self.away = away
+    }
+
+    func photos() throws -> [PhotoDescriptor] { try base.photos() }
+
+    func canonicalImage(for id: PhotoID, maxPixelWidth: Int) throws -> CGImage {
+        if away.contains(id.rawValue) { throw PhotoSourceError.unavailable(id) }
+        return try base.canonicalImage(for: id, maxPixelWidth: maxPixelWidth)
+    }
+}
+
 @Suite("Close-up shelf")
 struct CloseUpShelfTests {
     private let thumbnailWidth = 32
@@ -96,5 +114,37 @@ struct CloseUpShelfTests {
         let report = try shelf.stock(from: index)
         #expect(report.removed == 2)
         #expect(index.entries.allSatisfy(shelf.has))
+    }
+
+    @Test("close-ups this Mac lacks are fetched, one ledger entry each, up to the caps")
+    func fetching() throws {
+        let (index, shelf) = try fixture(count: 8)
+        let synthetic = SyntheticPhotoSource(count: 8)
+        let away = Set(index.entries.prefix(6).map(\.id))
+        let local = IndexedPhotoSource(
+            store: index.store, manifest: index.manifest, originals: AwaySource(synthetic, away: away)
+        )
+        let ledger = temporaryDirectory().appendingPathComponent("ledger.json")
+        let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        func fetching(at date: Date) -> CloseUpShelf.Fetching {
+            CloseUpShelf.Fetching(index: index, ledger: ledger, dailyLimit: 4, weeklyLimit: 5, now: { date })
+        }
+
+        let first = try shelf.stock(from: local, fetching: fetching(at: now))
+        #expect(first.made == 6 && first.fetched == 4, "two here, four fetched")
+        #expect(first.unavailable == 2 && first.deferred == 2)
+        #expect(DownloadLedger.load(from: ledger).requests.count == 4)
+
+        // Within the day: the daily cap holds.
+        let soon = try shelf.stock(from: local, fetching: fetching(at: now.addingTimeInterval(3600)))
+        #expect(soon.fetched == 0 && soon.deferred == 2)
+
+        // A day later the weekly cap leaves room for one.
+        let later = try shelf.stock(from: local, fetching: fetching(at: now.addingTimeInterval(86_400 + 1)))
+        #expect(later.fetched == 1 && later.deferred == 1)
+
+        // Nothing is fetched without being asked to.
+        let plain = try shelf.stock(from: local)
+        #expect(plain.fetched == 0 && plain.unavailable == 1)
     }
 }

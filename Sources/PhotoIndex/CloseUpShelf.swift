@@ -114,17 +114,47 @@ public struct CloseUpShelf: Sendable {
         /// Tiles only, left out: they never fill the screen (SPEC § 5), and
         /// this Mac has nothing of them this large anyway.
         public var tilesOnly = 0
+        /// Of `made`, fetched from iCloud (`Fetching`).
+        public var fetched = 0
+        /// Of `unavailable`, not fetched because the ledger's caps were reached.
+        public var deferred = 0
+    }
+
+    /// Where the close-ups this Mac does not have may come from: the index
+    /// with originals that may be fetched from iCloud, one at a time, as many
+    /// as `ledger` allows (SPEC § 5). Only for the photographs that fill the
+    /// screen, and only at the shelf's width: never an original.
+    public struct Fetching: Sendable {
+        public var index: IndexedPhotoSource
+        public var ledger: URL
+        public var dailyLimit: Int
+        public var weeklyLimit: Int
+        public var now: @Sendable () -> Date
+
+        public init(
+            index: IndexedPhotoSource, ledger: URL, dailyLimit: Int = DownloadLedger.standardDailyLimit,
+            weeklyLimit: Int = DownloadLedger.standardWeeklyLimit, now: @escaping @Sendable () -> Date = Date.init
+        ) {
+            self.index = index
+            self.ledger = ledger
+            self.dailyLimit = dailyLimit
+            self.weeklyLimit = weeklyLimit
+            self.now = now
+        }
     }
 
     /// Makes the renditions `index` has no rendition for, then removes those
     /// of photographs no longer in it. `index` must have originals behind it:
-    /// from the thumbnails alone this would only enlarge them.
+    /// from the thumbnails alone this would only enlarge them. With
+    /// `fetching`, those this Mac does not have are then fetched, within its
+    /// caps.
     ///
     /// Stopped halfway, it leaves whole files behind and picks up from there
     /// next time.
     @discardableResult
     public func stock(
         from index: IndexedPhotoSource,
+        fetching: Fetching? = nil,
         progress: (@Sendable (StockReport) -> Void)? = nil,
         isCancelled: (@Sendable () -> Bool)? = nil
     ) throws -> StockReport {
@@ -155,6 +185,7 @@ public struct CloseUpShelf: Sendable {
                     tally.add(\.made)
                 } catch PhotoSourceError.unavailable {
                     tally.add(\.unavailable)
+                    tally.elsewhere(entry)
                 } catch {
                     tally.add(\.failed)
                 }
@@ -166,10 +197,53 @@ public struct CloseUpShelf: Sendable {
             progress?(report)
         }
 
+        if let fetching, !cancelled {
+            cancelled = fetch(tally.elsewhereEntries, with: fetching, into: &report, progress: progress,
+                              isCancelled: isCancelled)
+        }
+
         if !cancelled {
             report.removed = collectOrphans(keeping: Set(entries.map(name(for:))))
         }
         return report
+    }
+
+    /// One at a time, in the index's order, each counted in the ledger
+    /// before it is asked for. Returns whether it was stopped.
+    private func fetch(
+        _ entries: [IndexEntry], with fetching: Fetching, into report: inout StockReport,
+        progress: (@Sendable (StockReport) -> Void)?, isCancelled: (@Sendable () -> Bool)?
+    ) -> Bool {
+        var ledger = DownloadLedger.load(from: fetching.ledger)
+        for (offset, entry) in entries.sorted(by: { $0.id < $1.id }).enumerated() {
+            if isCancelled?() == true { return true }
+            let now = fetching.now()
+            guard ledger.remaining(at: now, daily: fetching.dailyLimit, weekly: fetching.weeklyLimit) > 0 else {
+                report.deferred = entries.count - offset
+                break
+            }
+            ledger.record(at: now)
+            // Not written down, not asked: a ledger that cannot be kept
+            // cannot keep the caps either.
+            guard (try? ledger.save(to: fetching.ledger)) != nil else {
+                report.deferred = entries.count - offset
+                break
+            }
+            do {
+                let image = try fetching.index.canonicalImage(for: entry.photoID, maxPixelWidth: width)
+                try write(image, for: entry)
+                report.made += 1
+                report.fetched += 1
+                report.unavailable -= 1
+            } catch PhotoSourceError.unavailable {
+                // Still elsewhere: counted as it was.
+            } catch {
+                report.failed += 1
+                report.unavailable -= 1
+            }
+            progress?(report)
+        }
+        return false
     }
 
     /// Deletes every file that is not the rendition of one of `wanted`, half
@@ -270,9 +344,19 @@ private final class Tally: @unchecked Sendable {
 
     private let lock = NSLock()
     private var value = Counts()
+    private var elsewhere: [IndexEntry] = []
 
     func add(_ counter: WritableKeyPath<Counts, Int>) {
         lock.lock(); value[keyPath: counter] += 1; lock.unlock()
+    }
+
+    func elsewhere(_ entry: IndexEntry) {
+        lock.lock(); elsewhere.append(entry); lock.unlock()
+    }
+
+    var elsewhereEntries: [IndexEntry] {
+        lock.lock(); defer { lock.unlock() }
+        return elsewhere
     }
 
     var counts: Counts {

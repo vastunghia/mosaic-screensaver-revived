@@ -169,6 +169,7 @@ enum PhotoSourceFactory {
 
         let manifest = try builder.build(
             from: source, into: store, root: root, availability: options.availability,
+            preferring: options.closeUpPreference,
             progress: { progress in
                 guard progress.total > 0 else { return }
                 let percent = progress.completed * 100 / progress.total
@@ -201,13 +202,14 @@ extension PhotoSourceFactory {
     @discardableResult
     static func stockCloseUps(
         source: any PhotoSource, store: PhotoIndexStore, shelf: CloseUpShelf,
-        isCancelled: (@Sendable () -> Bool)? = nil
+        fetching: CloseUpShelf.Fetching? = nil, isCancelled: (@Sendable () -> Bool)? = nil
     ) throws -> CloseUpShelf.StockReport {
         let started = Date()
         let index = try IndexedPhotoSource(store: store, originals: source)
         let reported = Reported()
         let report = try shelf.stock(
             from: index,
+            fetching: fetching,
             progress: { report in
                 let done = report.kept + report.made + report.failed + report.unavailable
                 guard report.total > 0 else { return }
@@ -224,6 +226,9 @@ extension PhotoSourceFactory {
             shelf.width, report.made, elapsed, elapsed > 0 ? Double(report.made) / elapsed : 0,
             report.kept, report.failed, report.unavailable, report.removed, report.tilesOnly
         ))
+        if fetching != nil {
+            print("  of those made, \(report.fetched) fetched from iCloud; \(report.deferred) held back by the caps")
+        }
         print("  at \(shelf.directory.path)")
         return report
     }
