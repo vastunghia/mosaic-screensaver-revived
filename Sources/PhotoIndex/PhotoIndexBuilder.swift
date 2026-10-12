@@ -75,6 +75,12 @@ public struct PhotoIndexBuilder: Sendable {
     /// seconds, large enough that the manifest is not rewritten per photograph.
     public var checkpointEvery: Int
 
+    /// The longest a checkpoint waits when photographs are only found missing.
+    /// A filled build on an optimised library asks for tens of thousands that
+    /// are not here, in rounds of a few dozen, and the manifest lists them all:
+    /// saving it after every batch wrote 2.1 GB in ten minutes (2026-10-12).
+    public var checkpointInterval: TimeInterval = 30
+
     public init(
         thumbnailWidth: Int = PhotoIndexBuilder.defaultThumbnailWidth,
         signatureSide: Int = PhotoIndexBuilder.defaultSignatureSide,
@@ -148,6 +154,7 @@ public struct PhotoIndexBuilder: Sendable {
         isCancelled: (@Sendable () -> Bool)? = nil
     ) throws -> IndexManifest {
         let existing = try store.load()
+        let checkpoints = Checkpoints(every: checkpointEvery, interval: checkpointInterval)
         var manifest: IndexManifest
         var known: [String: IndexEntry] = [:]
         var alreadySkipped: Set<String> = []
@@ -173,7 +180,7 @@ public struct PhotoIndexBuilder: Sendable {
         guard let fillable = source as? any FillablePhotoSource else {
             let round = try self.round(
                 over: try source.photos(), tier: .plain, from: source, into: store, manifest: &manifest,
-                known: known, alreadySkipped: alreadySkipped, carry: [:], leftOut: LeftOut(),
+                known: known, alreadySkipped: alreadySkipped, carry: [:], leftOut: LeftOut(), checkpoints: checkpoints,
                 report: { kept, _, skipped, unavailable, short, total, reused in
                     progress?(IndexProgress(
                         completed: kept + skipped + unavailable + short, reused: reused, skipped: skipped,
@@ -216,7 +223,14 @@ public struct PhotoIndexBuilder: Sendable {
         var cancelled = false
 
         // Phase A, first: the photographs that fill the screen and need no
-        // download for their close-up.
+        // download for their close-up. It reports nothing until it is done,
+        // so the build says it has started: a window would otherwise show
+        // the last count, still and complete, for as long as it takes.
+        if closeUps != nil {
+            progress?(IndexProgress(
+                skipped: leftOut.skipped.count, unavailable: leftOut.unavailable.count, total: target
+            ))
+        }
         let preferred = closeUps.map {
             self.preferred(
                 count: fullScreenTarget, closeUps: $0, fillable: fillable, library: library, from: source,
@@ -240,7 +254,7 @@ public struct PhotoIndexBuilder: Sendable {
             let round = try self.round(
                 over: chosen, tier: .fullScreen, from: source, into: store, manifest: &manifest,
                 known: known, alreadySkipped: alreadySkipped, carry: previous.merging(before) { _, new in new },
-                leftOut: leftOut,
+                leftOut: leftOut, checkpoints: checkpoints,
                 report: { ready, _, skipped, unavailable, _, _, reusedHere in
                     if reused == nil { reused = reusedHere }
                     progress?(IndexProgress(
@@ -283,6 +297,7 @@ public struct PhotoIndexBuilder: Sendable {
             let round = try self.round(
                 over: chosen, tier: .any(belowFullScreen: leftOut.belowFullScreen), from: source, into: store,
                 manifest: &manifest, known: known, alreadySkipped: alreadySkipped, carry: carry, leftOut: leftOut,
+                checkpoints: checkpoints,
                 report: { ready, readyFullScreen, skipped, unavailable, _, _, _ in
                     progress?(IndexProgress(
                         completed: screen.count + ready, reused: reused ?? 0,
@@ -414,6 +429,7 @@ public struct PhotoIndexBuilder: Sendable {
         alreadySkipped: Set<String>,
         carry: [String: IndexEntry],
         leftOut: LeftOut,
+        checkpoints: Checkpoints,
         report: (
             _ kept: Int, _ keptFullScreen: Int, _ skipped: Int, _ unavailable: Int, _ short: Int,
             _ total: Int, _ reused: Int
@@ -527,6 +543,7 @@ public struct PhotoIndexBuilder: Sendable {
             short.append(contentsOf: drained.short)
             report(kept.count, tally(), skipped.count, unavailable.count, short.count, descriptors.count, reused)
 
+            guard checkpoints.isDue(adding: drained.entries.count) else { continue }
             // The thumbnail is on disk before the manifest names it, so a
             // checkpoint never promises pixels that are not there.
             manifest.entries = Array(carry.merging(kept) { _, new in new }.values)
@@ -588,6 +605,28 @@ public struct PhotoIndexBuilder: Sendable {
                 throw PhotoSourceError.couldNotRender(id)
             }
         }
+    }
+}
+
+/// When a build writes its manifest down: once `every` photographs have
+/// been indexed since the last time, or `interval` has passed.
+private final class Checkpoints {
+    private let every: Int
+    private let interval: TimeInterval
+    private var added = 0
+    private var last = Date()
+
+    init(every: Int, interval: TimeInterval) {
+        self.every = every
+        self.interval = interval
+    }
+
+    func isDue(adding count: Int) -> Bool {
+        added += count
+        guard added >= every || Date().timeIntervalSince(last) >= interval else { return false }
+        added = 0
+        last = Date()
+        return true
     }
 }
 
