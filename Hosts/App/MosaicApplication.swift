@@ -132,6 +132,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
     private var model: AppModel?
     private let updater = Updater()
     private var updateWatch: AnyCancellable?
+    private var downloadsWatch: AnyCancellable?
 
     private var launchedAtLogin = false
     /// Off for the app's own restarts (`MosaicApplication.quitWithoutAsking`).
@@ -178,6 +179,13 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
             } else {
                 UpdateNotice.post(release)
             }
+        }
+
+        // The question about downloads, once indexing has found close-ups
+        // missing, if the window is there to ask it in.
+        downloadsWatch = model.$closeUpsNotHere.dropFirst().receive(on: DispatchQueue.main).sink { [weak self] _ in
+            guard let self, window?.isVisible == true else { return }
+            showNextSheet()
         }
 
         updater.start()
@@ -248,13 +256,16 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: Sheets on the window
 
     private var invitedToOpenAtLogin = false
+    private var askedAboutDownloads = false
     private var offeredUpdate: ReleaseVersion?
 
     /// One sheet at a time, each at most once a launch: the invitation to
-    /// open at login, then an update. Called again as each one ends.
+    /// open at login, the question about downloads, then an update. Called
+    /// again as each one ends.
     private func showNextSheet() {
         guard let window, window.isVisible, window.attachedSheet == nil else { return }
         if inviteToOpenAtLogin() { return }
+        if askAboutDownloads() { return }
         if let release = updater.readyRelease, offeredUpdate != release.version {
             offerUpdate()
         }
@@ -286,6 +297,43 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
                 model.declineOpeningAtLogin()
             } else {
                 Self.log.notice("opening at login put off until the next launch")
+            }
+            self?.showNextSheet()
+        }
+        return true
+    }
+
+    /// What may be fetched from iCloud, asked once there is something to
+    /// gain: nothing is fetched until the user answers, and the answer can be
+    /// changed in Settings (SPEC § 5). "Not Now" asks again next launch.
+    /// Whether it was shown.
+    private func askAboutDownloads() -> Bool {
+        guard let model, let window, !askedAboutDownloads, model.asksAboutDownloads else { return false }
+        askedAboutDownloads = true
+        Self.log.notice("asking about downloads from iCloud")
+
+        let missing = model.closeUpsNotHere
+        let alert = NSAlert()
+        alert.messageText = "Download sharp close-ups from iCloud?"
+        alert.informativeText = """
+            Your Photos library keeps originals in iCloud, and this Mac has no sharp copy of \
+            \(missing == 1 ? "1 photograph" : "\(missing) photographs") Mosaic shows full screen: \
+            their close-ups are blurry.
+
+            Mosaic can download a sharper copy of each, about 2 MB, never the original: at most \
+            128 a day and 256 a week, and none on a hotspot or in Low Data Mode. Photos keeps \
+            them in your library until it needs the space.
+
+            You can change this later in Mosaic Settings.
+            """
+        alert.addButton(withTitle: "Download Close-Ups")
+        alert.addButton(withTitle: "Don’t Download")
+        alert.addButton(withTitle: "Not Now")
+        alert.beginSheetModal(for: window) { [weak self] answer in
+            switch answer {
+            case .alertFirstButtonReturn: self?.model?.answerAboutDownloads(.closeUps)
+            case .alertSecondButtonReturn: self?.model?.answerAboutDownloads(.nothing)
+            default: Self.log.notice("downloads from iCloud put off until the next launch")
             }
             self?.showNextSheet()
         }

@@ -17,7 +17,10 @@ struct AppPreferences: Equatable {
     var folder: URL?
     /// Albums and folders. Empty is the whole library (SPEC § 5).
     var collectionIdentifiers: [String] = []
-    var allowsDownloads = false
+    /// What may be fetched from iCloud (SPEC § 5). Nil until the user has
+    /// answered, which fetches nothing: the question comes as a sheet, and
+    /// only to a library that needs it (`AppModel.asksAboutDownloads`).
+    var downloads: Downloads?
     var subsetRule = SubsetRule.uniformInTime
     var subsetSize = 2048
     /// Fixed once, at the first launch, and kept: the indexed subset has to
@@ -26,6 +29,20 @@ struct AppPreferences: Equatable {
     var rows = 90
     var cycleDuration: Double = 25
 
+    /// From nothing to anything the index needs: never a surprise on the
+    /// user's disk or bill (Sergio, 2026-10-12).
+    enum Downloads: String, CaseIterable, Identifiable {
+        /// What this Mac has; close-ups of the rest come from thumbnails.
+        case nothing
+        /// A 1920 px copy of each photograph that fills the screen and has
+        /// none here, within `DownloadLedger`'s caps; never an original.
+        case closeUps
+        /// Whatever indexing needs, originals included: the last resort.
+        case everything
+
+        var id: String { rawValue }
+    }
+
     static let rowRange = SharedSettings.rowRange
     static let durationRange = SharedSettings.durationRange
 
@@ -33,7 +50,9 @@ struct AppPreferences: Equatable {
         static let source = "source"
         static let folder = "folder"
         static let albums = "albums"
-        static let downloads = "allowsDownloads"
+        /// The switch the three choices replaced: on was `everything`.
+        static let allowsDownloads = "allowsDownloads"
+        static let downloads = "iCloudDownloads"
         static let rule = "subsetRule"
         static let size = "subsetSize"
         static let seed = "subsetSeed"
@@ -48,7 +67,11 @@ struct AppPreferences: Equatable {
         }
         preferences.folder = defaults.string(forKey: Key.folder).map { URL(fileURLWithPath: $0) }
         preferences.collectionIdentifiers = defaults.stringArray(forKey: Key.albums) ?? []
-        preferences.allowsDownloads = defaults.bool(forKey: Key.downloads)
+        if let raw = defaults.string(forKey: Key.downloads) {
+            preferences.downloads = Downloads(rawValue: raw)
+        } else if defaults.bool(forKey: Key.allowsDownloads) {
+            preferences.downloads = .everything
+        }
         if let raw = defaults.string(forKey: Key.rule), let rule = SubsetRule(rawValue: raw) {
             preferences.subsetRule = rule
         }
@@ -77,7 +100,8 @@ struct AppPreferences: Equatable {
         defaults.set(source.rawValue, forKey: Key.source)
         defaults.set(folder?.path, forKey: Key.folder)
         defaults.set(collectionIdentifiers, forKey: Key.albums)
-        defaults.set(allowsDownloads, forKey: Key.downloads)
+        defaults.set(downloads?.rawValue, forKey: Key.downloads)
+        defaults.removeObject(forKey: Key.allowsDownloads)
         defaults.set(subsetRule.rawValue, forKey: Key.rule)
         defaults.set(subsetSize, forKey: Key.size)
         defaults.set(String(subsetSeed), forKey: Key.seed)
@@ -109,7 +133,8 @@ struct AppPreferences: Equatable {
         case .photos:
             options.photosLibrary = true
             options.collectionIdentifiers = collectionIdentifiers
-            options.allowsDownloads = allowsDownloads
+            options.allowsDownloads = downloads == .everything
+            options.fetchesCloseUps = downloads == .closeUps
             options.subsetRule = subsetRule
             options.subsetSize = subsetSize
             options.subsetSeed = subsetSeed

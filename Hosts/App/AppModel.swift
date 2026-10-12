@@ -31,7 +31,7 @@ final class AppModel: ObservableObject {
             if preferences.shared != oldValue.shared { shareSettings() }
             if preferences.source != oldValue.source || preferences.folder != oldValue.folder
                 || preferences.collectionIdentifiers != oldValue.collectionIdentifiers
-                || preferences.allowsDownloads != oldValue.allowsDownloads
+                || preferences.downloads != oldValue.downloads
                 || preferences.subsetRule != oldValue.subsetRule
                 || preferences.subsetSize != oldValue.subsetSize {
                 sourceChanged()
@@ -58,6 +58,14 @@ final class AppModel: ObservableObject {
     /// Photographs in the index on disk that belong to the current source.
     @Published private(set) var indexedCount = 0
 
+    /// Of the photographs that fill the screen, those whose sharp close-up
+    /// is not on this Mac, as the last stocking of the shelf found: what
+    /// makes the question about downloads worth asking. Kept across launches.
+    @Published private(set) var closeUpsNotHere = UserDefaults.standard.integer(forKey: AppModel.closeUpsNotHereKey)
+
+    /// Close-ups fetched from iCloud in the last seven days (`DownloadLedger`).
+    @Published private(set) var closeUpsFetchedThisWeek = 0
+
     private var cancel = CancelFlag()
     private var changes: PhotoLibraryChanges?
     private var restartWhenDone = false
@@ -76,6 +84,7 @@ final class AppModel: ObservableObject {
         preferences = AppPreferences.load()
         pendingSaverRequest = UserDefaults.standard.string(forKey: Self.pendingKey)
         refreshIndexedCount()
+        refreshFetchedCount()
         // Also at launch: the file may predate these settings, or be missing.
         if SharedSettings.read() != preferences.shared { shareSettings() }
         if access.isGranted { accessGranted() }
@@ -309,6 +318,33 @@ final class AppModel: ObservableObject {
 
     private static let declinedLoginKey = "declinesOpeningAtLogin"
 
+    // MARK: Downloads
+
+    /// Whether to ask, as a window opens, what may be fetched from iCloud:
+    /// only while nobody has answered, and only for a library whose subjects
+    /// lack sharp close-ups here — a library kept whole on this Mac is never
+    /// asked about something that would change nothing.
+    var asksAboutDownloads: Bool {
+        preferences.source == .photos && access.isGranted && preferences.downloads == nil && closeUpsNotHere > 0
+    }
+
+    func answerAboutDownloads(_ downloads: AppPreferences.Downloads) {
+        Self.log.notice("downloads from iCloud: \(downloads.rawValue, privacy: .public)")
+        preferences.downloads = downloads
+    }
+
+    private func closeUpsStocked(_ report: CloseUpShelf.StockReport) {
+        closeUpsNotHere = report.unavailable
+        UserDefaults.standard.set(report.unavailable, forKey: Self.closeUpsNotHereKey)
+        refreshFetchedCount()
+    }
+
+    private func refreshFetchedCount() {
+        closeUpsFetchedThisWeek = DownloadLedger.load(from: SharedLocations.closeUpFetchLedger).lastWeek(at: Date())
+    }
+
+    private static let closeUpsNotHereKey = "closeUpsNotOnThisMac"
+
     // MARK: Notifications
 
     /// Read from the system every time: the user can change it in System
@@ -489,11 +525,14 @@ final class AppModel: ObservableObject {
         let finished: @Sendable (Error?, Double) -> Void = { [weak self] error, seconds in
             Task { @MainActor in self?.finished(error: error, seconds: seconds) }
         }
+        let stocked: @Sendable (CloseUpShelf.StockReport) -> Void = { [weak self] report in
+            Task { @MainActor in self?.closeUpsStocked(report) }
+        }
         Self.indexQueue.async(qos: DispatchQoS(qosClass: qos, relativePriority: 0)) {
             let started = ProcessInfo.processInfo.systemUptime
             var failure: Error?
             do {
-                try Self.index(options: options, flag: flag, progress: progressed)
+                try Self.index(options: options, flag: flag, progress: progressed, stocked: stocked)
             } catch {
                 failure = error
             }
@@ -504,7 +543,8 @@ final class AppModel: ObservableObject {
     /// The index, then the .saver's close-ups once the index is whole. The
     /// saver runs without them meanwhile, on enlarged thumbnails.
     nonisolated private static func index(
-        options: Options, flag: CancelFlag, progress: @escaping @Sendable (IndexProgress) -> Void
+        options: Options, flag: CancelFlag, progress: @escaping @Sendable (IndexProgress) -> Void,
+        stocked: @escaping @Sendable (CloseUpShelf.StockReport) -> Void
     ) throws {
         guard let indexable = try PhotoSourceFactory.indexable(options: options) else { return }
         let builder = PhotoIndexBuilder(
@@ -530,11 +570,17 @@ final class AppModel: ObservableObject {
             """)
         guard !flag.isSet else { return }
         log.notice("close-ups started")
+        var fetching = try options.closeUpFetching(store: store)
+        if fetching != nil, NetworkCost.isMetered() {
+            log.notice("close-ups not fetched: the network is metered (a hotspot, or Low Data Mode)")
+            fetching = nil
+        }
         let report = try options.closeUpShelf.stock(
             from: IndexedPhotoSource(store: store, originals: indexable.source),
-            fetching: try options.closeUpFetching(store: store),
+            fetching: fetching,
             isCancelled: { flag.isSet }
         )
+        stocked(report)
         log.notice("""
             close-ups: \(report.made, privacy: .public) made (\(report.fetched, privacy: .public) fetched), \
             \(report.kept, privacy: .public) kept, \(report.failed, privacy: .public) failed, \

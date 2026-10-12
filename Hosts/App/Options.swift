@@ -37,11 +37,12 @@ struct Options {
     /// Albums and folders by identifier: what the app's preferences hold,
     /// since a title can be shared or renamed.
     var collectionIdentifiers: [String] = []
-    /// Download photographs kept only in iCloud (SPEC § 5, off by default).
+    /// Download whatever indexing needs from iCloud, originals included: the
+    /// app's "Everything needed" (SPEC § 5, off by default).
     var allowsDownloads = false
-    /// `--build-index` fetches the subjects' close-ups from iCloud as the app
-    /// does only when asked (`--fetch-close-ups`): a command run to look at
-    /// something must not spend the user's disk by default.
+    /// Whether the subjects' close-ups this Mac lacks are fetched from iCloud,
+    /// within the caps: the user's choice in the app, `--fetch-close-ups` on
+    /// the command line, never by default (SPEC § 5).
     var fetchesCloseUps = false
     /// What a photograph found unavailable was found so under, for the index
     /// to ask again at once when downloads are turned on or off.
@@ -243,11 +244,11 @@ struct Options {
         return PhotoIndexBuilder.CloseUpPreference(width: shelf.width, isStocked: { shelf.has($0) })
     }
 
-    /// With downloads off, where the close-ups of the subjects this Mac does
-    /// not have come from: iCloud, within the ledger's caps (SPEC § 5). With
-    /// them on, the index's own source fetches them already.
+    /// When close-ups may be fetched, where the subjects' close-ups this Mac
+    /// does not have come from: iCloud, within the ledger's caps (SPEC § 5).
+    /// With every download allowed, the index's own source fetches them.
     func closeUpFetching(store: PhotoIndexStore) throws -> CloseUpShelf.Fetching? {
-        guard photosLibrary, !allowsDownloads else { return nil }
+        guard photosLibrary, fetchesCloseUps, !allowsDownloads else { return nil }
         return CloseUpShelf.Fetching(
             index: try IndexedPhotoSource(store: store, originals: PhotoKitPhotoSource(allowsNetworkAccess: true)),
             ledger: SharedLocations.closeUpFetchLedger

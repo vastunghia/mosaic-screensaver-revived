@@ -29,8 +29,12 @@ public struct DownloadLedger: Codable, Equatable, Sendable {
         at now: Date, daily: Int = Self.standardDailyLimit, weekly: Int = Self.standardWeeklyLimit
     ) -> Int {
         let lastDay = requests.filter { now.timeIntervalSince($0) < Self.day }.count
-        let lastWeek = requests.filter { now.timeIntervalSince($0) < Self.week }.count
-        return max(0, min(daily - lastDay, weekly - lastWeek))
+        return max(0, min(daily - lastDay, weekly - lastWeek(at: now)))
+    }
+
+    /// How many were asked for in the week before `now`.
+    public func lastWeek(at now: Date) -> Int {
+        requests.filter { now.timeIntervalSince($0) < Self.week }.count
     }
 
     public mutating func record(at now: Date) {

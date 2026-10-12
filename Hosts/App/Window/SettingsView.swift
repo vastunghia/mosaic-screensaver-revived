@@ -9,6 +9,7 @@ struct SettingsView: View {
             SourceOptions(model: model)
             if model.preferences.source == .photos, model.access.isGranted {
                 LibraryOptions(model: model)
+                DownloadOptions(model: model)
             }
             MosaicOptions(model: model)
             LoginItemOption(model: model)

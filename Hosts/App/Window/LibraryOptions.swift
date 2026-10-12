@@ -28,7 +28,6 @@ struct LibraryOptions: View {
                     Text(size.formatted()).tag(size)
                 }
             }
-            Toggle("Download photographs kept only in iCloud", isOn: $model.preferences.allowsDownloads)
         } header: {
             Text("Photographs to Use")
         } footer: {
