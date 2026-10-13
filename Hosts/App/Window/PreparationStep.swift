@@ -49,7 +49,15 @@ struct PreparationStep: View {
         } header: {
             StepHeader(number: number, title: "Preparation", isDone: model.hasIndex)
         } footer: {
-            Footnote("It starts by itself and can take a while; the screen saver works as soon as \(AppModel.minimumPhotographs) photographs are ready. Mosaic keeps them up to date.")
+            // Keeping the photographs up to date is this step's, and happens
+            // without the window only once Mosaic opens at login: said of
+            // every user, it misled those who had not turned it on (Sergio,
+            // 2026-10-13).
+            if model.opensAtLogin {
+                Footnote("It starts by itself and can take a while; the screen saver works as soon as \(AppModel.minimumPhotographs) photographs are ready. Mosaic also opens at login, without a window, to keep them up to date; Mosaic Settings turns that off.")
+            } else {
+                Footnote("It starts by itself and can take a while; the screen saver works as soon as \(AppModel.minimumPhotographs) photographs are ready. Mosaic keeps them up to date while it is open; to do it without opening this window, turn on Open at login in Mosaic Settings.")
+            }
         }
     }
 

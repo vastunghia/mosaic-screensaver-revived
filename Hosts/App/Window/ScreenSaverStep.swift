@@ -35,13 +35,7 @@ struct ScreenSaverStep: View {
         } header: {
             StepHeader(number: number, title: "Screen Saver", isDone: model.saver == .installed)
         } footer: {
-            // What happens at login only once it does: said of every user,
-            // it misled those who had not turned it on (Sergio, 2026-10-13).
-            if model.opensAtLogin {
-                Footnote("Then choose Mosaic in System Settings, under \(SaverInstaller.whereToChoose). Mosaic also opens at login, without a window, to keep the photographs up to date; Mosaic Settings turns that off.")
-            } else {
-                Footnote("Then choose Mosaic in System Settings, under \(SaverInstaller.whereToChoose). To keep the photographs up to date without opening this window, turn on Open at login in Mosaic Settings.")
-            }
+            Footnote("Then choose Mosaic in System Settings, under \(SaverInstaller.whereToChoose).")
         }
     }
 }
