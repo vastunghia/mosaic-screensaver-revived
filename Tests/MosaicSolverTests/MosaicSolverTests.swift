@@ -533,4 +533,85 @@ struct MosaicSolverTests {
             )
         }
     }
+
+    // MARK: - The anchor's ring
+
+    /// The lattice with every other photograph marked not sharp.
+    private func halfSharpPool(perAxis: Int) -> [PoolEntry] {
+        latticePool(perAxis: perAxis).enumerated().map { index, entry in
+            PoolEntry(id: entry.id, signature: entry.signature, isSharp: index % 2 == 0)
+        }
+    }
+
+    private func ringOptions(sharp: Bool) -> SolverOptions {
+        var options = SolverOptions(repetitionSpacing: 2, tolerance: 16)
+        options.ring = 3
+        options.sharpRing = sharp
+        return options
+    }
+
+    @Test("the anchor's ring takes sharp photographs only, the rest of the mosaic any")
+    func sharpRing() throws {
+        let pool = halfSharpPool(perAxis: 6)
+        let sharp = Set(pool.filter(\.isSharp).map(\.id))
+        let rows = 20
+        for seed: UInt64 in [1, 2, 3] {
+            let target = randomTarget(rows: rows, seed: seed)
+            let any = try MosaicSolver.solve(
+                target: target, subject: PhotoID("C"), previousSubject: pool[7].id,
+                pool: pool, options: ringOptions(sharp: false), seed: seed
+            )
+            // Fewer than 48 when the anchor is near an edge.
+            #expect(any.statistics.ringCells > 0 && any.statistics.ringCells <= 48)
+            #expect(any.statistics.ringNotSharp > 0, "without the rule, the ring takes any")
+
+            let result = try MosaicSolver.solve(
+                target: target, subject: PhotoID("C"), previousSubject: pool[7].id,
+                pool: pool, options: ringOptions(sharp: true), seed: seed
+            )
+            let layout = result.layout
+            var outside = 0
+            for row in 0..<rows {
+                for column in 0..<rows {
+                    let cell = GridCell(column: column, row: row)
+                    guard cell != layout.anchor else { continue }
+                    let near = abs(row - layout.anchor.row) <= 3 && abs(column - layout.anchor.column) <= 3
+                    if near {
+                        #expect(sharp.contains(layout[cell].photo), "seed \(seed) cell \(cell)")
+                    } else if !sharp.contains(layout[cell].photo) {
+                        outside += 1
+                    }
+                }
+            }
+            #expect(outside > 0, "elsewhere the mosaic still takes photographs that are not sharp")
+            #expect(result.statistics.ringNotSharp == 0)
+        }
+    }
+
+    @Test("a ring with no sharp photograph legal takes any, and a pool all sharp is solved as before")
+    func sharpRingFallsBack() throws {
+        let target = randomTarget(rows: 16, seed: 5)
+        // Two sharp photographs, a spacing of 2: most ring cells have none
+        // legal, and take another rather than fail.
+        let lattice = latticePool(perAxis: 5)
+        let few = lattice.enumerated().map { index, entry in
+            PoolEntry(id: entry.id, signature: entry.signature, isSharp: index < 2)
+        }
+        let result = try MosaicSolver.solve(
+            target: target, subject: PhotoID("C"), previousSubject: few[60].id,
+            pool: few, options: ringOptions(sharp: true), seed: 9
+        )
+        #expect(result.layout.tiles.count == 256)
+        #expect(result.statistics.ringNotSharp > 0)
+
+        let before = try MosaicSolver.solve(
+            target: target, subject: PhotoID("C"), previousSubject: lattice[60].id,
+            pool: lattice, options: ringOptions(sharp: false), seed: 9
+        )
+        let after = try MosaicSolver.solve(
+            target: target, subject: PhotoID("C"), previousSubject: lattice[60].id,
+            pool: lattice, options: ringOptions(sharp: true), seed: 9
+        )
+        #expect(before.layout == after.layout)
+    }
 }

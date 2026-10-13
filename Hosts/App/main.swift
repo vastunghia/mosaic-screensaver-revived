@@ -149,7 +149,9 @@ do {
             subjects: options.batchSubjects,
             firstCycle: options.exportCycle,
             columns: options.batchPenalties.map(BatchExporter.Column.penalty)
-                + options.batchTolerances.map(BatchExporter.Column.tolerance),
+                + (options.batchComparesRing
+                    ? options.batchTolerances.flatMap { [.ring($0, sharp: false), .ring($0, sharp: true)] }
+                    : options.batchTolerances.map(BatchExporter.Column.tolerance)),
             width: options.exportWidth,
             options: options,
             device: device,

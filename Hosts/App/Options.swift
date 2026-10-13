@@ -149,6 +149,17 @@ struct Options {
     var batchSubjects = 20
     var batchPenalties: [Double] = [0.5, 1, 2]
     var batchTolerances: [Double] = []
+    /// Each tolerance column twice, the anchor's ring taking any photograph
+    /// and only sharp ones (`--compare-ring`).
+    var batchComparesRing = false
+
+    /// Whether the anchor's ring takes only photographs sharp enough for it
+    /// (`SolverOptions.sharpRing`); `--sharp-ring off` lets it take any.
+    var sharpRing = true
+    /// Pretends only this share of the pool is sharp enough for the ring, the
+    /// rest 427 px across, to see on a library kept whole what an optimised
+    /// one costs (`--simulate-sharp 0.08`). Only the solver is told.
+    var simulatedSharpShare: Double?
 
     /// What every random choice follows: which photographs make the pool,
     /// the order of the deck, where each anchor goes. A new one per launch, so
@@ -365,6 +376,10 @@ struct Options {
                 options.batchPenalties = next()?.split(separator: ",").compactMap { Double($0) } ?? []
             case "--tolerances":
                 options.batchTolerances = next()?.split(separator: ",").compactMap { Double($0) } ?? []
+            case "--compare-ring": options.batchComparesRing = true
+            case "--sharp-ring": options.sharpRing = next() != "off"
+            case "--simulate-sharp":
+                options.simulatedSharpShare = next().flatMap(Double.init).map { min(1, max(0, $0)) }
             case "--export-cycle": options.exportDirectory = path()
             case "--frames": options.exportFrames = next().flatMap(Int.init) ?? options.exportFrames
             case "--width": options.exportWidth = next().flatMap(Int.init) ?? options.exportWidth

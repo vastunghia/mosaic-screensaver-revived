@@ -78,7 +78,7 @@ enum UsagePage {
             case .penalty:
                 s.style = "p\(min(penalties, 2))"
                 penalties += 1
-            case .tolerance:
+            case .tolerance, .ring:
                 s.style = "t\(min(tolerances, 2))"
                 tolerances += 1
             }

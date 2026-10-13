@@ -165,6 +165,19 @@ public enum MosaicSolver {
         let tolerance = options.tolerance
         var distances = [Double](repeating: .infinity, count: tolerance == nil ? 0 : pool.count)
 
+        // The ring around the anchor, and whether it takes sharp photographs
+        // only: never when all of them are, so a pool of originals is solved
+        // exactly as before.
+        let ring = max(0, options.ring)
+        let anchorRow = anchorIndex / rows
+        let anchorColumn = anchorIndex % rows
+        func isInRing(_ cell: Int) -> Bool {
+            cell != anchorIndex && ring > 0
+                && abs(cell / rows - anchorRow) <= ring && abs(cell % rows - anchorColumn) <= ring
+        }
+        let poolSharp = pool.map(\.isSharp)
+        let restrictsRing = options.sharpRing && ring > 0 && poolSharp.contains(false) && poolSharp.contains(true)
+
         poolLab.withUnsafeBufferPointer { poolBuffer in
             targetLab.withUnsafeBufferPointer { targetBuffer in
                 for cellIndex in order {
@@ -191,75 +204,87 @@ public enum MosaicSolver {
                     var spareScore = Double.infinity
                     var spareIndex = -1
 
-                    for candidate in 0..<pool.count {
-                        if isForbidden[candidate] || candidate == barred {
-                            if tolerance != nil { distances[candidate] = .infinity }
-                            continue
-                        }
+                    // In the ring, sharp photographs first; all of them if
+                    // none of those is legal here.
+                    let sharpOnly = restrictsRing && isInRing(cellIndex)
+                    for attempt in 0..<(sharpOnly ? 2 : 1) {
+                        let restricted = sharpOnly && attempt == 0
+                        bestScore = .infinity
+                        bestIndex = -1
+                        spareScore = .infinity
+                        spareIndex = -1
 
-                        var total = 0.0
-                        var poolOffset = candidate * block * 3
-                        var targetOffset = targetBase
-                        for _ in 0..<block {
-                            let dl = poolBuffer[poolOffset] - targetBuffer[targetOffset]
-                            let da = poolBuffer[poolOffset + 1] - targetBuffer[targetOffset + 1]
-                            let db = poolBuffer[poolOffset + 2] - targetBuffer[targetOffset + 2]
-                            total += dl * dl * lightnessSquared
-                                + (da * da + db * db) * chromaSquared
-                            poolOffset += 3
-                            targetOffset += 3
-                        }
+                        for candidate in 0..<pool.count {
+                            if isForbidden[candidate] || candidate == barred || (restricted && !poolSharp[candidate]) {
+                                if tolerance != nil { distances[candidate] = .infinity }
+                                continue
+                            }
 
-                        // Root mean square over the sub-cells, so detail 1 is
-                        // exactly the plain delta E of the average colour and
-                        // the number means the same thing at every detail.
-                        let distance = (total * inverseBlock).squareRoot()
-                        if tolerance != nil {
-                            // Chosen in a second pass, once the nearest is known.
-                            distances[candidate] = distance
-                            if distance < spareScore {
-                                spareScore = distance
+                            var total = 0.0
+                            var poolOffset = candidate * block * 3
+                            var targetOffset = targetBase
+                            for _ in 0..<block {
+                                let dl = poolBuffer[poolOffset] - targetBuffer[targetOffset]
+                                let da = poolBuffer[poolOffset + 1] - targetBuffer[targetOffset + 1]
+                                let db = poolBuffer[poolOffset + 2] - targetBuffer[targetOffset + 2]
+                                total += dl * dl * lightnessSquared
+                                    + (da * da + db * db) * chromaSquared
+                                poolOffset += 3
+                                targetOffset += 3
+                            }
+
+                            // Root mean square over the sub-cells, so detail 1 is
+                            // exactly the plain delta E of the average colour and
+                            // the number means the same thing at every detail.
+                            let distance = (total * inverseBlock).squareRoot()
+                            if tolerance != nil {
+                                // Chosen in a second pass, once the nearest is known.
+                                distances[candidate] = distance
+                                if distance < spareScore {
+                                    spareScore = distance
+                                    spareIndex = candidate
+                                }
+                                continue
+                            }
+                            let score = distance + penalty * Double(uses[candidate])
+
+                            if score < spareScore {
+                                spareScore = score
                                 spareIndex = candidate
                             }
-                            continue
-                        }
-                        let score = distance + penalty * Double(uses[candidate])
-
-                        if score < spareScore {
-                            spareScore = score
-                            spareIndex = candidate
-                        }
-                        if uses[candidate] < maximumUses, score < bestScore {
-                            bestScore = score
-                            bestIndex = candidate
-                        }
-                    }
-
-                    if let tolerance {
-                        // Least used within the band, then closest. Outside the
-                        // band, or when the band is all at its cap, the closest
-                        // photograph still under the cap.
-                        let band = max(tolerance, spareScore + SolverOptions.toleranceSlack)
-                        var bestUses = Int.max
-                        var bestDistance = Double.infinity
-                        var fallbackDistance = Double.infinity
-                        var fallbackIndex = -1
-                        for candidate in 0..<pool.count {
-                            let distance = distances[candidate]
-                            let used = uses[candidate]
-                            if distance == .infinity || used >= maximumUses { continue }
-                            if distance <= band {
-                                if used < bestUses || (used == bestUses && distance < bestDistance) {
-                                    bestUses = used
-                                    bestDistance = distance
-                                    bestIndex = candidate
-                                }
-                            } else if distance < fallbackDistance {
-                                fallbackDistance = distance
-                                fallbackIndex = candidate
+                            if uses[candidate] < maximumUses, score < bestScore {
+                                bestScore = score
+                                bestIndex = candidate
                             }
                         }
-                        if bestIndex < 0 { bestIndex = fallbackIndex }
+
+                        if let tolerance {
+                            // Least used within the band, then closest. Outside the
+                            // band, or when the band is all at its cap, the closest
+                            // photograph still under the cap.
+                            let band = max(tolerance, spareScore + SolverOptions.toleranceSlack)
+                            var bestUses = Int.max
+                            var bestDistance = Double.infinity
+                            var fallbackDistance = Double.infinity
+                            var fallbackIndex = -1
+                            for candidate in 0..<pool.count {
+                                let distance = distances[candidate]
+                                let used = uses[candidate]
+                                if distance == .infinity || used >= maximumUses { continue }
+                                if distance <= band {
+                                    if used < bestUses || (used == bestUses && distance < bestDistance) {
+                                        bestUses = used
+                                        bestDistance = distance
+                                        bestIndex = candidate
+                                    }
+                                } else if distance < fallbackDistance {
+                                    fallbackDistance = distance
+                                    fallbackIndex = candidate
+                                }
+                            }
+                            if bestIndex < 0 { bestIndex = fallbackIndex }
+                        }
+                        if spareIndex >= 0 { break }
                     }
 
                     // spareIndex is always set: the precondition above says the
@@ -301,7 +326,16 @@ public enum MosaicSolver {
             worst = max(worst, distance)
         }
 
-        let statistics = SolveStatistics(
+        var ringCells = 0
+        var ringSquares = 0.0
+        var ringNotSharp = 0
+        for index in 0..<cellCount where isInRing(index) {
+            ringCells += 1
+            ringSquares += cellDeltaE[index] * cellDeltaE[index]
+            if !poolSharp[assigned[index]] { ringNotSharp += 1 }
+        }
+
+        var statistics = SolveStatistics(
             rootMeanSquareDeltaE: (sumOfSquares / Double(cellCount)).squareRoot(),
             maximumDeltaE: worst,
             distinctPhotos: uses.reduce(0) { $0 + ($1 > 0 ? 1 : 0) },
@@ -311,6 +345,10 @@ public enum MosaicSolver {
             cellDeltaE: cellDeltaE,
             photoUses: uses
         )
+        statistics.anchorIndex = anchorIndex
+        statistics.ringCells = ringCells
+        statistics.ringRootMeanSquareDeltaE = ringCells > 0 ? (ringSquares / Double(ringCells)).squareRoot() : 0
+        statistics.ringNotSharp = ringNotSharp
 
         return SolveResult(layout: layout, statistics: statistics)
     }

@@ -23,6 +23,10 @@ public struct IndexedTileCatalog: TileCatalog {
         source.entry(for: photo)?.canFillScreen ?? true
     }
 
+    public func pixelWidth(of photo: PhotoID) -> Int? {
+        source.entry(for: photo)?.pixelWidth
+    }
+
     public func targetGrid(for photo: PhotoID, rows: Int, detail: Int) throws -> TargetGrid {
         // Deliberately the thumbnail, at exactly the size the index stores, and
         // never the original even when one is at hand. The .saver has no

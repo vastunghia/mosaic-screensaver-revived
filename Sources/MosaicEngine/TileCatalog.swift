@@ -24,8 +24,13 @@ public protocol TileCatalog: Sendable {
     /// later, the anchor that fills the screen — or is a tile only (SPEC § 5,
     /// the two roles).
     func canFillScreen(_ photo: PhotoID) -> Bool
+
+    /// How many pixels across the catalogue has the photograph, if it knows:
+    /// nil is as many as anything asks for.
+    func pixelWidth(of photo: PhotoID) -> Int?
 }
 
 extension TileCatalog {
     public func canFillScreen(_ photo: PhotoID) -> Bool { true }
+    public func pixelWidth(of photo: PhotoID) -> Int? { nil }
 }

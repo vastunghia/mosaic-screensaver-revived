@@ -21,25 +21,35 @@ public final class SolvedMosaicPlanner: MosaicPlanner, @unchecked Sendable {
         let detail: Int
     }
 
-    /// - Parameter subjectCandidates: how many photographs of the shuffled deck
-    ///   each cycle chooses its subject among, for the previous subject to fit
-    ///   in. 1 is a plain deck.
+    /// - Parameters:
+    ///   - subjectCandidates: how many photographs of the shuffled deck each
+    ///     cycle chooses its subject among, for the previous subject to fit
+    ///     in. 1 is a plain deck.
+    ///   - closeUps: the anchor's ring, as the engine shows it: its cells take
+    ///     only photographs at least `ringWidth` across, when `sharpRing`.
     public init(
         catalog: any TileCatalog,
         options: SolverOptions = .standard,
         seed: UInt64 = 0x4D05_A1C0,
-        subjectCandidates: Int = SolvedMosaicPlanner.defaultSubjectCandidates
+        subjectCandidates: Int = SolvedMosaicPlanner.defaultSubjectCandidates,
+        closeUps: CloseUpOptions = .standard,
+        sharpRing: Bool = true
     ) {
+        var options = options
+        options.ring = closeUps.ring
+        options.sharpRing = sharpRing
         self.catalog = catalog
         self.options = options
         self.seed = seed
 
         // A photograph with no signature cannot be matched, so it is not in the
         // pool. It is dropped here, once, rather than checked for per cell.
+        let ringWidth = closeUps.ringWidth ?? 0
         var entries: [PoolEntry] = []
         for photo in catalog.photos {
             guard let signature = catalog.signature(for: photo) else { continue }
-            entries.append(PoolEntry(id: photo, signature: signature))
+            let isSharp = catalog.pixelWidth(of: photo).map { $0 >= ringWidth } ?? true
+            entries.append(PoolEntry(id: photo, signature: signature, isSharp: isSharp))
         }
         pool = entries
         // Every photograph is a tile; only those with the pixels to fill the

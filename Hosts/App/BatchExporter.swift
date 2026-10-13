@@ -19,12 +19,16 @@ enum BatchExporter {
     enum Column {
         case penalty(Double)
         case tolerance(Double)
+        /// A tolerance, the anchor's ring taking any photograph or only those
+        /// sharp enough for it (`--compare-ring`).
+        case ring(Double, sharp: Bool)
 
         /// `p1`, `t10`: short enough for a file name, exact enough to tell apart.
         var name: String {
             switch self {
             case .penalty(let value): return "p" + BatchExporter.label(value)
             case .tolerance(let value): return "t" + BatchExporter.label(value)
+            case .ring(let value, let sharp): return "t" + BatchExporter.label(value) + (sharp ? "-sharp" : "-any")
             }
         }
 
@@ -32,6 +36,8 @@ enum BatchExporter {
             switch self {
             case .penalty(let value): return "penalty " + BatchExporter.label(value)
             case .tolerance(let value): return "tolerance " + BatchExporter.label(value)
+            case .ring(let value, let sharp):
+                return "tolerance " + BatchExporter.label(value) + (sharp ? ", sharp ring" : ", any ring")
             }
         }
 
@@ -44,6 +50,10 @@ enum BatchExporter {
             case .tolerance(let value):
                 variant.tolerance = value
                 variant.maximumUses = nil
+            case .ring(let value, let sharp):
+                variant.tolerance = value
+                variant.maximumUses = nil
+                variant.sharpRing = sharp
             }
             return variant
         }
@@ -53,6 +63,7 @@ enum BatchExporter {
         let column: Column
         let file: String
         let errorFile: String
+        let ringFile: String
         let statistics: SolveStatistics
     }
 
@@ -61,6 +72,9 @@ enum BatchExporter {
         let cycle: Int
         let photo: PhotoID
         let targetFile: String
+        var targetRingFile = ""
+        /// Where the ring is in the crops, as CSS percentages.
+        var ringBox = ""
 
         /// The same target with the spacing, the penalty and the cap all off:
         /// the closest this corpus can get to the photograph at all. What a
@@ -126,13 +140,35 @@ enum BatchExporter {
                     throw BatchError.solverFailed(cycle: cycle, reason: "no statistics")
                 }
 
+                let around = ringRegion(
+                    anchor: statistics.anchorIndex, rows: options.rows, ring: options.closeUpOptions.ring,
+                    width: width, height: height
+                )
                 if position == 0 {
                     let targetFile = String(format: "%02d-target.png", number)
+                    var targetRingFile = ""
                     if let image = try? photos.source.canonicalImage(for: photo, maxPixelWidth: width) {
                         try PNGWriter.write(image: image, to: directory.appendingPathComponent(targetFile))
+                        if let around, image.width == width, let crop = image.cropping(to: around) {
+                            targetRingFile = String(format: "%02d-target.ring.png", number)
+                            try PNGWriter.write(image: crop, to: directory.appendingPathComponent(targetRingFile))
+                        }
                     }
+                    let box = around.flatMap { around in
+                        ringRegion(
+                            anchor: statistics.anchorIndex, rows: options.rows, ring: options.closeUpOptions.ring,
+                            width: width, height: height, reach: options.closeUpOptions.ring
+                        ).map { ring in
+                            String(
+                                format: "left:%.2f%%;top:%.2f%%;width:%.2f%%;height:%.2f%%",
+                                100 * (ring.minX - around.minX) / around.width, 100 * (ring.minY - around.minY) / around.height,
+                                100 * ring.width / around.width, 100 * ring.height / around.height
+                            )
+                        }
+                    } ?? ""
                     subjects.append(Subject(
                         number: number, cycle: cycle, photo: photo, targetFile: targetFile,
+                        targetRingFile: targetRingFile, ringBox: box,
                         floor: try floor(
                             of: photo, cycle: cycle, sequence: planner, options: options, photos: photos
                         )
@@ -147,17 +183,27 @@ enum BatchExporter {
                 let stem = String(format: "%02d-%@", number, column.name)
                 let file = stem + ".png"
                 let errorFile = stem + ".error.png"
+                let pixels = MosaicExporter.readBack(texture)
                 try PNGWriter.write(
-                    pixels: MosaicExporter.readBack(texture), width: width, height: height,
+                    pixels: pixels, width: width, height: height,
                     to: directory.appendingPathComponent(file)
                 )
+                var ringFile = ""
+                if let around {
+                    ringFile = stem + ".ring.png"
+                    try PNGWriter.write(
+                        pixels: crop(pixels, width: width, to: around),
+                        width: Int(around.width), height: Int(around.height),
+                        to: directory.appendingPathComponent(ringFile)
+                    )
+                }
                 try ErrorMap.write(
                     cellDeltaE: statistics.cellDeltaE, rows: options.rows,
                     width: width, height: height,
                     to: directory.appendingPathComponent(errorFile)
                 )
                 subjects[index].mosaics.append(Mosaic(
-                    column: column, file: file, errorFile: errorFile, statistics: statistics
+                    column: column, file: file, errorFile: errorFile, ringFile: ringFile, statistics: statistics
                 ))
             }
             print(String(
@@ -183,6 +229,37 @@ enum BatchExporter {
         print("  \(directory.appendingPathComponent("summary.csv").path)")
     }
 
+    /// The anchor's ring and as much again around it, in pixels of a
+    /// `width × height` render: what the camera shows at the start of the
+    /// next cycle, where a few dozen cells of thousands decide how it looks.
+    static func ringRegion(
+        anchor: Int, rows: Int, ring: Int, width: Int, height: Int, reach: Int? = nil
+    ) -> CGRect? {
+        guard anchor >= 0, ring > 0 else { return nil }
+        let reach = reach ?? 2 * ring
+        let row = anchor / rows
+        let column = anchor % rows
+        let first = (column: max(0, column - reach), row: max(0, row - reach))
+        let last = (column: min(rows - 1, column + reach), row: min(rows - 1, row + reach))
+        func x(_ column: Int) -> Int { column * width / rows }
+        func y(_ row: Int) -> Int { row * height / rows }
+        return CGRect(
+            x: x(first.column), y: y(first.row),
+            width: x(last.column + 1) - x(first.column), height: y(last.row + 1) - y(first.row)
+        )
+    }
+
+    /// Rows of four bytes a pixel, cut to `rect`.
+    static func crop(_ pixels: [UInt8], width: Int, to rect: CGRect) -> [UInt8] {
+        var cropped: [UInt8] = []
+        cropped.reserveCapacity(Int(rect.width * rect.height) * 4)
+        for row in Int(rect.minY)..<Int(rect.maxY) {
+            let start = (row * width + Int(rect.minX)) * 4
+            cropped.append(contentsOf: pixels[start..<start + Int(rect.width) * 4])
+        }
+        return cropped
+    }
+
     /// Solves one target with every constraint off, without rendering it: only
     /// the numbers are wanted.
     static func floor(
@@ -197,6 +274,7 @@ enum BatchExporter {
         unconstrained.repeatPenalty = 0
         unconstrained.maximumUses = .max
         unconstrained.tolerance = nil
+        unconstrained.sharpRing = false
         unconstrained.subject = nil
         guard let planner = PlannerFactory.make(options: unconstrained, photos: photos).planner else {
             throw BatchError.noSolver
@@ -225,6 +303,11 @@ enum BatchExporter {
         let worstCell: Double
         let meanDistinct: Double
         let maximumUses: Int
+        /// The anchor's ring: its root mean square delta E over every
+        /// subject's ring cells, and how many of those cells were not sharp.
+        let ringRMS: Double
+        let ringNotSharp: Int
+        let ringCells: Int
     }
 
     static func summarise(_ subjects: [Subject], columns: [Column]) -> [Aggregate] {
@@ -237,6 +320,9 @@ enum BatchExporter {
     private static func aggregate(_ name: String, _ subjects: [Subject], _ runs: [SolveStatistics]) -> Aggregate {
         let rms = runs.map(\.rootMeanSquareDeltaE)
         let worst = rms.indices.max { rms[$0] < rms[$1] }!
+        let ringCells = runs.map(\.ringCells).reduce(0, +)
+        let ringSquares = runs.map { $0.ringRootMeanSquareDeltaE * $0.ringRootMeanSquareDeltaE * Double($0.ringCells) }
+            .reduce(0, +)
         return Aggregate(
             name: name,
             meanRMS: rms.reduce(0, +) / Double(rms.count),
@@ -244,34 +330,41 @@ enum BatchExporter {
             worstSubject: subjects[worst].number,
             worstCell: runs.map(\.maximumDeltaE).max()!,
             meanDistinct: Double(runs.map(\.distinctPhotos).reduce(0, +)) / Double(runs.count),
-            maximumUses: runs.map(\.maximumUses).max()!
+            maximumUses: runs.map(\.maximumUses).max()!,
+            ringRMS: ringCells > 0 ? (ringSquares / Double(ringCells)).squareRoot() : 0,
+            ringNotSharp: runs.map(\.ringNotSharp).reduce(0, +),
+            ringCells: ringCells
         )
     }
 
     static func table(_ summary: [Aggregate]) -> String {
-        var lines = ["  column          mean rms   worst rms (#)   worst cell   mean distinct   max uses"]
+        let width = max(13, summary.map(\.name.count).max() ?? 0)
+        var lines = ["  column" + String(repeating: " ", count: width - 6)
+            + "   mean rms   worst rms (#)   worst cell   mean distinct   max uses   ring rms   ring not sharp"]
         for row in summary {
             lines.append(String(
-                format: "  %@   %8.2f   %9.2f (%02d)   %10.2f   %13.0f   %8d",
-                row.name + String(repeating: " ", count: max(0, 13 - row.name.count)),
+                format: "  %@   %8.2f   %9.2f (%02d)   %10.2f   %13.0f   %8d   %8.2f   %5d of %5d",
+                row.name + String(repeating: " ", count: max(0, width - row.name.count)),
                 row.meanRMS, row.worstRMS, row.worstSubject,
-                row.worstCell, row.meanDistinct, row.maximumUses
+                row.worstCell, row.meanDistinct, row.maximumUses,
+                row.ringRMS, row.ringNotSharp, row.ringCells
             ))
         }
         return lines.joined(separator: "\n")
     }
 
     static func csv(_ subjects: [Subject]) -> String {
-        var lines = ["number,cycle,subject,column,rms_delta_e,worst_delta_e,distinct,cells,max_uses,anchor_delta_e"]
+        var lines = ["number,cycle,subject,column,rms_delta_e,worst_delta_e,distinct,cells,max_uses,anchor_delta_e,ring_rms_delta_e,ring_cells,ring_not_sharp"]
         for subject in subjects {
             let rows = [("floor", subject.floor)] + subject.mosaics.map { ($0.column.name, $0.statistics) }
             for (column, s) in rows {
                 let name = "\"" + subject.photo.rawValue.replacingOccurrences(of: "\"", with: "\"\"") + "\""
                 lines.append(String(
-                    format: "%d,%d,%@,%@,%.3f,%.3f,%d,%d,%d,%.3f",
+                    format: "%d,%d,%@,%@,%.3f,%.3f,%d,%d,%d,%.3f,%.3f,%d,%d",
                     subject.number, subject.cycle, name, column,
                     s.rootMeanSquareDeltaE, s.maximumDeltaE, s.distinctPhotos,
-                    s.cellCount, s.maximumUses, s.anchorDeltaE
+                    s.cellCount, s.maximumUses, s.anchorDeltaE,
+                    s.ringRootMeanSquareDeltaE, s.ringCells, s.ringNotSharp
                 ))
             }
         }
@@ -292,9 +385,10 @@ enum BatchExporter {
         var summaryRows = ""
         for row in summary {
             summaryRows += String(
-                format: "<tr><td>%@</td><td>%.2f</td><td>%.2f <a href=\"#s%02d\">#%02d</a></td><td>%.2f</td><td>%.0f</td><td>%d</td></tr>\n",
+                format: "<tr><td>%@</td><td>%.2f</td><td>%.2f <a href=\"#s%02d\">#%02d</a></td><td>%.2f</td><td>%.0f</td><td>%d</td><td>%.2f</td><td>%d of %d</td></tr>\n",
                 row.name, row.meanRMS, row.worstRMS, row.worstSubject, row.worstSubject,
-                row.worstCell, row.meanDistinct, row.maximumUses
+                row.worstCell, row.meanDistinct, row.maximumUses,
+                row.ringRMS, row.ringNotSharp, row.ringCells
             )
         }
 
@@ -303,6 +397,7 @@ enum BatchExporter {
             var mosaics = ""
             var maps = ""
             var usage = ""
+            var rings = ""
             // One scale for the row, so the four shapes compare; not one for the
             // page, or a night sky's tail would flatten every other subject.
             let ceiling = subject.mosaics.map { mosaic in
@@ -319,6 +414,14 @@ enum BatchExporter {
 
                 """
                 usage += usageChart(mosaic.statistics, ceiling: ceiling)
+                rings += mosaic.ringFile.isEmpty ? "<figure></figure>\n" : """
+                <figure><a class="ring" href="\(mosaic.ringFile)"><img src="\(mosaic.ringFile)" loading="lazy" alt=""><i style="\(subject.ringBox)"></i></a>
+                <figcaption>\(String(
+                    format: "ring ΔE rms %.2f · %d of %d not sharp",
+                    s.ringRootMeanSquareDeltaE, s.ringNotSharp, s.ringCells
+                ))</figcaption></figure>
+
+                """
                 maps += """
                 <figure><a href="\(mosaic.errorFile)"><img src="\(mosaic.errorFile)" loading="lazy" alt=""></a></figure>
 
@@ -334,6 +437,10 @@ enum BatchExporter {
             \(mosaics)</div>
             <div class="row maps"><figure></figure>
             \(maps)</div>
+            <div class="row rings">\(subject.targetRingFile.isEmpty ? "<figure></figure>" : """
+            <figure><a class="ring" href="\(subject.targetRingFile)"><img src="\(subject.targetRingFile)" loading="lazy" alt=""><i style="\(subject.ringBox)"></i></a><figcaption><b>around the anchor</b> the ring of \(options.closeUpOptions.ring) cells (outlined) and as much again; the target the same</figcaption></figure>
+            """)
+            \(rings)</div>
             <div class="row usage"><figure><figcaption><b>uses</b> every photograph of the pool, least used to most, as a share of the cells; one scale per row, 0 to \(String(format: "%.2f", 100 * ceiling)) %</figcaption></figure>
             \(usage)</div>
             </section>
@@ -367,6 +474,8 @@ enum BatchExporter {
         .usage path { fill: var(--bar); }
         figure { margin: 0; }
         img { width: 100%; display: block; }
+        a.ring { position: relative; display: block; }
+        a.ring i { position: absolute; outline: 2px solid rgba(255, 255, 255, 0.85); box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.45); pointer-events: none; }
         figcaption { font-size: 12px; color: var(--muted); margin-top: 3px; font-variant-numeric: tabular-nums; }
         figcaption b { color: var(--ink); font-weight: 600; }
         .legend { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; }
@@ -378,7 +487,7 @@ enum BatchExporter {
         <p class="muted">\(settings)</p>
         <p><a href="usage.html">How often each photograph is used →</a></p>
         <table>
-        <tr><th>column</th><th>mean ΔE rms</th><th>worst subject</th><th>worst cell</th><th>mean distinct</th><th>max uses</th></tr>
+        <tr><th>column</th><th>mean ΔE rms</th><th>worst subject</th><th>worst cell</th><th>mean distinct</th><th>max uses</th><th>ring ΔE rms</th><th>ring cells not sharp</th></tr>
         \(summaryRows)</table>
         <div class="legend">error map: ΔE <span>0</span><i></i><span>\(String(format: "%.0f", ErrorMap.ceiling))+</span> — fixed scale, so maps compare across mosaics</div>
         \(sections)

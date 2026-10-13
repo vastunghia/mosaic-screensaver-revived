@@ -37,6 +37,15 @@ public struct SolveStatistics: Equatable, Sendable {
     /// photographs carrying a sky.
     public var photoUses: [Int]
 
+    /// The anchor's cell, row-major; then the ring around it
+    /// (`SolverOptions.ring`), anchor left out:
+    /// how many cells, their root mean square delta E, and how many hold a
+    /// photograph that is not sharp enough for it.
+    public var anchorIndex = -1
+    public var ringCells = 0
+    public var ringRootMeanSquareDeltaE = 0.0
+    public var ringNotSharp = 0
+
     public init(
         rootMeanSquareDeltaE: Double = 0,
         maximumDeltaE: Double = 0,

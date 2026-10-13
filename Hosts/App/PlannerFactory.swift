@@ -23,12 +23,18 @@ enum PlannerFactory {
             return Resolved(planner: nil, notes: notes)
         }
 
+        let catalog = IndexedTileCatalog(source: indexed)
         let solved = SolvedMosaicPlanner(
-            catalog: IndexedTileCatalog(source: indexed),
+            catalog: options.simulatedSharpShare.map { SimulatedSharpness(inner: catalog, share: $0) } ?? catalog,
             options: options.solverOptions,
             seed: options.seed,
-            subjectCandidates: options.subjectCandidates
+            subjectCandidates: options.subjectCandidates,
+            closeUps: options.closeUpOptions,
+            sharpRing: options.sharpRing
         )
+        if let share = options.simulatedSharpShare {
+            notes.append(String(format: "simulated: %.0f %% of the pool sharp enough for the ring, the rest 427 px", 100 * share))
+        }
         guard solved.isUsable else {
             notes.append("WARNING: the index has no usable signatures — falling back to random tiles")
             return Resolved(planner: nil, notes: notes)
@@ -91,5 +97,30 @@ struct PinnedSubjectPlanner: MosaicPlanner {
         seed: UInt64
     ) throws -> PlannedMosaic {
         try inner.plan(rows: rows, subject: subject, previousSubject: previousSubject, seed: seed)
+    }
+}
+
+/// An index as an optimised library would have it: only `share` of its
+/// photographs, the same ones for any run, at least as wide as the anchor's
+/// ring wants; the others 427 px, as most tiles were on an optimised
+/// profile (2026-10-13). Colours and targets are the index's own.
+struct SimulatedSharpness: TileCatalog {
+    let inner: IndexedTileCatalog
+    let share: Double
+
+    var photos: [PhotoID] { inner.photos }
+    func signature(for photo: PhotoID) -> TileSignature? { inner.signature(for: photo) }
+    func targetGrid(for photo: PhotoID, rows: Int, detail: Int) throws -> TargetGrid {
+        try inner.targetGrid(for: photo, rows: rows, detail: detail)
+    }
+    func canFillScreen(_ photo: PhotoID) -> Bool { inner.canFillScreen(photo) }
+
+    func pixelWidth(of photo: PhotoID) -> Int? {
+        // FNV-1a of the identifier: the same photographs in every process.
+        var hash: UInt64 = 0xcbf2_9ce4_8422_2325
+        for byte in photo.rawValue.utf8 {
+            hash = (hash ^ UInt64(byte)) &* 0x100_0000_01b3
+        }
+        return Double(hash % 10_000) < share * 10_000 ? inner.pixelWidth(of: photo) : 427
     }
 }

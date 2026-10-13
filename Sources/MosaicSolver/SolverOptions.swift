@@ -48,6 +48,17 @@ public struct SolverOptions: Equatable, Sendable {
     /// lacks is still shared among a few photographs rather than handed to one.
     public var tolerance: Double?
 
+    /// How many cells around the anchor make its ring: the tiles the camera
+    /// shows large at the start of a cycle. The statistics measure it; 0 is
+    /// none.
+    public var ring: Int = 0
+
+    /// Whether the ring takes only photographs that are `PoolEntry.isSharp`,
+    /// as long as one is legal for the cell. An optimised Photos library has
+    /// few of them, and a ring of 427-pixel tiles shown 640 wide is blurry
+    /// (Sergio, on an optimised profile, 2026-10-13).
+    public var sharpRing = false
+
     public init(
         detail: Int = 1,
         weights: LabWeights = .neutral,

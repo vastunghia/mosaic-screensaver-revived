@@ -6,8 +6,13 @@ public struct PoolEntry: Equatable, Sendable {
     public let id: PhotoID
     public let signature: TileSignature
 
-    public init(id: PhotoID, signature: TileSignature) {
+    /// Whether it has the pixels for the anchor's ring, where tiles come on
+    /// screen several atlas slices wide (`SolverOptions.sharpRing`).
+    public let isSharp: Bool
+
+    public init(id: PhotoID, signature: TileSignature, isSharp: Bool = true) {
         self.id = id
         self.signature = signature
+        self.isSharp = isSharp
     }
 }
