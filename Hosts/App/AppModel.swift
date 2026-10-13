@@ -67,12 +67,21 @@ final class AppModel: ObservableObject {
     /// makes the question about downloads worth asking. Kept across launches.
     @Published private(set) var closeUpsNotHere = UserDefaults.standard.integer(forKey: AppModel.closeUpsNotHereKey)
 
+    /// Sharp close-ups the last run left missing, and why, when they may be
+    /// downloaded.
+    @Published private(set) var closeUpsWaiting: CloseUpsWaiting?
+
     /// Close-ups fetched from iCloud in the last seven days (`DownloadLedger`).
     @Published private(set) var closeUpsFetchedThisWeek = 0
 
     private var cancel = CancelFlag()
     private var changes: PhotoLibraryChanges?
     private var restartWhenDone = false
+    /// The run planned after one that stopped as iCloud stalled: nothing else
+    /// would start it while nothing arrives, the library unchanged.
+    private var stallRetry: DispatchWorkItem?
+    private var stalledThisRun = false
+    static let stallRetryDelay: TimeInterval = 10 * 60
 
     /// Whether a window is, or has been, open: someone may be looking.
     private var foreground: Bool
@@ -337,7 +346,9 @@ final class AppModel: ObservableObject {
         preferences.downloads = downloads
     }
 
-    private func closeUpsStocked(_ report: CloseUpShelf.StockReport) {
+    private func closeUpsStocked(_ report: CloseUpShelf.StockReport, metered: Bool) {
+        closeUpsWaiting = preferences.downloads == .closeUps ? CloseUpsWaiting(report, metered: metered) : nil
+        stalledThisRun = report.stalled
         closeUpsNotHere = report.unavailable
         UserDefaults.standard.set(report.unavailable, forKey: Self.closeUpsNotHereKey)
         refreshFetchedCount()
@@ -516,6 +527,10 @@ final class AppModel: ObservableObject {
         isIndexing = true
         clearProblem(at: .preparing)
         restartWhenDone = false
+        stallRetry?.cancel()
+        stallRetry = nil
+        stalledThisRun = false
+        if case .stalled? = closeUpsWaiting?.reason { closeUpsWaiting?.reason = .stalled(retry: nil) }
         // Spike 4: with nobody watching, the index waits its turn behind
         // whatever the user is doing — the screen saver included.
         let qos: DispatchQoS.QoSClass = foreground ? .utility : .background
@@ -529,8 +544,8 @@ final class AppModel: ObservableObject {
         let finished: @Sendable (Error?, Double) -> Void = { [weak self] error, seconds in
             Task { @MainActor in self?.finished(error: error, seconds: seconds) }
         }
-        let stocked: @Sendable (CloseUpShelf.StockReport) -> Void = { [weak self] report in
-            Task { @MainActor in self?.closeUpsStocked(report) }
+        let stocked: @Sendable (CloseUpShelf.StockReport, Bool) -> Void = { [weak self] report, metered in
+            Task { @MainActor in self?.closeUpsStocked(report, metered: metered) }
         }
         let fetching: @Sendable (CloseUpShelf.StockReport) -> Void = { [weak self] report in
             guard report.toFetch > 0 else { return }
@@ -555,7 +570,7 @@ final class AppModel: ObservableObject {
     nonisolated private static func index(
         options: Options, flag: CancelFlag, progress: @escaping @Sendable (IndexProgress) -> Void,
         fetching fetched: @escaping @Sendable (CloseUpShelf.StockReport) -> Void,
-        stocked: @escaping @Sendable (CloseUpShelf.StockReport) -> Void
+        stocked: @escaping @Sendable (CloseUpShelf.StockReport, _ metered: Bool) -> Void
     ) throws {
         guard let indexable = try PhotoSourceFactory.indexable(options: options) else { return }
         let builder = PhotoIndexBuilder(
@@ -582,7 +597,8 @@ final class AppModel: ObservableObject {
         guard !flag.isSet else { return }
         log.notice("close-ups started")
         var fetching = try options.closeUpFetching(store: store)
-        if fetching != nil, NetworkCost.isMetered() {
+        let metered = fetching != nil && NetworkCost.isMetered()
+        if metered {
             log.notice("close-ups not fetched: the network is metered (a hotspot, or Low Data Mode)")
             fetching = nil
         }
@@ -592,7 +608,7 @@ final class AppModel: ObservableObject {
             progress: fetched,
             isCancelled: { flag.isSet }
         )
-        stocked(report)
+        stocked(report, metered)
         log.notice("""
             close-ups: \(report.made, privacy: .public) made (\(report.fetched, privacy: .public) fetched), \
             \(report.kept, privacy: .public) kept, \(report.failed, privacy: .public) failed, \
@@ -628,8 +644,25 @@ final class AppModel: ObservableObject {
         if restartWhenDone {
             startIndexing()
         } else {
+            if stalledThisRun, error == nil, !cancel.isSet { retryAfterStall() }
             quitIfIdle()
         }
+    }
+
+    /// One more run a while after one that stopped as iCloud stalled,
+    /// within the same caps; any run starting before it takes its place.
+    private func retryAfterStall() {
+        let retry = Date().addingTimeInterval(Self.stallRetryDelay)
+        let item = DispatchWorkItem { [weak self] in
+            MainActor.assumeIsolated {
+                Self.log.notice("trying again after iCloud stalled")
+                self?.startIndexing()
+            }
+        }
+        stallRetry = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.stallRetryDelay, execute: item)
+        if closeUpsWaiting?.reason == .stalled(retry: nil) { closeUpsWaiting?.reason = .stalled(retry: retry) }
+        Self.log.notice("close-ups: trying again in \(Int(Self.stallRetryDelay), privacy: .public) s, as iCloud stalled")
     }
 
     /// What is on disk, for the current source. Also right while a build runs,

@@ -39,6 +39,11 @@ struct PreparationStep: View {
                 }
                 // Filling to the number chosen ran out of photographs: say why
                 // there are fewer, or it looks like the setting was ignored.
+                if let waiting = model.closeUpsWaiting {
+                    Text(waiting.summary)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
                 if let progress = model.progress, progress.fellShort {
                     Text("That is every photograph this Mac can use: the others are only in iCloud or unreadable.")
                         .font(.callout)

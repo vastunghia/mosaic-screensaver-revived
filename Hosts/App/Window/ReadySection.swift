@@ -22,6 +22,11 @@ struct ReadySection: View {
                         .monospacedDigit()
                 }
             }
+            if let waiting = model.closeUpsWaiting, !model.isIndexing {
+                Text(waiting.summary)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
             HStack {
                 Text("Screen saver installed")
                 Spacer()
