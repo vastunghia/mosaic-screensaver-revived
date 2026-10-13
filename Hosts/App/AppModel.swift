@@ -358,6 +358,31 @@ final class AppModel: ObservableObject {
         refreshFetchedCount()
     }
 
+    /// Only once a run has stopped at the caps, and never during one: the
+    /// run keeps its own copy of the ledger and would write it back.
+    var canResetDownloadLimits: Bool {
+        preferences.downloads == .closeUps && closeUpsWaiting?.reason == .limits && !isIndexing
+    }
+
+    /// The user confirmed (`DownloadLimitsReset`): the caps count from zero,
+    /// and a run starts at once to use them.
+    func resetDownloadLimits() {
+        guard canResetDownloadLimits else { return }
+        var ledger = DownloadLedger.load(from: SharedLocations.closeUpFetchLedger)
+        let forgotten = ledger.lastWeek(at: Date())
+        ledger.resetLimits()
+        do {
+            try ledger.save(to: SharedLocations.closeUpFetchLedger)
+        } catch {
+            report(.settings, "Mosaic could not reset the download limits: \(error.localizedDescription)")
+            return
+        }
+        Self.log.notice("download limits reset by the user, \(forgotten, privacy: .public) requests of the last 7 days forgotten")
+        refreshFetchedCount()
+        closeUpsWaiting = nil
+        startIndexing()
+    }
+
     private func refreshFetchedCount() {
         closeUpsFetchedThisWeek = DownloadLedger.load(from: SharedLocations.closeUpFetchLedger).lastWeek(at: Date())
     }

@@ -139,6 +139,15 @@ public struct DownloadLedger: Codable, Equatable, Sendable {
         return fresh + given
     }
 
+    /// The user reset the caps, having confirmed what it costs (SPEC § 5):
+    /// what was asked for so far no longer counts, and the caps hold again
+    /// from now. Photographs resting go on resting: that is about iCloud,
+    /// not about the user's disk.
+    public mutating func resetLimits() {
+        requests = []
+        abandoned = []
+    }
+
     /// `id` came in: whatever it cost before is forgotten.
     public mutating func arrived(_ id: String) {
         slow[id] = nil

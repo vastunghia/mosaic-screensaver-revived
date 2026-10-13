@@ -81,6 +81,20 @@ struct DownloadLedgerTests {
         #expect(ledger.resting(at: now.addingTimeInterval(2 * hour)).isEmpty)
     }
 
+    @Test("reset by the user, the caps count from zero, and the resting go on resting")
+    func reset() {
+        var ledger = DownloadLedger()
+        for offset in 0..<3 { ledger.record(at: now.addingTimeInterval(Double(offset))) }
+        ledger.abandon(requestedAt: now, at: now.addingTimeInterval(20))
+        for run in 0..<3 { ledger.gaveUp(on: ["a"], at: now.addingTimeInterval(Double(run))) }
+        #expect(ledger.remaining(at: now.addingTimeInterval(hour), daily: 2, weekly: 5) == 0)
+
+        ledger.resetLimits()
+        #expect(ledger.remaining(at: now.addingTimeInterval(hour), daily: 2, weekly: 5, abandonedDaily: 1) == 2)
+        #expect(ledger.lastWeek(at: now.addingTimeInterval(hour)) == 0)
+        #expect(ledger.resting(at: now.addingTimeInterval(hour)) == ["a"])
+    }
+
     @Test("saved and loaded whole; a missing or broken file is an empty ledger")
     func persistence() throws {
         let url = FileManager.default.temporaryDirectory

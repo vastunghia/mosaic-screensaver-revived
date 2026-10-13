@@ -23,9 +23,15 @@ struct ReadySection: View {
                 }
             }
             if let waiting = model.closeUpsWaiting, !model.isIndexing {
-                Text(waiting.summary)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
+                HStack {
+                    Text(waiting.summary)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                    if waiting.reason == .limits {
+                        Spacer()
+                        DownloadLimitsReset(model: model)
+                    }
+                }
             }
             HStack {
                 Text("Screen saver installed")

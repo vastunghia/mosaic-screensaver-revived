@@ -17,6 +17,11 @@ struct DownloadOptions: View {
                 Text("Sharp close-ups only").tag(AppPreferences.Downloads.closeUps)
                 Text("Everything needed").tag(AppPreferences.Downloads.everything)
             }
+            if model.preferences.downloads == .closeUps, model.closeUpsWaiting?.reason == .limits {
+                LabeledContent("Daily or weekly limit reached") {
+                    DownloadLimitsReset(model: model)
+                }
+            }
         } footer: {
             Footnote(footnote)
         }
