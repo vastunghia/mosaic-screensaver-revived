@@ -263,7 +263,16 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
     /// open at login, the question about downloads, then an update. Called
     /// again as each one ends.
     private func showNextSheet() {
-        guard let window, window.isVisible, window.attachedSheet == nil else { return }
+        guard let window, window.isVisible else { return }
+        // Called from a sheet's completion handler, the sheet is still
+        // attached until this turn of the run loop ends.
+        guard window.attachedSheet == nil else {
+            DispatchQueue.main.async { [weak self] in
+                guard self?.window?.attachedSheet == nil else { return }
+                self?.showNextSheet()
+            }
+            return
+        }
         if inviteToOpenAtLogin() { return }
         if askAboutDownloads() { return }
         if let release = updater.readyRelease, offeredUpdate != release.version {
