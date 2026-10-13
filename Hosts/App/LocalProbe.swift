@@ -120,7 +120,8 @@ private final class Rows: @unchecked Sendable {
 }
 
 /// `--probe-download N`: what fetching from iCloud costs, for the photographs
-/// that fill the screen.
+/// that fill the screen, or, at a width below theirs
+/// (`--close-up-anchor-width 640`), for tiles the anchor's ring wants wider.
 ///
 /// On an optimised library almost none of them is here larger than 854 px, so
 /// full screen they are soft (2026-10-11). Asked at 1920 with the network
@@ -141,11 +142,26 @@ enum DownloadProbe {
         _ = try fetching.photos()
 
         var rng = SplitMix64(seed: seed)
-        // Full width only: a small original has nothing more to fetch.
         let narrowest = index.manifest.thumbnailWidth - 1
-        let filling = index.entries.filter { $0.canFillScreen && $0.pixelWidth >= narrowest }
-        let sample = Array(rng.shuffled(filling).prefix(count))
-        print("probe-download: \(sample.count) of the \(filling.count) photographs that fill the screen, at \(width) px")
+        let candidates: [IndexEntry]
+        let described: String
+        if width >= narrowest {
+            // Full width only: a small original has nothing more to fetch.
+            candidates = index.entries.filter { $0.canFillScreen && $0.pixelWidth >= narrowest }
+            described = "photographs that fill the screen"
+        } else {
+            // Below the screen's width, what the anchor's ring wants: tiles
+            // narrower than asked, not subjects, whose original is wider.
+            let subjects = Set(index.manifest.subjects)
+            candidates = index.entries.filter { entry in
+                guard !entry.canFillScreen, entry.pixelWidth < width - 1, !subjects.contains(entry.id),
+                      let size = library.pixelSize(of: entry.photoID) else { return false }
+                return Int(CanonicalCrop.rect(width: size.width, height: size.height).width) >= width
+            }
+            described = "tiles narrower than that, not subjects, whose original is wider"
+        }
+        let sample = Array(rng.shuffled(candidates).prefix(count))
+        print("probe-download: \(sample.count) of the \(candidates.count) \(described), at \(width) px")
         print("id,original,before_bytes,before_crop,fetched,seconds,after_bytes,after_crop")
 
         var fetched = 0, originalsAfter = 0, seconds = 0.0
