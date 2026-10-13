@@ -439,8 +439,8 @@ struct FillTests {
 
     /// What `Options.closeUpPreference` passes, at twice the thumbnail's
     /// width, with a shelf that `stocked` says holds a close-up.
-    private func preference(stocked: Set<String> = []) -> PhotoIndexBuilder.CloseUpPreference {
-        PhotoIndexBuilder.CloseUpPreference(width: 128, isStocked: { stocked.contains($0.id) })
+    private func preference(stocked: Set<String> = [], resting: Set<String> = []) -> PhotoIndexBuilder.CloseUpPreference {
+        PhotoIndexBuilder.CloseUpPreference(width: 128, isStocked: { stocked.contains($0.id) }, resting: resting)
     }
 
     /// Every photograph fills the screen; those in `sharp` have a close-up
@@ -544,6 +544,33 @@ struct FillTests {
             let kept = Set(after.entries.filter(\.canFillScreen).map(\.id))
             #expect(subjects.isSubset(of: kept), "\(rule): \(subjects.subtracting(kept).count) lost")
             #expect(library.asked.isEmpty, "\(rule): \(library.asked.count) asked again")
+        }
+    }
+
+    @Test("a subject resting from its fetches gives its place to another, and stays a tile")
+    func restingSubjectsMakeWay() throws {
+        for rule in SubsetRule.allCases {
+            let library = sharpOnly(400, sharp: [])
+            let index = temporaryDirectory()
+            defer { try? FileManager.default.removeItem(at: index) }
+            let store = PhotoIndexStore(directory: index)
+            let source = SubsetPhotoSource(library, rule: rule, count: 160, seed: 9)
+            let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
+
+            let before = try builder().build(from: source, into: store, root: "library", now: now, preferring: preference())
+            let subjects = before.entries.filter(\.canFillScreen).map(\.id).sorted()
+            let resting = Set(subjects.prefix(2))
+            let after = try builder().build(
+                from: source, into: store, root: "library", now: now.addingTimeInterval(3600),
+                preferring: preference(stocked: Set(subjects).subtracting(resting), resting: resting)
+            )
+            let kept = after.entries.filter(\.canFillScreen)
+            #expect(Set(kept.map(\.id)).isDisjoint(with: resting), "\(rule)")
+            #expect(kept.count >= 160 / PhotoIndexBuilder.fullScreenShare, "\(rule)")
+            #expect(Set(subjects).subtracting(resting).isSubset(of: Set(kept.map(\.id))), "\(rule)")
+            let tiles = after.entries.filter { resting.contains($0.id) }
+            #expect(tiles.allSatisfy { !$0.canFillScreen }, "\(rule)")
+            #expect(after.entries.count == 160, "\(rule)")
         }
     }
 }

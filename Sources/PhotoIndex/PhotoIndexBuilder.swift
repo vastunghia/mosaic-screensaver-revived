@@ -114,10 +114,17 @@ public struct PhotoIndexBuilder: Sendable {
         public var width: Int
         /// Whether the shelf already holds this entry's close-up.
         public var isStocked: @Sendable (IndexEntry) -> Bool
+        /// Photographs whose close-up was given up on too often
+        /// (`DownloadLedger.resting(at:)`): tiles only for now, so that
+        /// another subject takes their place.
+        public var resting: Set<String>
 
-        public init(width: Int, isStocked: @escaping @Sendable (IndexEntry) -> Bool) {
+        public init(
+            width: Int, isStocked: @escaping @Sendable (IndexEntry) -> Bool, resting: Set<String> = []
+        ) {
             self.width = width
             self.isStocked = isStocked
+            self.resting = resting
         }
     }
 
@@ -231,6 +238,7 @@ public struct PhotoIndexBuilder: Sendable {
                 skipped: leftOut.skipped.count, unavailable: leftOut.unavailable.count, total: target
             ))
         }
+        let resting = closeUps?.resting ?? []
         let preferred = closeUps.map {
             self.preferred(
                 count: fullScreenTarget, closeUps: $0, fillable: fillable, library: library, from: source,
@@ -245,7 +253,8 @@ public struct PhotoIndexBuilder: Sendable {
         while !cancelled {
             let chosen = pending ?? fillable.choose(
                 from: library,
-                excluding: leftOut.skipped.union(leftOut.unavailable).union(leftOut.belowFullScreen).union(first.keys),
+                excluding: leftOut.skipped.union(leftOut.unavailable).union(leftOut.belowFullScreen).union(first.keys)
+                    .union(resting),
                 count: fullScreenTarget - first.count
             )
             let isPreferred = pending != nil
@@ -295,7 +304,8 @@ public struct PhotoIndexBuilder: Sendable {
             total = screen.count + min(count, chosen.count)
             let carry = previous.merging(screen) { _, new in new }
             let round = try self.round(
-                over: chosen, tier: .any(belowFullScreen: leftOut.belowFullScreen), from: source, into: store,
+                over: chosen, tier: .any(belowFullScreen: leftOut.belowFullScreen.union(resting)), from: source,
+                into: store,
                 manifest: &manifest, known: known, alreadySkipped: alreadySkipped, carry: carry, leftOut: leftOut,
                 checkpoints: checkpoints,
                 report: { ready, readyFullScreen, skipped, unavailable, _, _, _ in
@@ -356,6 +366,7 @@ public struct PhotoIndexBuilder: Sendable {
         // alone: a build after the shelf fetched (the library changes with
         // every fetch) keeps what it fetched for, and asks for nothing.
         let excluded = leftOut.skipped.union(leftOut.unavailable).union(leftOut.belowFullScreen)
+            .union(closeUps.resting)
         let ready = fillable.choose(from: stocked, excluding: excluded, count: count)
         if ready.count == count { return ready }
 
@@ -363,8 +374,7 @@ public struct PhotoIndexBuilder: Sendable {
         while true {
             let chosen = fillable.choose(
                 from: library,
-                excluding: leftOut.skipped.union(leftOut.unavailable).union(leftOut.belowFullScreen)
-                    .union(leftOut.belowCloseUp),
+                excluding: excluded.union(leftOut.belowCloseUp),
                 count: count
             )
             var here: Set<String> = []
@@ -473,7 +483,9 @@ public struct PhotoIndexBuilder: Sendable {
                // Indexed before narrow originals were tiles: read again, to be
                // marked as one.
                !(entry.canFillScreen && narrow(entry.pixelWidth)),
-               entry.canFillScreen || !Self.isFullScreen(tier) {
+               entry.canFillScreen || !Self.isFullScreen(tier),
+               // Resting from the subjects: read again, to be a tile.
+               !(entry.canFillScreen && Self.isBelowFullScreen(id, in: tier)) {
                 kept[id] = entry
             } else if alreadySkipped.contains(id), known[id] == nil {
                 // Known bad and unchanged: not worth another failed decode.
@@ -575,6 +587,11 @@ public struct PhotoIndexBuilder: Sendable {
 
     private static func isFullScreen(_ tier: Tier) -> Bool {
         if case .fullScreen = tier { return true }
+        return false
+    }
+
+    private static func isBelowFullScreen(_ id: String, in tier: Tier) -> Bool {
+        if case .any(let below) = tier { return below.contains(id) }
         return false
     }
 

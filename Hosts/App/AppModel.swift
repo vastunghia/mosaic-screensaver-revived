@@ -597,7 +597,8 @@ final class AppModel: ObservableObject {
             close-ups: \(report.made, privacy: .public) made (\(report.fetched, privacy: .public) fetched), \
             \(report.kept, privacy: .public) kept, \(report.failed, privacy: .public) failed, \
             \(report.unavailable, privacy: .public) not on this Mac (\(report.deferred, privacy: .public) held \
-            back by the caps, \(report.timedOut, privacy: .public) given up as too slow), \
+            back by the caps, \(report.timedOut, privacy: .public) given up as too slow, \
+            \(report.resting, privacy: .public) resting after too many), \
             \(report.removed, privacy: .public) removed, \(report.tilesOnly, privacy: .public) tiles only
             """)
     }

@@ -45,7 +45,30 @@ struct DownloadLedgerTests {
     func older() throws {
         let data = Data(#"{"requests":[800000000]}"#.utf8)
         let ledger = try JSONDecoder().decode(DownloadLedger.self, from: data)
-        #expect(ledger.requests.count == 1 && ledger.abandoned.isEmpty)
+        #expect(ledger.requests.count == 1 && ledger.abandoned.isEmpty && ledger.slow.isEmpty)
+    }
+
+    @Test("a photograph given up on in three runs rests for a week; one that comes in is forgotten")
+    func resting() {
+        var ledger = DownloadLedger()
+        let day = 24 * hour
+        for run in 0..<2 { ledger.gaveUp(on: ["a", "b"], at: now.addingTimeInterval(Double(run) * hour)) }
+        #expect(ledger.resting(at: now.addingTimeInterval(2 * hour)).isEmpty)
+        ledger.arrived("b")
+        #expect(ledger.slow["b"] == nil)
+
+        ledger.gaveUp(on: ["a"], at: now.addingTimeInterval(2 * hour))
+        #expect(ledger.resting(at: now.addingTimeInterval(3 * hour)) == ["a"])
+        #expect(ledger.resting(at: now.addingTimeInterval(2 * hour + 7 * day - 1)) == ["a"])
+        let free = now.addingTimeInterval(2 * hour + 7 * day + 1)
+        #expect(ledger.resting(at: free).isEmpty, "a week later it may be a subject again")
+
+        // Its rest over, it starts again from nothing, and is dropped once
+        // another run is written down.
+        ledger.gaveUp(on: [], at: free)
+        #expect(ledger.slow.isEmpty)
+        ledger.gaveUp(on: ["a"], at: free)
+        #expect(ledger.slow["a"] == DownloadLedger.SlowPhoto(runs: 1))
     }
 
     @Test("saved and loaded whole; a missing or broken file is an empty ledger")
@@ -57,6 +80,8 @@ struct DownloadLedgerTests {
 
         var ledger = DownloadLedger()
         ledger.record(at: now)
+        for _ in 0..<3 { ledger.gaveUp(on: ["a"], at: now) }
+        ledger.gaveUp(on: ["b"], at: now)
         try ledger.save(to: url)
         #expect(DownloadLedger.load(from: url) == ledger)
 

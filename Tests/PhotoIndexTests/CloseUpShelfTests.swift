@@ -232,6 +232,39 @@ struct CloseUpShelfTests {
         #expect(report.asked == 8 && report.toFetch == 8)
         let ledger = DownloadLedger.load(from: fetching.ledger)
         #expect(ledger.requests.count == 6 && ledger.abandoned.count == 2)
+        #expect(ledger.slow.isEmpty, "come in at the end: nothing to remember")
+    }
+
+    @Test("one never fetched in time rests after three runs, and is not asked for while it does")
+    func alwaysSlow() throws {
+        let (index, shelf) = try fixture(count: 4)
+        let synthetic = SyntheticPhotoSource(count: 4)
+        let away = Set(index.entries.map(\.id))
+        let local = IndexedPhotoSource(
+            store: index.store, manifest: index.manifest, originals: AwaySource(synthetic, away: away)
+        )
+        let doomed = index.entries.map(\.id).sorted()[0]
+        let cloud = CloudSource(synthetic, slow: [doomed])
+        let ledger = temporaryDirectory().appendingPathComponent("ledger.json")
+        let start = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        func run(at date: Date) throws -> CloseUpShelf.StockReport {
+            try shelf.stock(from: local, fetching: CloseUpShelf.Fetching(
+                index: IndexedPhotoSource(store: index.store, manifest: index.manifest, originals: cloud),
+                ledger: ledger, now: { date }
+            ))
+        }
+
+        for hour in 0..<3 {
+            let report = try run(at: start.addingTimeInterval(Double(hour) * 3600))
+            #expect(report.timedOut == 1 && report.resting == 0, "run \(hour + 1)")
+        }
+        #expect(DownloadLedger.load(from: ledger).resting(at: start.addingTimeInterval(3 * 3600)) == [doomed])
+
+        let resting = try run(at: start.addingTimeInterval(3 * 3600))
+        #expect(resting.asked == 0 && resting.resting == 1 && resting.unavailable == 1)
+
+        let weekLater = try run(at: start.addingTimeInterval(2 * 3600 + DownloadLedger.standardRest + 1))
+        #expect(weekLater.asked == 2 && weekLater.timedOut == 1, "asked again after its rest")
     }
 }
 

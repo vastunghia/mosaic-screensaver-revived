@@ -124,6 +124,10 @@ public struct CloseUpShelf: Sendable {
         public var asked = 0
         /// Of `unavailable`, asked for and given up on as too slow.
         public var timedOut = 0
+        /// Of `unavailable`, not asked for: given up on in too many runs, and
+        /// resting (`DownloadLedger`). Only until the next build, which picks
+        /// other subjects.
+        public var resting = 0
     }
 
     /// Where the close-ups this Mac does not have may come from: the index
@@ -239,10 +243,19 @@ public struct CloseUpShelf: Sendable {
         progress: (@Sendable (StockReport) -> Void)?, isCancelled: (@Sendable () -> Bool)?
     ) -> Bool {
         var ledger = DownloadLedger.load(from: fetching.ledger)
-        let sorted = entries.sorted(by: { $0.id < $1.id })
+        let resting = ledger.resting(at: fetching.now())
+        let sorted = entries.filter { !resting.contains($0.id) }.sorted(by: { $0.id < $1.id })
+        report.resting = entries.count - sorted.count
         var queue = sorted
         var slow: [IndexEntry] = []
         var retried = false
+        // Given up on in this run and not come in since: a run more for each,
+        // however the run ends.
+        var givenUp: Set<String> = []
+        defer {
+            ledger.gaveUp(on: givenUp, at: fetching.now())
+            try? ledger.save(to: fetching.ledger)
+        }
         func remaining() -> Int {
             ledger.remaining(at: fetching.now(), daily: fetching.dailyLimit, weekly: fetching.weeklyLimit)
         }
@@ -273,6 +286,7 @@ public struct CloseUpShelf: Sendable {
                     let image = try fetching.index.canonicalImage(for: entry.photoID, maxPixelWidth: width)
                     try write(image, for: entry)
                     tally.add(\.made)
+                    tally.arrived(entry)
                 } catch PhotoSourceError.unavailable {
                     // Still elsewhere: counted as it was.
                 } catch PhotoSourceError.timedOut {
@@ -283,9 +297,14 @@ public struct CloseUpShelf: Sendable {
                 }
             }
             let counts = tally.counts
+            givenUp.formUnion(tally.elsewhereEntries.map(\.id))
+            for id in tally.arrivedIDs {
+                givenUp.remove(id)
+                ledger.arrived(id)
+            }
             if counts.unavailable > 0 {
-                let givenUp = fetching.now()
-                for _ in 0..<counts.unavailable { ledger.abandon(requestedAt: now, at: givenUp) }
+                let givenUpAt = fetching.now()
+                for _ in 0..<counts.unavailable { ledger.abandon(requestedAt: now, at: givenUpAt) }
                 try? ledger.save(to: fetching.ledger)
             }
             if !retried { slow += tally.elsewhereEntries }
@@ -426,6 +445,7 @@ private final class Tally: @unchecked Sendable {
     private let lock = NSLock()
     private var value = Counts()
     private var elsewhere: [IndexEntry] = []
+    private var made: [String] = []
 
     func add(_ counter: WritableKeyPath<Counts, Int>) {
         lock.lock(); value[keyPath: counter] += 1; lock.unlock()
@@ -433,6 +453,15 @@ private final class Tally: @unchecked Sendable {
 
     func elsewhere(_ entry: IndexEntry) {
         lock.lock(); elsewhere.append(entry); lock.unlock()
+    }
+
+    func arrived(_ entry: IndexEntry) {
+        lock.lock(); made.append(entry.id); lock.unlock()
+    }
+
+    var arrivedIDs: [String] {
+        lock.lock(); defer { lock.unlock() }
+        return made
     }
 
     var elsewhereEntries: [IndexEntry] {
