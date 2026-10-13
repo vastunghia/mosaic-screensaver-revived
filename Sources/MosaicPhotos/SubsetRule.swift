@@ -168,6 +168,9 @@ public protocol FillablePhotoSource: PhotoSource {
     /// in `excluded`. Indexing asks for the target, and first for the share of
     /// it that has to fill the screen.
     func choose(from library: [PhotoDescriptor], excluding excluded: Set<String>, count: Int) -> [PhotoDescriptor]
+    /// What the choice depends on besides the library: another value, another
+    /// choice.
+    var choice: String { get }
 }
 
 /// A source narrowed to the subset a rule picks. Everything but the list of
@@ -186,6 +189,8 @@ public struct SubsetPhotoSource<Base: PhotoSource>: FillablePhotoSource {
     }
 
     public var target: Int { count }
+
+    public var choice: String { "\(rule.rawValue) \(count) \(seed)" }
 
     public func photos() throws -> [PhotoDescriptor] {
         choose(from: try library(), excluding: [], count: count)

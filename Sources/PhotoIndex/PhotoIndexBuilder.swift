@@ -239,10 +239,11 @@ public struct PhotoIndexBuilder: Sendable {
             ))
         }
         let resting = closeUps?.resting ?? []
+        let previousSubjects = manifest.subjectsChoice == fillable.choice ? Set(manifest.subjects) : []
         let preferred = closeUps.map {
             self.preferred(
                 count: fullScreenTarget, closeUps: $0, fillable: fillable, library: library, from: source,
-                known: known, leftOut: &leftOut, budget: target
+                known: known, keeping: previousSubjects, leftOut: &leftOut, budget: target
             )
         } ?? []
 
@@ -286,6 +287,14 @@ public struct PhotoIndexBuilder: Sendable {
                 break
             }
             if round.skipped.isEmpty && round.short.isEmpty { break }
+        }
+
+        if closeUps != nil {
+            manifest.subjects = screen.keys.sorted()
+            manifest.subjectsChoice = fillable.choice
+        } else {
+            manifest.subjects = []
+            manifest.subjectsChoice = nil
         }
 
         // Phase B: the rest, as large as this Mac has them.
@@ -350,9 +359,15 @@ public struct PhotoIndexBuilder: Sendable {
     /// of it — 57,000 photographs, minutes. So it asks for no more than
     /// `budget` in a day, counting those already found missing, and stops
     /// with fewer: the rest of the subjects are then chosen as before.
+    ///
+    /// The subjects of the last build under the same choice, `previous`,
+    /// come before all that: a build after the shelf fetched (the library
+    /// changes with every fetch) keeps what it fetched for, and asks for
+    /// nothing.
     private func preferred(
         count: Int, closeUps: CloseUpPreference, fillable: any FillablePhotoSource, library: [PhotoDescriptor],
-        from source: some PhotoSource, known: [String: IndexEntry], leftOut: inout LeftOut, budget: Int
+        from source: some PhotoSource, known: [String: IndexEntry], keeping previous: Set<String>,
+        leftOut: inout LeftOut, budget: Int
     ) -> [PhotoDescriptor] {
         func isStocked(_ descriptor: PhotoDescriptor) -> Bool {
             guard let entry = known[descriptor.id.rawValue] else { return false }
@@ -362,13 +377,19 @@ public struct PhotoIndexBuilder: Sendable {
         // day's list still says otherwise.
         let stocked = library.filter(isStocked)
         leftOut.belowCloseUp.subtract(stocked.map(\.id.rawValue))
-        // Enough of them, the subjects are the rule's choice among those
-        // alone: a build after the shelf fetched (the library changes with
-        // every fetch) keeps what it fetched for, and asks for nothing.
-        let excluded = leftOut.skipped.union(leftOut.unavailable).union(leftOut.belowFullScreen)
+        let left = leftOut.skipped.union(leftOut.unavailable).union(leftOut.belowFullScreen)
             .union(closeUps.resting)
+        // The last build's subjects first, whether their close-up came in or
+        // not: one not yet fetched is asked for again, until it rests.
+        let kept = previous.isEmpty ? [] : fillable.choose(
+            from: library.filter { previous.contains($0.id.rawValue) }, excluding: left, count: count
+        )
+        if kept.count == count { return kept }
+        // Then, enough of them, the rule's choice among the close-ups here.
+        let excluded = left.union(kept.map(\.id.rawValue))
+        let count = count - kept.count
         let ready = fillable.choose(from: stocked, excluding: excluded, count: count)
-        if ready.count == count { return ready }
+        if ready.count == count { return kept + ready }
 
         var found: [PhotoDescriptor] = []
         while true {
@@ -402,7 +423,7 @@ public struct PhotoIndexBuilder: Sendable {
             leftOut.belowCloseUp.formUnion(short)
             found = chosen.filter { here.contains($0.id.rawValue) }
             // Done when every one chosen was here, or nothing more may be asked.
-            if short.isEmpty || asking.count < unknown.count { return found }
+            if short.isEmpty || asking.count < unknown.count { return kept + found }
         }
     }
 

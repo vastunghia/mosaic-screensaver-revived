@@ -203,6 +203,15 @@ public struct IndexManifest: Codable, Equatable, Sendable {
     /// Turning them on makes every one worth asking for again at once.
     public var unavailableContext: String?
 
+    /// The photographs the last build chose to fill the screen first, for a
+    /// filled source that prefers close-ups needing no download, and the
+    /// choice they were made under (`FillablePhotoSource.choice`). The next
+    /// build under the same choice keeps them: chosen again among the
+    /// close-ups the shelf holds, the subjects shifted after every fetch, and
+    /// close-ups just fetched were thrown away (2026-10-13).
+    public var subjects: [String]
+    public var subjectsChoice: String?
+
     public init(
         formatVersion: Int = IndexManifest.currentFormatVersion,
         root: String,
@@ -216,7 +225,9 @@ public struct IndexManifest: Codable, Equatable, Sendable {
         unavailableCheckedAt: Date? = nil,
         unavailableContext: String? = nil,
         belowFullScreen: [String] = [],
-        belowCloseUp: [String] = []
+        belowCloseUp: [String] = [],
+        subjects: [String] = [],
+        subjectsChoice: String? = nil
     ) {
         self.formatVersion = formatVersion
         self.root = root
@@ -231,12 +242,14 @@ public struct IndexManifest: Codable, Equatable, Sendable {
         self.unavailableContext = unavailableContext
         self.belowFullScreen = belowFullScreen
         self.belowCloseUp = belowCloseUp
+        self.subjects = subjects
+        self.subjectsChoice = subjectsChoice
     }
 
     private enum CodingKeys: String, CodingKey {
         case formatVersion, root, thumbnailWidth, thumbnailHeight, signatureSide, cropRule
         case entries, skipped, unavailable, unavailableCheckedAt, unavailableContext, belowFullScreen
-        case belowCloseUp
+        case belowCloseUp, subjects, subjectsChoice
     }
 
     public init(from decoder: any Decoder) throws {
@@ -256,10 +269,12 @@ public struct IndexManifest: Codable, Equatable, Sendable {
         unavailableContext = try container.decodeIfPresent(String.self, forKey: .unavailableContext)
         belowFullScreen = try container.decodeIfPresent([String].self, forKey: .belowFullScreen) ?? []
         belowCloseUp = try container.decodeIfPresent([String].self, forKey: .belowCloseUp) ?? []
+        subjects = try container.decodeIfPresent([String].self, forKey: .subjects) ?? []
+        subjectsChoice = try container.decodeIfPresent(String.self, forKey: .subjectsChoice)
     }
 
-    /// As synthesised, except that an empty `belowFullScreen` or
-    /// `belowCloseUp` is left out, so
+    /// As synthesised, except that an empty `belowFullScreen`,
+    /// `belowCloseUp` or `subjects` is left out, so
     /// a folder's manifest is written byte for byte as before it existed.
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
@@ -279,6 +294,10 @@ public struct IndexManifest: Codable, Equatable, Sendable {
         }
         if !belowCloseUp.isEmpty {
             try container.encode(belowCloseUp, forKey: .belowCloseUp)
+        }
+        if !subjects.isEmpty {
+            try container.encode(subjects, forKey: .subjects)
+            try container.encodeIfPresent(subjectsChoice, forKey: .subjectsChoice)
         }
     }
 

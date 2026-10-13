@@ -573,4 +573,55 @@ struct FillTests {
             #expect(after.entries.count == 160, "\(rule)")
         }
     }
+
+    @Test("subjects stay when the shelf holds more close-ups than subjects, and so do those not fetched yet")
+    func subjectsStayAmongMoreCloseUps() throws {
+        for rule in SubsetRule.allCases {
+            let library = sharpOnly(400, sharp: [])
+            let index = temporaryDirectory()
+            defer { try? FileManager.default.removeItem(at: index) }
+            let store = PhotoIndexStore(directory: index)
+            let source = SubsetPhotoSource(library, rule: rule, count: 160, seed: 9)
+            let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
+
+            let before = try builder().build(from: source, into: store, root: "library", now: now, preferring: preference())
+            let subjects = before.subjects
+            #expect(subjects.count == 160 / PhotoIndexBuilder.fullScreenShare, "\(rule)")
+            #expect(before.subjectsChoice == source.choice, "\(rule)")
+            // Two subjects not fetched in time; twenty other photographs that
+            // fill the screen got close-ups too, as on 2026-10-13.
+            let others = before.entries.map(\.id).filter { !subjects.contains($0) }.sorted().prefix(20)
+            let stocked = Set(subjects.dropFirst(2)).union(others)
+            let after = try builder().build(
+                from: source, into: store, root: "library", now: now.addingTimeInterval(3600),
+                preferring: preference(stocked: stocked)
+            )
+            #expect(after.subjects == subjects, "\(rule)")
+            #expect(stocked.isSubset(of: Set(after.entries.map(\.id))), "\(rule): a close-up here left the index")
+            #expect(after.entries.map(\.id) == before.entries.map(\.id), "\(rule)")
+        }
+    }
+
+    @Test("another choice starts its subjects afresh")
+    func otherChoiceOtherSubjects() throws {
+        let library = sharpOnly(400, sharp: [])
+        let index = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: index) }
+        let store = PhotoIndexStore(directory: index)
+        let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let first = try builder().build(
+            from: SubsetPhotoSource(library, rule: .random, count: 160, seed: 9), into: store, root: "library",
+            now: now, preferring: preference()
+        )
+        let other = SubsetPhotoSource(library, rule: .random, count: 160, seed: 10)
+        let second = try builder().build(
+            from: other, into: store, root: "library", now: now.addingTimeInterval(60), preferring: preference()
+        )
+        let fresh = try builder().build(
+            from: other, into: PhotoIndexStore(directory: temporaryDirectory()), root: "library", now: now,
+            preferring: preference()
+        )
+        #expect(second.subjects == fresh.subjects)
+        #expect(second.subjects != first.subjects)
+    }
 }
