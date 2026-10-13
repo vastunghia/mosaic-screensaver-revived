@@ -46,7 +46,7 @@ struct CloseUpsWaiting: Equatable {
         case .stalled(nil):
             "iCloud stopped answering. Mosaic tries again later."
         case .limits:
-            "the limit of \(DownloadLedger.standardDailyLimit) a day and \(DownloadLedger.standardWeeklyLimit) a week is reached. Mosaic goes on as soon as it allows."
+            "the limit of \(DownloadLedger.standardDailyLimit) a day or \(DownloadLedger.standardWeeklyLimit) a week is reached. Mosaic goes on as soon as it allows."
         case .metered:
             "the network is metered (a hotspot, or Low Data Mode)."
         case .slow:
