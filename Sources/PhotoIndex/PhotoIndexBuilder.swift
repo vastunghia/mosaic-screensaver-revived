@@ -226,7 +226,10 @@ public struct PhotoIndexBuilder: Sendable {
         let previous = known.filter { id, entry in
             store.hasThumbnail(named: entry.thumbnail) && !leftOut.skipped.contains(id)
         }
-        var reused: Int?
+        // Reused: what the index had before this build, never what an earlier
+        // round of it read.
+        let indexedBefore = Set(previous.keys)
+        func reused(_ ids: some Collection<String>) -> Int { ids.filter(indexedBefore.contains).count }
         var cancelled = false
 
         // Phase A, first: the photographs that fill the screen and need no
@@ -264,11 +267,10 @@ public struct PhotoIndexBuilder: Sendable {
             let round = try self.round(
                 over: chosen, tier: .fullScreen, from: source, into: store, manifest: &manifest,
                 known: known, alreadySkipped: alreadySkipped, carry: previous.merging(before) { _, new in new },
-                leftOut: leftOut, checkpoints: checkpoints,
+                leftOut: leftOut, indexedBefore: indexedBefore, checkpoints: checkpoints,
                 report: { ready, _, skipped, unavailable, _, _, reusedHere in
-                    if reused == nil { reused = reusedHere }
                     progress?(IndexProgress(
-                        completed: before.count + ready, reused: reused ?? 0,
+                        completed: before.count + ready, reused: reused(before.keys) + reusedHere,
                         skipped: leftOut.skipped.count + skipped,
                         unavailable: leftOut.unavailable.count + unavailable,
                         total: target, ready: before.count + ready, fullScreen: before.count + ready
@@ -316,10 +318,10 @@ public struct PhotoIndexBuilder: Sendable {
                 over: chosen, tier: .any(belowFullScreen: leftOut.belowFullScreen.union(resting)), from: source,
                 into: store,
                 manifest: &manifest, known: known, alreadySkipped: alreadySkipped, carry: carry, leftOut: leftOut,
-                checkpoints: checkpoints,
-                report: { ready, readyFullScreen, skipped, unavailable, _, _, _ in
+                indexedBefore: indexedBefore, checkpoints: checkpoints,
+                report: { ready, readyFullScreen, skipped, unavailable, _, _, reusedHere in
                     progress?(IndexProgress(
-                        completed: screen.count + ready, reused: reused ?? 0,
+                        completed: screen.count + ready, reused: reused(screen.keys) + reusedHere,
                         skipped: leftOut.skipped.count + skipped,
                         unavailable: leftOut.unavailable.count + unavailable,
                         total: total, ready: screen.count + ready, fullScreen: screen.count + readyFullScreen
@@ -341,7 +343,7 @@ public struct PhotoIndexBuilder: Sendable {
         var entries = screen.merging(tiles) { first, _ in first }
         if cancelled { entries = previous.merging(entries) { _, new in new } }
         progress?(IndexProgress(
-            completed: entries.count, reused: reused ?? 0, skipped: leftOut.skipped.count,
+            completed: entries.count, reused: reused(entries.keys), skipped: leftOut.skipped.count,
             unavailable: leftOut.unavailable.count, total: cancelled ? target : total, ready: entries.count,
             fullScreen: entries.values.filter(\.canFillScreen).count, fellShort: fellShort
         ))
@@ -474,6 +476,7 @@ public struct PhotoIndexBuilder: Sendable {
         alreadySkipped: Set<String>,
         carry: [String: IndexEntry],
         leftOut: LeftOut,
+        indexedBefore: Set<String>? = nil,
         checkpoints: Checkpoints,
         report: (
             _ kept: Int, _ keptFullScreen: Int, _ skipped: Int, _ unavailable: Int, _ short: Int,
@@ -517,7 +520,7 @@ public struct PhotoIndexBuilder: Sendable {
         }
 
         func tally() -> Int { kept.values.filter(\.canFillScreen).count }
-        let reused = kept.count
+        let reused = indexedBefore.map { before in kept.keys.filter(before.contains).count } ?? kept.count
         report(kept.count, tally(), skipped.count, unavailable.count, short.count, descriptors.count, reused)
 
         let collector = Collector()

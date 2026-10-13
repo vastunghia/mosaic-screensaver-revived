@@ -250,12 +250,17 @@ struct FillTests {
         let source = SubsetPhotoSource(library, rule: .random, count: 40, seed: 9)
         let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
 
-        _ = try builder().build(from: source, into: store, root: "library", now: now)
+        let last = LastProgress()
+        _ = try builder().build(from: source, into: store, root: "library", now: now, progress: { last.record($0) })
         let first = try Data(contentsOf: store.manifestURL)
+        #expect(last.value?.reused == 0)
         library.asked = []
-        _ = try builder().build(from: source, into: store, root: "library", now: now.addingTimeInterval(60))
+        _ = try builder().build(
+            from: source, into: store, root: "library", now: now.addingTimeInterval(60), progress: { last.record($0) }
+        )
         #expect(library.asked.isEmpty, "read \(library.asked.count) again")
         #expect(try Data(contentsOf: store.manifestURL) == first)
+        #expect(last.value?.reused == 40, "all of them reused, the tiles too")
     }
 
     @Test("a photograph that comes back is asked for again after a day, and takes its place")
