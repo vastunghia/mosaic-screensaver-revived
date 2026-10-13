@@ -211,6 +211,11 @@ extension PhotoSourceFactory {
             from: index,
             fetching: fetching,
             progress: { report in
+                // While fetching, the count of close-ups does not move.
+                if report.toFetch > 0 {
+                    print("  fetched \(report.fetched), asked \(report.asked) of \(report.toFetch)")
+                    return
+                }
                 let done = report.kept + report.made + report.failed + report.unavailable
                 guard report.total > 0 else { return }
                 let progress = IndexProgress(completed: done, reused: report.kept, skipped: 0, total: report.total)

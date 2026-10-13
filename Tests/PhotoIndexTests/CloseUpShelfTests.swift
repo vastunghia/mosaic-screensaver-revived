@@ -30,22 +30,32 @@ private final class AwaySource: PhotoSource, @unchecked Sendable {
 private final class CloudSource: PhotoSource, @unchecked Sendable {
     let base: SyntheticPhotoSource
     let slow: Set<String>
+    /// Too slow the first time only, as iCloud waking up.
+    let slowOnce: Set<String>
     private let lock = NSLock()
     private var running = 0
+    private var asked: Set<String> = []
     private(set) var mostAtOnce = 0
 
-    init(_ base: SyntheticPhotoSource, slow: Set<String>) {
+    init(_ base: SyntheticPhotoSource, slow: Set<String>, slowOnce: Set<String> = []) {
         self.base = base
         self.slow = slow
+        self.slowOnce = slowOnce
     }
 
     func photos() throws -> [PhotoDescriptor] { try base.photos() }
 
     func canonicalImage(for id: PhotoID, maxPixelWidth: Int) throws -> CGImage {
-        lock.lock(); running += 1; mostAtOnce = max(mostAtOnce, running); lock.unlock()
+        lock.lock()
+        running += 1
+        mostAtOnce = max(mostAtOnce, running)
+        let first = asked.insert(id.rawValue).inserted
+        lock.unlock()
         defer { lock.lock(); running -= 1; lock.unlock() }
         Thread.sleep(forTimeInterval: 0.05)
-        if slow.contains(id.rawValue) { throw PhotoSourceError.timedOut(id) }
+        if slow.contains(id.rawValue) || first && slowOnce.contains(id.rawValue) {
+            throw PhotoSourceError.timedOut(id)
+        }
         return try base.canonicalImage(for: id, maxPixelWidth: maxPixelWidth)
     }
 }
@@ -192,13 +202,36 @@ struct CloseUpShelfTests {
         let report = try shelf.stock(from: local, fetching: fetching, progress: { progress.append($0) })
 
         #expect(cloud.mostAtOnce == 3)
-        // The two given up on give their places back: the tenth is asked too.
-        #expect(report.toFetch == 10 && report.asked == 10)
+        // The two given up on give their places back: the tenth is asked
+        // too, and then the two again, as slow as before.
+        #expect(report.toFetch == 12 && report.asked == 12)
         #expect(report.fetched == 8 && report.timedOut == 2)
         #expect(report.unavailable == 2 && report.deferred == 0)
-        #expect(progress.asked == [0, 3, 6, 9, 10])
+        #expect(progress.asked == [0, 3, 6, 9, 10, 11, 12], "one place left for each retry")
         let ledger = DownloadLedger.load(from: fetching.ledger)
-        #expect(ledger.requests.count == 8 && ledger.abandoned.count == 2)
+        #expect(ledger.requests.count == 8 && ledger.abandoned.count == 4)
+    }
+
+    @Test("those given up on while iCloud wakes up come in when asked again at the end")
+    func slowAtFirst() throws {
+        let (index, shelf) = try fixture(count: 6)
+        let synthetic = SyntheticPhotoSource(count: 6)
+        let local = IndexedPhotoSource(
+            store: index.store, manifest: index.manifest,
+            originals: AwaySource(synthetic, away: Set(index.entries.map(\.id)))
+        )
+        let sorted = index.entries.map(\.id).sorted()
+        let cloud = CloudSource(synthetic, slow: [], slowOnce: Set(sorted.prefix(2)))
+        let fetching = CloseUpShelf.Fetching(
+            index: IndexedPhotoSource(store: index.store, manifest: index.manifest, originals: cloud),
+            ledger: temporaryDirectory().appendingPathComponent("ledger.json")
+        )
+        let report = try shelf.stock(from: local, fetching: fetching)
+        #expect(cloud.mostAtOnce == 1, "one at a time by default")
+        #expect(report.made == 6 && report.fetched == 6 && report.timedOut == 0 && report.unavailable == 0)
+        #expect(report.asked == 8 && report.toFetch == 8)
+        let ledger = DownloadLedger.load(from: fetching.ledger)
+        #expect(ledger.requests.count == 6 && ledger.abandoned.count == 2)
     }
 }
 

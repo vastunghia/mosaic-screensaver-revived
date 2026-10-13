@@ -230,24 +230,36 @@ public struct CloseUpShelf: Sendable {
 
     /// `concurrency` at a time, in the index's order, each counted in the
     /// ledger before it is asked for, and moved to its abandoned ones when it
-    /// is given up on. Returns whether it was stopped.
+    /// is given up on. Those given up on are asked once more at the end: the
+    /// first requests of a run ran out of time one after the other while
+    /// iCloud woke up, for a minute or more, and the same photographs came in
+    /// seconds later (2026-10-13). Returns whether it was stopped.
     private func fetch(
         _ entries: [IndexEntry], with fetching: Fetching, into report: inout StockReport,
         progress: (@Sendable (StockReport) -> Void)?, isCancelled: (@Sendable () -> Bool)?
     ) -> Bool {
         var ledger = DownloadLedger.load(from: fetching.ledger)
         let sorted = entries.sorted(by: { $0.id < $1.id })
-        report.toFetch = min(
-            sorted.count, ledger.remaining(at: fetching.now(), daily: fetching.dailyLimit, weekly: fetching.weeklyLimit)
-        )
+        var queue = sorted
+        var slow: [IndexEntry] = []
+        var retried = false
+        func remaining() -> Int {
+            ledger.remaining(at: fetching.now(), daily: fetching.dailyLimit, weekly: fetching.weeklyLimit)
+        }
+        report.toFetch = min(sorted.count, remaining())
         progress?(report)
         var offset = 0
-        while offset < sorted.count {
+        while true {
+            if offset == queue.count, !retried, !slow.isEmpty {
+                queue += slow
+                retried = true
+            }
+            guard offset < queue.count else { break }
             if isCancelled?() == true { return true }
             let now = fetching.now()
-            let allowed = ledger.remaining(at: now, daily: fetching.dailyLimit, weekly: fetching.weeklyLimit)
+            let allowed = remaining()
             guard allowed > 0 else { break }
-            let batch = Array(sorted[offset..<min(offset + min(fetching.concurrency, allowed), sorted.count)])
+            let batch = Array(queue[offset..<min(offset + min(fetching.concurrency, allowed), queue.count)])
             for _ in batch { ledger.record(at: now) }
             // Not written down, not asked: a ledger that cannot be kept
             // cannot keep the caps either.
@@ -265,6 +277,7 @@ public struct CloseUpShelf: Sendable {
                     // Still elsewhere: counted as it was.
                 } catch PhotoSourceError.timedOut {
                     tally.add(\.unavailable)
+                    tally.elsewhere(entry)
                 } catch {
                     tally.add(\.failed)
                 }
@@ -275,20 +288,24 @@ public struct CloseUpShelf: Sendable {
                 for _ in 0..<counts.unavailable { ledger.abandon(requestedAt: now, at: givenUp) }
                 try? ledger.save(to: fetching.ledger)
             }
+            if !retried { slow += tally.elsewhereEntries }
             report.asked += batch.count
             report.made += counts.made
             report.fetched += counts.made
-            report.timedOut += counts.unavailable
             report.failed += counts.failed
             report.unavailable -= counts.made + counts.failed
-            // One given up on gives its place back: there may be one more to ask.
-            report.toFetch = report.asked + min(
-                sorted.count - offset,
-                ledger.remaining(at: fetching.now(), daily: fetching.dailyLimit, weekly: fetching.weeklyLimit)
-            )
+            if retried {
+                // Every one asked now was given up on once already.
+                report.timedOut -= counts.made + counts.failed
+            } else {
+                report.timedOut += counts.unavailable
+            }
+            // One given up on gives its place back, and will be asked again.
+            let left = queue.count - offset + (retried ? 0 : slow.count)
+            report.toFetch = report.asked + min(left, remaining())
             progress?(report)
         }
-        report.deferred = sorted.count - offset
+        report.deferred = sorted.count - min(offset, sorted.count)
         return false
     }
 
