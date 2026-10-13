@@ -118,13 +118,22 @@ public struct PhotoIndexBuilder: Sendable {
         /// (`DownloadLedger.resting(at:)`): tiles only for now, so that
         /// another subject takes their place.
         public var resting: Set<String>
+        /// Whether the close-ups this Mac does not have are fetched: then the
+        /// subjects are the rule's choice over the whole library, and one
+        /// this Mac has too small is a tile until its close-up comes in.
+        /// Otherwise only those this Mac has large enough are subjects, and
+        /// on an optimised library they are not spread over time (2026-10-13:
+        /// 12 a year from 2020 to 2022, none in 2025).
+        public var fetches: Bool
 
         public init(
-            width: Int, isStocked: @escaping @Sendable (IndexEntry) -> Bool, resting: Set<String> = []
+            width: Int, isStocked: @escaping @Sendable (IndexEntry) -> Bool, resting: Set<String> = [],
+            fetches: Bool = false
         ) {
             self.width = width
             self.isStocked = isStocked
             self.resting = resting
+            self.fetches = fetches
         }
     }
 
@@ -243,7 +252,8 @@ public struct PhotoIndexBuilder: Sendable {
         }
         let resting = closeUps?.resting ?? []
         let previousSubjects = manifest.subjectsChoice == fillable.choice ? Set(manifest.subjects) : []
-        let preferred = closeUps.map {
+        let fetches = closeUps?.fetches == true
+        let preferred = closeUps.flatMap { closeUps in fetches ? nil : closeUps }.map {
             self.preferred(
                 count: fullScreenTarget, closeUps: $0, fillable: fillable, library: library, from: source,
                 known: known, keeping: previousSubjects, leftOut: &leftOut, budget: target
@@ -254,7 +264,49 @@ public struct PhotoIndexBuilder: Sendable {
         var screen: [String: IndexEntry] = [:]
         var first: [String: IndexEntry] = [:]
         var pending: [PhotoDescriptor]? = preferred.isEmpty ? nil : preferred
-        while !cancelled {
+        // Or, with close-ups fetched, the subjects whatever their size here.
+        while fetches, !cancelled {
+            let chosen = fillable.choose(
+                from: library, excluding: leftOut.skipped.union(leftOut.unavailable).union(resting),
+                count: fullScreenTarget
+            )
+            // A tile whose close-up came in is read again, to fill the screen.
+            let promoting = Set(chosen.compactMap { descriptor -> String? in
+                guard let entry = known[descriptor.id.rawValue], !entry.canFillScreen,
+                      entry.versionToken == descriptor.versionToken, closeUps?.isStocked(entry) == true else {
+                    return nil
+                }
+                return entry.id
+            })
+            let round = try self.round(
+                over: chosen, tier: .any(belowFullScreen: leftOut.belowFullScreen, promoting: promoting),
+                from: source, into: store, manifest: &manifest, known: known, alreadySkipped: alreadySkipped,
+                carry: previous, leftOut: leftOut, indexedBefore: indexedBefore, checkpoints: checkpoints,
+                report: { ready, readyFullScreen, skipped, unavailable, _, _, reusedHere in
+                    progress?(IndexProgress(
+                        completed: ready, reused: reusedHere,
+                        skipped: leftOut.skipped.count + skipped,
+                        unavailable: leftOut.unavailable.count + unavailable,
+                        total: target, ready: ready, fullScreen: readyFullScreen
+                    ))
+                },
+                isCancelled: isCancelled
+            )
+            screen = round.kept
+            for (id, entry) in round.kept { known[id] = entry }
+            leftOut.skipped.formUnion(round.skipped)
+            leftOut.unavailable.formUnion(round.unavailable)
+            for entry in round.kept.values {
+                if entry.canFillScreen {
+                    leftOut.belowFullScreen.remove(entry.id)
+                } else {
+                    leftOut.belowFullScreen.insert(entry.id)
+                }
+            }
+            cancelled = round.cancelled
+            if round.skipped.isEmpty && round.unavailable.isEmpty { break }
+        }
+        while !fetches, !cancelled {
             let chosen = pending ?? fillable.choose(
                 from: library,
                 excluding: leftOut.skipped.union(leftOut.unavailable).union(leftOut.belowFullScreen).union(first.keys)
@@ -451,7 +503,10 @@ public struct PhotoIndexBuilder: Sendable {
         case fullScreen
         /// At `thumbnailWidth`, then down `tileWidths`; a photograph known to
         /// be short starts below. Not there even at the last is unavailable.
-        case any(belowFullScreen: Set<String>)
+        /// A tile in `promoting` is asked again from the top: a subject whose
+        /// close-up came in from iCloud, which left this Mac a derivative
+        /// large enough to fill the screen.
+        case any(belowFullScreen: Set<String>, promoting: Set<String> = [])
     }
 
     private struct Round {
@@ -509,7 +564,8 @@ public struct PhotoIndexBuilder: Sendable {
                !(entry.canFillScreen && narrow(entry.pixelWidth)),
                entry.canFillScreen || !Self.isFullScreen(tier),
                // Resting from the subjects: read again, to be a tile.
-               !(entry.canFillScreen && Self.isBelowFullScreen(id, in: tier)) {
+               !(entry.canFillScreen && Self.isBelowFullScreen(id, in: tier)),
+               !(!entry.canFillScreen && Self.isPromoting(id, in: tier)) {
                 kept[id] = entry
             } else if alreadySkipped.contains(id), known[id] == nil {
                 // Known bad and unchanged: not worth another failed decode.
@@ -544,7 +600,8 @@ public struct PhotoIndexBuilder: Sendable {
                 let id = descriptor.id.rawValue
                 let widths: [Int] = switch tier {
                 case .plain, .fullScreen: [width]
-                case .any(let below): (below.contains(id) ? [] : [width]) + tileWidths
+                case .any(let below, let promoting):
+                    (below.contains(id) && !promoting.contains(id) ? [] : [width]) + tileWidths
                 }
                 do {
                     for asked in widths {
@@ -615,7 +672,12 @@ public struct PhotoIndexBuilder: Sendable {
     }
 
     private static func isBelowFullScreen(_ id: String, in tier: Tier) -> Bool {
-        if case .any(let below) = tier { return below.contains(id) }
+        if case .any(let below, _) = tier { return below.contains(id) }
+        return false
+    }
+
+    private static func isPromoting(_ id: String, in tier: Tier) -> Bool {
+        if case .any(_, let promoting) = tier { return promoting.contains(id) }
         return false
     }
 

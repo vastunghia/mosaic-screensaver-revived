@@ -186,6 +186,36 @@ struct CloseUpShelfTests {
         #expect(plain.fetched == 0 && plain.unavailable == 1)
     }
 
+    @Test("a subject this Mac has only as a tile gets its close-up fetched; other tiles none")
+    func subjectWaitingAsTile() throws {
+        let (built, shelf) = try fixture(count: 6)
+        var manifest = built.manifest
+        // The first three only tiles here, the first of them a subject.
+        let tiles = Set(manifest.entries.map(\.id).sorted().prefix(3))
+        let waiting = try #require(tiles.sorted().first)
+        manifest.entries = try manifest.entries.map { entry in
+            guard tiles.contains(entry.id) else { return entry }
+            return IndexEntry(
+                id: entry.id, versionToken: entry.versionToken, thumbnail: entry.thumbnail,
+                signature: try #require(entry.tileSignature), pixelWidth: entry.pixelWidth,
+                pixelHeight: entry.pixelHeight, cropStart: entry.cropStart, tileOnly: true
+            )
+        }
+        manifest.subjects = [waiting] + manifest.entries.filter(\.canFillScreen).map(\.id)
+        let synthetic = SyntheticPhotoSource(count: 6)
+        let index = IndexedPhotoSource(store: built.store, manifest: manifest, originals: synthetic)
+        let local = IndexedPhotoSource(
+            store: built.store, manifest: manifest, originals: AwaySource(synthetic, away: tiles)
+        )
+        let ledger = temporaryDirectory().appendingPathComponent("ledger.json")
+
+        let report = try shelf.stock(from: local, fetching: CloseUpShelf.Fetching(index: index, ledger: ledger))
+        #expect(report.made == 4 && report.fetched == 1 && report.tilesOnly == 2)
+        let entry = try #require(manifest.entries.first { $0.id == waiting })
+        #expect(shelf.has(entry))
+        #expect(manifest.entries.filter { tiles.contains($0.id) && $0.id != waiting }.allSatisfy { !shelf.has($0) })
+    }
+
     @Test("close-ups may be fetched a few at a time; one too slow is given up on, counted apart")
     func fetchingInParallel() throws {
         let (index, shelf) = try fixture(count: 10)

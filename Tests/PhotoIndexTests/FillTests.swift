@@ -444,8 +444,79 @@ struct FillTests {
 
     /// What `Options.closeUpPreference` passes, at twice the thumbnail's
     /// width, with a shelf that `stocked` says holds a close-up.
-    private func preference(stocked: Set<String> = [], resting: Set<String> = []) -> PhotoIndexBuilder.CloseUpPreference {
-        PhotoIndexBuilder.CloseUpPreference(width: 128, isStocked: { stocked.contains($0.id) }, resting: resting)
+    private func preference(
+        stocked: Set<String> = [], resting: Set<String> = [], fetches: Bool = false
+    ) -> PhotoIndexBuilder.CloseUpPreference {
+        PhotoIndexBuilder.CloseUpPreference(
+            width: 128, isStocked: { stocked.contains($0.id) }, resting: resting, fetches: fetches
+        )
+    }
+
+    @Test("with close-ups fetched, the subjects are the rule's choice over the whole library, the small ones tiles for now")
+    func fetchedSubjectsFromEverywhere() throws {
+        for rule in SubsetRule.allCases {
+            let library = optimised(400)
+            let index = temporaryDirectory()
+            defer { try? FileManager.default.removeItem(at: index) }
+
+            let manifest = try builder().build(
+                from: SubsetPhotoSource(library, rule: rule, count: 160, seed: 9),
+                into: PhotoIndexStore(directory: index), root: "library",
+                preferring: preference(fetches: true)
+            )
+            let count = 160 / PhotoIndexBuilder.fullScreenShare
+            let here = library.descriptors.filter { !library.away.contains($0.id.rawValue) }
+            let expected = Set(rule.choose(from: here, count: count, seed: 9).map(\.id.rawValue))
+            #expect(Set(manifest.subjects) == expected, "\(rule)")
+            #expect(manifest.entries.count == 160, "\(rule)")
+            let waiting = manifest.entries.filter { expected.contains($0.id) && !$0.canFillScreen }
+            #expect(!waiting.isEmpty, "\(rule): an optimised library has subjects too small here")
+            for entry in manifest.entries where expected.contains(entry.id) {
+                #expect(entry.canFillScreen == (library.localWidths[entry.id] == nil), "\(rule) \(entry.id)")
+            }
+        }
+    }
+
+    @Test("a subject waiting as a tile fills the screen once its close-up is in, and only it is read again")
+    func fetchedSubjectsArePromoted() throws {
+        let library = optimised(400)
+        let index = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: index) }
+        let store = PhotoIndexStore(directory: index)
+        let source = SubsetPhotoSource(library, rule: .uniformInTime, count: 160, seed: 9)
+        let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
+
+        let before = try builder().build(
+            from: source, into: store, root: "library", now: now, preferring: preference(fetches: true)
+        )
+        let subjects = Set(before.subjects)
+        let waiting = Set(before.entries.filter { subjects.contains($0.id) && !$0.canFillScreen }.map(\.id))
+        try #require(!waiting.isEmpty)
+
+        // Nothing fetched yet: nothing read again.
+        library.asked = []
+        let same = try builder().build(
+            from: source, into: store, root: "library", now: now.addingTimeInterval(60),
+            preferring: preference(fetches: true)
+        )
+        #expect(library.askedAt.isEmpty, "asked \(library.askedAt)")
+        #expect(Set(same.subjects) == subjects)
+
+        // Fetched, but one: what came in left this Mac a large derivative.
+        let fetched = Set(waiting.sorted().dropFirst())
+        for id in fetched { library.localWidths[id] = nil }
+        library.asked = []
+        let after = try builder().build(
+            from: source, into: store, root: "library", now: now.addingTimeInterval(120),
+            preferring: preference(stocked: fetched, fetches: true)
+        )
+        #expect(Set(after.subjects) == subjects)
+        #expect(Set(library.asked) == fetched, "asked \(Set(library.asked).subtracting(fetched))")
+        let full = Set(after.entries.filter(\.canFillScreen).map(\.id))
+        #expect(fetched.isSubset(of: full))
+        #expect(!full.contains(waiting.sorted()[0]))
+        #expect(Set(after.belowFullScreen).isDisjoint(with: fetched))
+        #expect(after.entries.count == 160)
     }
 
     /// Every photograph fills the screen; those in `sharp` have a close-up

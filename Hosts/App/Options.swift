@@ -235,17 +235,20 @@ struct Options {
         CloseUpShelf(directory: resolvedCloseUpDirectory, width: CloseUpOptions.standard.anchorWidth ?? 1920)
     }
 
-    /// With downloads off, what the index prefers among the subjects: those
-    /// whose close-up needs no fetch, and never one resting after too many
-    /// fetches given up on. With them on everything may be fetched, and
-    /// there is nothing to prefer.
+    /// Unless every download is allowed, what the index prefers among the
+    /// subjects: without fetches, those whose close-up needs none; with
+    /// close-ups fetched, any in the library, their close-ups fetched
+    /// (`fetches`). Never one resting after too many fetches given up on.
+    /// With every download allowed there is nothing to prefer.
     var closeUpPreference: PhotoIndexBuilder.CloseUpPreference? {
         guard photosLibrary, !allowsDownloads else { return nil }
         let shelf = closeUpShelf
         let resting = fetchesCloseUps
             ? DownloadLedger.load(from: SharedLocations.closeUpFetchLedger).resting(at: Date())
             : []
-        return PhotoIndexBuilder.CloseUpPreference(width: shelf.width, isStocked: { shelf.has($0) }, resting: resting)
+        return PhotoIndexBuilder.CloseUpPreference(
+            width: shelf.width, isStocked: { shelf.has($0) }, resting: resting, fetches: fetchesCloseUps
+        )
     }
 
     /// When close-ups may be fetched, where the subjects' close-ups this Mac

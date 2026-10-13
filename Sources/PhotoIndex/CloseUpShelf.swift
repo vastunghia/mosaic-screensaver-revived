@@ -198,7 +198,10 @@ public struct CloseUpShelf: Sendable {
         guard index.originals != nil else { throw CloseUpShelfError.noOriginals }
         guard width > index.manifest.thumbnailWidth else { throw CloseUpShelfError.notWiderThanThumbnails }
 
-        let entries = index.entries.filter(\.canFillScreen)
+        // The subjects too: with close-ups fetched, one this Mac has only as a
+        // tile is a subject waiting for its close-up (`PhotoIndexBuilder`).
+        let subjects = Set(index.manifest.subjects)
+        let entries = index.entries.filter { $0.canFillScreen || subjects.contains($0.id) }
         let missing = entries.filter { !has($0) }
         var report = StockReport(kept: entries.count - missing.count, total: entries.count)
         report.tilesOnly = index.entries.count - entries.count

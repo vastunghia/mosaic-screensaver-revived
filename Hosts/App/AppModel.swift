@@ -81,6 +81,9 @@ final class AppModel: ObservableObject {
     /// would start it while nothing arrives, the library unchanged.
     private var stallRetry: DispatchWorkItem?
     private var stalledThisRun = false
+    /// A subject fetched as a tile fills the screen only once the index reads
+    /// it again (`PhotoIndexBuilder.CloseUpPreference.fetches`).
+    private var fetchedThisRun = false
     static let stallRetryDelay: TimeInterval = 10 * 60
 
     /// Whether a window is, or has been, open: someone may be looking.
@@ -349,6 +352,7 @@ final class AppModel: ObservableObject {
     private func closeUpsStocked(_ report: CloseUpShelf.StockReport, metered: Bool) {
         closeUpsWaiting = preferences.downloads == .closeUps ? CloseUpsWaiting(report, metered: metered) : nil
         stalledThisRun = report.stalled
+        fetchedThisRun = report.fetched > 0
         closeUpsNotHere = report.unavailable
         UserDefaults.standard.set(report.unavailable, forKey: Self.closeUpsNotHereKey)
         refreshFetchedCount()
@@ -530,6 +534,7 @@ final class AppModel: ObservableObject {
         stallRetry?.cancel()
         stallRetry = nil
         stalledThisRun = false
+        fetchedThisRun = false
         if case .stalled? = closeUpsWaiting?.reason { closeUpsWaiting?.reason = .stalled(retry: nil) }
         // Spike 4: with nobody watching, the index waits its turn behind
         // whatever the user is doing — the screen saver included.
@@ -641,7 +646,7 @@ final class AppModel: ObservableObject {
             report(.preparing, "Preparing the photographs stopped: \(error.localizedDescription)")
         }
         refreshIndexedCount()
-        if restartWhenDone {
+        if restartWhenDone || fetchedThisRun && error == nil && !cancel.isSet {
             startIndexing()
         } else {
             if stalledThisRun, error == nil, !cancel.isSet { retryAfterStall() }
