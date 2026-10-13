@@ -79,7 +79,8 @@ public final class PhotoKitPhotoSource: PhotoSource, @unchecked Sendable {
                 PhotoDescriptor(
                     id: PhotoID(asset.localIdentifier),
                     versionToken: Self.versionToken(of: asset),
-                    creationDate: asset.creationDate
+                    creationDate: asset.creationDate,
+                    pixelWidth: asset.pixelWidth, pixelHeight: asset.pixelHeight
                 )
             }
             .sorted { $0.id.rawValue < $1.id.rawValue }

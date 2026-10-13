@@ -19,13 +19,16 @@ private final class PatchyLibrary: PhotoSource, @unchecked Sendable {
     private var _localWidths: [String: Int] = [:]
     private var _originalWidths: [String: Int] = [:]
 
-    init(count: Int, away: Set<String> = [], broken: Set<String> = []) {
+    /// `sizes` are the upright sizes the descriptors give, by index; the
+    /// others give none, as a folder's do.
+    init(count: Int, away: Set<String> = [], broken: Set<String> = [], sizes: [Int: (Int, Int)] = [:]) {
         synthetic = SyntheticPhotoSource(count: count)
         let start = Date(timeIntervalSinceReferenceDate: 600_000_000)
         descriptors = (0..<count).map {
             PhotoDescriptor(
                 id: SyntheticPhotoSource.id(for: $0), versionToken: "1",
-                creationDate: start.addingTimeInterval(Double($0) * 7 * 86_400)
+                creationDate: start.addingTimeInterval(Double($0) * 7 * 86_400),
+                pixelWidth: sizes[$0]?.0, pixelHeight: sizes[$0]?.1
             )
         }
         _away = away
@@ -475,6 +478,32 @@ struct FillTests {
                 #expect(entry.canFillScreen == (library.localWidths[entry.id] == nil), "\(rule) \(entry.id)")
             }
         }
+    }
+
+    @Test("with close-ups fetched, a photograph whose original is too narrow is never a subject")
+    func fetchedSubjectsAreWideEnough() throws {
+        // Every third a portrait 40 pixels wide, whose crop is 40 across:
+        // a download would bring nothing wider than the 64 of the screen.
+        let narrow = Set(stride(from: 0, to: 400, by: 3))
+        let library = PatchyLibrary(
+            count: 400, sizes: Dictionary(uniqueKeysWithValues: (0..<400).map { index in
+                (index, narrow.contains(index) ? (40, 60) : (400, 225))
+            })
+        )
+        let narrowIDs = Set(narrow.map { SyntheticPhotoSource.id(for: $0).rawValue })
+        library.originalWidths = Dictionary(uniqueKeysWithValues: narrowIDs.map { ($0, 40) })
+        library.localWidths = Dictionary(uniqueKeysWithValues: library.ids.filter { !narrowIDs.contains($0) }.map { ($0, 40) })
+        let index = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: index) }
+
+        let manifest = try builder().build(
+            from: SubsetPhotoSource(library, rule: .uniformInTime, count: 160, seed: 9),
+            into: PhotoIndexStore(directory: index), root: "library",
+            preferring: preference(fetches: true)
+        )
+        #expect(manifest.subjects.count == 160 / PhotoIndexBuilder.fullScreenShare)
+        #expect(narrowIDs.isDisjoint(with: manifest.subjects))
+        #expect(manifest.entries.count == 160)
     }
 
     @Test("a subject waiting as a tile fills the screen once its close-up is in, and only it is read again")

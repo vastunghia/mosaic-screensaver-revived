@@ -264,10 +264,16 @@ public struct PhotoIndexBuilder: Sendable {
         var screen: [String: IndexEntry] = [:]
         var first: [String: IndexEntry] = [:]
         var pending: [PhotoDescriptor]? = preferred.isEmpty ? nil : preferred
-        // Or, with close-ups fetched, the subjects whatever their size here.
+        // Or, with close-ups fetched, the subjects whatever their size here,
+        // but never one whose original is too narrow: no download makes it
+        // fill the screen.
+        let narrowOriginals = Set(library.compactMap { descriptor in
+            descriptor.cropWidth.map { $0 < thumbnailWidth - 1 } == true ? descriptor.id.rawValue : nil
+        })
         while fetches, !cancelled {
             let chosen = fillable.choose(
-                from: library, excluding: leftOut.skipped.union(leftOut.unavailable).union(resting),
+                from: library,
+                excluding: leftOut.skipped.union(leftOut.unavailable).union(resting).union(narrowOriginals),
                 count: fullScreenTarget
             )
             // A tile whose close-up came in is read again, to fill the screen.

@@ -14,10 +14,28 @@ public struct PhotoDescriptor: Equatable, Sendable {
     /// a subset reads it (SPEC § 5); nothing about a photograph's pixels does.
     public let creationDate: Date?
 
-    public init(id: PhotoID, versionToken: String, creationDate: Date? = nil) {
+    /// The photograph's size, upright, if the source knows it without reading
+    /// the pixels: a photograph too narrow to fill the screen is then never
+    /// chosen to, nor its close-up fetched (four of the first nineteen
+    /// fetched on 2026-10-13 were 512 pixels wide).
+    public let pixelWidth: Int?
+    public let pixelHeight: Int?
+
+    public init(
+        id: PhotoID, versionToken: String, creationDate: Date? = nil,
+        pixelWidth: Int? = nil, pixelHeight: Int? = nil
+    ) {
         self.id = id
         self.versionToken = versionToken
         self.creationDate = creationDate
+        self.pixelWidth = pixelWidth
+        self.pixelHeight = pixelHeight
+    }
+
+    /// The width of its canonical crop, if its size is known.
+    public var cropWidth: Int? {
+        guard let pixelWidth, let pixelHeight, pixelWidth > 0, pixelHeight > 0 else { return nil }
+        return Int(CanonicalCrop.rect(width: pixelWidth, height: pixelHeight).width)
     }
 }
 
