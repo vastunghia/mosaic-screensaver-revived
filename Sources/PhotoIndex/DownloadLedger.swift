@@ -3,9 +3,9 @@ import Foundation
 /// How many close-ups have been fetched from iCloud lately, so that the shelf
 /// never fetches more than a fixed number in a day or a week (SPEC § 5).
 ///
-/// A fetch costs space in the Photos library — about 2 MB each, measured on
-/// an optimised library on 2026-10-12 — that Photos frees only when it
-/// chooses. The caps hold whatever changes the subjects: a new seed, albums
+/// A fetch costs space in the Photos library — 0.85 MB each, 106 MB for 126,
+/// measured on an optimised library on 2026-10-13 — that Photos frees only
+/// when it chooses. The caps hold whatever changes the subjects: a new seed, albums
 /// chosen again, a bug. Every request is counted, whether it succeeds or not,
 /// since a failed one may have fetched something too.
 public struct DownloadLedger: Codable, Equatable, Sendable {

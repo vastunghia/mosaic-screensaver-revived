@@ -78,12 +78,18 @@ public enum PhotoSourceError: Error, CustomStringConvertible {
     /// once downloads are allowed, so an index must not remember it as broken.
     case unavailable(PhotoID)
 
+    /// Being fetched from iCloud, and given up on after the time allowed:
+    /// most fetches take seconds, a few minutes (2026-10-13). Not a failure
+    /// of the photograph either; like `unavailable`, worth asking again.
+    case timedOut(PhotoID)
+
     public var description: String {
         switch self {
         case .unknownPhoto(let id): return "no photograph called \(id.rawValue)"
         case .couldNotRender(let id): return "could not render \(id.rawValue)"
         case .couldNotReadFolder(let url): return "could not read the folder \(url.path)"
         case .unavailable(let id): return "\(id.rawValue) is not on this Mac"
+        case .timedOut(let id): return "\(id.rawValue) took too long to come from iCloud"
         }
     }
 }

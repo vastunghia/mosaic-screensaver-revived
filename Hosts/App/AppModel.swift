@@ -43,6 +43,10 @@ final class AppModel: ObservableObject {
     @Published private(set) var albums = AlbumTree(roots: [])
     @Published private(set) var isIndexing = false
     @Published private(set) var progress: IndexProgress?
+    /// While close-ups are fetched from iCloud after a build: how many have
+    /// been asked for, of how many. The index is whole by then, and its
+    /// progress says nothing of it.
+    @Published private(set) var fetchingCloseUps: (asked: Int, of: Int)?
     @Published private(set) var problem: Problem?
     @Published private(set) var loginItem = SMAppService.mainApp.status
     @Published private(set) var saver = SaverInstaller.State.unavailable
@@ -528,11 +532,17 @@ final class AppModel: ObservableObject {
         let stocked: @Sendable (CloseUpShelf.StockReport) -> Void = { [weak self] report in
             Task { @MainActor in self?.closeUpsStocked(report) }
         }
+        let fetching: @Sendable (CloseUpShelf.StockReport) -> Void = { [weak self] report in
+            guard report.toFetch > 0 else { return }
+            Task { @MainActor in self?.fetchingCloseUps = (report.asked, report.toFetch) }
+        }
         Self.indexQueue.async(qos: DispatchQoS(qosClass: qos, relativePriority: 0)) {
             let started = ProcessInfo.processInfo.systemUptime
             var failure: Error?
             do {
-                try Self.index(options: options, flag: flag, progress: progressed, stocked: stocked)
+                try Self.index(
+                    options: options, flag: flag, progress: progressed, fetching: fetching, stocked: stocked
+                )
             } catch {
                 failure = error
             }
@@ -544,6 +554,7 @@ final class AppModel: ObservableObject {
     /// saver runs without them meanwhile, on enlarged thumbnails.
     nonisolated private static func index(
         options: Options, flag: CancelFlag, progress: @escaping @Sendable (IndexProgress) -> Void,
+        fetching fetched: @escaping @Sendable (CloseUpShelf.StockReport) -> Void,
         stocked: @escaping @Sendable (CloseUpShelf.StockReport) -> Void
     ) throws {
         guard let indexable = try PhotoSourceFactory.indexable(options: options) else { return }
@@ -578,6 +589,7 @@ final class AppModel: ObservableObject {
         let report = try options.closeUpShelf.stock(
             from: IndexedPhotoSource(store: store, originals: indexable.source),
             fetching: fetching,
+            progress: fetched,
             isCancelled: { flag.isSet }
         )
         stocked(report)
@@ -585,7 +597,8 @@ final class AppModel: ObservableObject {
             close-ups: \(report.made, privacy: .public) made (\(report.fetched, privacy: .public) fetched), \
             \(report.kept, privacy: .public) kept, \(report.failed, privacy: .public) failed, \
             \(report.unavailable, privacy: .public) not on this Mac (\(report.deferred, privacy: .public) held \
-            back by the caps), \(report.removed, privacy: .public) removed, \(report.tilesOnly, privacy: .public) tiles only
+            back by the caps, \(report.timedOut, privacy: .public) given up as too slow), \
+            \(report.removed, privacy: .public) removed, \(report.tilesOnly, privacy: .public) tiles only
             """)
     }
 
@@ -601,6 +614,7 @@ final class AppModel: ObservableObject {
 
     private func finished(error: Error?, seconds: Double) {
         isIndexing = false
+        fetchingCloseUps = nil
         Self.log.notice("""
             indexing finished in \(seconds, format: .fixed(precision: 1), privacy: .public) s\
             \(error.map { ": \($0)" } ?? "", privacy: .public)

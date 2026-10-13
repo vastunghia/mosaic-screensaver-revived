@@ -46,9 +46,15 @@ public final class PhotoKitPhotoSource: PhotoSource, @unchecked Sendable {
     private let lock = NSLock()
     private var assets: [String: PHAsset] = [:]
 
-    public init(scope: Scope = .library, allowsNetworkAccess: Bool = false) {
+    /// With network access, how long a request may take before it is given
+    /// up on (`PhotoSourceError.timedOut`). None: as long as PhotoKit takes —
+    /// once six minutes for one photograph (2026-10-13).
+    public let fetchTimeout: TimeInterval?
+
+    public init(scope: Scope = .library, allowsNetworkAccess: Bool = false, fetchTimeout: TimeInterval? = nil) {
         self.scope = scope
         self.allowsNetworkAccess = allowsNetworkAccess
+        self.fetchTimeout = allowsNetworkAccess ? fetchTimeout : nil
     }
 
     /// Every image in scope, sorted by identifier.
@@ -107,6 +113,10 @@ public final class PhotoKitPhotoSource: PhotoSource, @unchecked Sendable {
         options.resizeMode = .fast
         options.isNetworkAccessAllowed = allowsNetworkAccess
         options.version = .current
+        // A synchronous request cannot be cancelled: with a deadline, it is
+        // asked asynchronously and waited for.
+        options.isSynchronous = fetchTimeout == nil
+        let deadline = fetchTimeout.map { DispatchTime.now() + $0 }
 
         var delivered: NSImage?
         var inCloud = false
@@ -121,11 +131,14 @@ public final class PhotoKitPhotoSource: PhotoSource, @unchecked Sendable {
         let started = Date()
         for cropWidth in [maxPixelWidth + (maxPixelWidth + 19) / 20, maxPixelWidth] {
             asked = Self.targetSize(pixelWidth: asset.pixelWidth, pixelHeight: asset.pixelHeight, cropWidth: cropWidth)
-            manager.requestImage(for: asset, targetSize: asked, contentMode: .aspectFill, options: options) { image, info in
-                delivered = image
-                inCloud = (info?[PHImageResultIsInCloudKey] as? Bool) == true
-                degraded = (info?[PHImageResultIsDegradedKey] as? Bool) == true
+            guard let result = request(asset, size: asked, options: options, until: deadline) else {
+                logIfUnusual(id, asset: asset, asked: asked, got: nil, short: false, inCloud: true, degraded: false,
+                             seconds: Date().timeIntervalSince(started), gaveUp: true)
+                throw PhotoSourceError.timedOut(id)
             }
+            delivered = result.image
+            inCloud = result.inCloud
+            degraded = result.degraded
             if delivered != nil { break }
         }
         let image = delivered?.cgImage(forProposedRect: nil, context: nil, hints: nil)
@@ -150,6 +163,61 @@ public final class PhotoKitPhotoSource: PhotoSource, @unchecked Sendable {
         guard !short else { throw PhotoSourceError.unavailable(id) }
         guard got > maxPixelWidth + 1 else { return image }
         return try Self.scaled(image, by: Double(maxPixelWidth + 1) / Double(got), id: id)
+    }
+
+    private struct Delivery {
+        var image: NSImage?
+        var inCloud = false
+        var degraded = false
+    }
+
+    /// What one request gave, or nil when `deadline` came first: the request
+    /// is then cancelled.
+    private func request(
+        _ asset: PHAsset, size: CGSize, options: PHImageRequestOptions, until deadline: DispatchTime?
+    ) -> Delivery? {
+        let box = DeliveryBox()
+        let request = manager.requestImage(
+            for: asset, targetSize: size, contentMode: .aspectFill, options: options
+        ) { image, info in
+            box.deliver(Delivery(
+                image: image,
+                inCloud: (info?[PHImageResultIsInCloudKey] as? Bool) == true,
+                degraded: (info?[PHImageResultIsDegradedKey] as? Bool) == true
+            ))
+        }
+        guard let deadline else { return box.delivery ?? Delivery() }
+        guard box.wait(until: deadline) else {
+            manager.cancelImageRequest(request)
+            return nil
+        }
+        return box.delivery
+    }
+
+    /// Where an asynchronous request's result lands, from whatever thread
+    /// PhotoKit calls back on, possibly after it was given up on.
+    private final class DeliveryBox: @unchecked Sendable {
+        private let lock = NSLock()
+        private let done = DispatchSemaphore(value: 0)
+        private var result: Delivery?
+
+        var delivery: Delivery? {
+            lock.lock()
+            defer { lock.unlock() }
+            return result
+        }
+
+        func deliver(_ delivery: Delivery) {
+            lock.lock()
+            let first = result == nil
+            if first { result = delivery }
+            lock.unlock()
+            if first { done.signal() }
+        }
+
+        func wait(until deadline: DispatchTime) -> Bool {
+            done.wait(timeout: deadline) == .success
+        }
     }
 
     /// The narrowest crop that is the photograph's own and not a smaller
@@ -186,10 +254,10 @@ public final class PhotoKitPhotoSource: PhotoSource, @unchecked Sendable {
     /// derivative still makes a mosaic, only a softer one.
     private func logIfUnusual(
         _ id: PhotoID, asset: PHAsset, asked: CGSize, got: CGImage?, short: Bool, inCloud: Bool, degraded: Bool,
-        seconds: Double
+        seconds: Double, gaveUp: Bool = false
     ) {
         guard got == nil || short || inCloud || degraded || seconds > 1 else { return }
-        let delivered = got.map { "\($0.width)x\($0.height)" } ?? "nothing"
+        let delivered = gaveUp ? "nothing, given up" : got.map { "\($0.width)x\($0.height)" } ?? "nothing"
         Self.log.notice("""
             request \(id.rawValue, privacy: .public): original \(asset.pixelWidth, privacy: .public)x\(asset.pixelHeight, privacy: .public), \
             asked \(Int(asked.width), privacy: .public)x\(Int(asked.height), privacy: .public), \

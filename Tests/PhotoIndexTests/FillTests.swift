@@ -521,4 +521,29 @@ struct FillTests {
         #expect(!library.askedAt.contains { $0.hasSuffix("@128") && subjects.contains(String($0.dropLast(4))) })
         #expect(subjects.isSubset(of: Set(after.entries.filter(\.canFillScreen).map(\.id))))
     }
+
+    @Test("close-ups fetched within the day keep their subjects: none was fetched for nothing")
+    func fetchedSubjectsStay() throws {
+        for rule in SubsetRule.allCases {
+            let library = sharpOnly(400, sharp: [])
+            let index = temporaryDirectory()
+            defer { try? FileManager.default.removeItem(at: index) }
+            let store = PhotoIndexStore(directory: index)
+            let source = SubsetPhotoSource(library, rule: rule, count: 160, seed: 9)
+            let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
+
+            let before = try builder().build(from: source, into: store, root: "library", now: now, preferring: preference())
+            let subjects = Set(before.entries.filter(\.canFillScreen).map(\.id))
+            // The shelf fetched them all; the library changed, and the build
+            // runs again an hour later.
+            library.asked = []
+            let after = try builder().build(
+                from: source, into: store, root: "library", now: now.addingTimeInterval(3600),
+                preferring: preference(stocked: subjects)
+            )
+            let kept = Set(after.entries.filter(\.canFillScreen).map(\.id))
+            #expect(subjects.isSubset(of: kept), "\(rule): \(subjects.subtracting(kept).count) lost")
+            #expect(library.asked.isEmpty, "\(rule): \(library.asked.count) asked again")
+        }
+    }
 }

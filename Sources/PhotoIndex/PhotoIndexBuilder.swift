@@ -344,6 +344,21 @@ public struct PhotoIndexBuilder: Sendable {
         count: Int, closeUps: CloseUpPreference, fillable: any FillablePhotoSource, library: [PhotoDescriptor],
         from source: some PhotoSource, known: [String: IndexEntry], leftOut: inout LeftOut, budget: Int
     ) -> [PhotoDescriptor] {
+        func isStocked(_ descriptor: PhotoDescriptor) -> Bool {
+            guard let entry = known[descriptor.id.rawValue] else { return false }
+            return entry.versionToken == descriptor.versionToken && entry.canFillScreen && closeUps.isStocked(entry)
+        }
+        // A close-up found missing and fetched since is here now, though the
+        // day's list still says otherwise.
+        let stocked = library.filter(isStocked)
+        leftOut.belowCloseUp.subtract(stocked.map(\.id.rawValue))
+        // Enough of them, the subjects are the rule's choice among those
+        // alone: a build after the shelf fetched (the library changes with
+        // every fetch) keeps what it fetched for, and asks for nothing.
+        let excluded = leftOut.skipped.union(leftOut.unavailable).union(leftOut.belowFullScreen)
+        let ready = fillable.choose(from: stocked, excluding: excluded, count: count)
+        if ready.count == count { return ready }
+
         var found: [PhotoDescriptor] = []
         while true {
             let chosen = fillable.choose(
@@ -355,9 +370,8 @@ public struct PhotoIndexBuilder: Sendable {
             var here: Set<String> = []
             var unknown: [PhotoDescriptor] = []
             for descriptor in chosen {
-                if let entry = known[descriptor.id.rawValue], entry.versionToken == descriptor.versionToken,
-                   entry.canFillScreen, closeUps.isStocked(entry) {
-                    here.insert(entry.id)
+                if isStocked(descriptor) {
+                    here.insert(descriptor.id.rawValue)
                 } else {
                     unknown.append(descriptor)
                 }

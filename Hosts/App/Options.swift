@@ -250,7 +250,9 @@ struct Options {
     func closeUpFetching(store: PhotoIndexStore) throws -> CloseUpShelf.Fetching? {
         guard photosLibrary, fetchesCloseUps, !allowsDownloads else { return nil }
         return CloseUpShelf.Fetching(
-            index: try IndexedPhotoSource(store: store, originals: PhotoKitPhotoSource(allowsNetworkAccess: true)),
+            index: try IndexedPhotoSource(store: store, originals: PhotoKitPhotoSource(
+                allowsNetworkAccess: true, fetchTimeout: CloseUpShelf.Fetching.standardTimeout
+            )),
             ledger: SharedLocations.closeUpFetchLedger
         )
     }

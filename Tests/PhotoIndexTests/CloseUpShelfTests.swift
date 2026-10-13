@@ -25,6 +25,31 @@ private final class AwaySource: PhotoSource, @unchecked Sendable {
     }
 }
 
+/// iCloud, as the shelf sees it: some photographs too slow to wait for, and
+/// a count of how many requests are out at once.
+private final class CloudSource: PhotoSource, @unchecked Sendable {
+    let base: SyntheticPhotoSource
+    let slow: Set<String>
+    private let lock = NSLock()
+    private var running = 0
+    private(set) var mostAtOnce = 0
+
+    init(_ base: SyntheticPhotoSource, slow: Set<String>) {
+        self.base = base
+        self.slow = slow
+    }
+
+    func photos() throws -> [PhotoDescriptor] { try base.photos() }
+
+    func canonicalImage(for id: PhotoID, maxPixelWidth: Int) throws -> CGImage {
+        lock.lock(); running += 1; mostAtOnce = max(mostAtOnce, running); lock.unlock()
+        defer { lock.lock(); running -= 1; lock.unlock() }
+        Thread.sleep(forTimeInterval: 0.05)
+        if slow.contains(id.rawValue) { throw PhotoSourceError.timedOut(id) }
+        return try base.canonicalImage(for: id, maxPixelWidth: maxPixelWidth)
+    }
+}
+
 @Suite("Close-up shelf")
 struct CloseUpShelfTests {
     private let thumbnailWidth = 32
@@ -146,5 +171,45 @@ struct CloseUpShelfTests {
         // Nothing is fetched without being asked to.
         let plain = try shelf.stock(from: local)
         #expect(plain.fetched == 0 && plain.unavailable == 1)
+    }
+
+    @Test("close-ups are fetched a few at a time, and one too slow is given up on and counted")
+    func fetchingInParallel() throws {
+        let (index, shelf) = try fixture(count: 10)
+        let synthetic = SyntheticPhotoSource(count: 10)
+        let away = Set(index.entries.map(\.id))
+        let local = IndexedPhotoSource(
+            store: index.store, manifest: index.manifest, originals: AwaySource(synthetic, away: away)
+        )
+        let sorted = index.entries.map(\.id).sorted()
+        let cloud = CloudSource(synthetic, slow: [sorted[1], sorted[6]])
+        let fetching = CloseUpShelf.Fetching(
+            index: IndexedPhotoSource(store: index.store, manifest: index.manifest, originals: cloud),
+            ledger: temporaryDirectory().appendingPathComponent("ledger.json"),
+            dailyLimit: 9, weeklyLimit: 20, concurrency: 3
+        )
+        let progress = ProgressLog()
+        let report = try shelf.stock(from: local, fetching: fetching, progress: { progress.append($0) })
+
+        #expect(cloud.mostAtOnce == 3)
+        #expect(report.toFetch == 9 && report.asked == 9)
+        #expect(report.fetched == 7 && report.timedOut == 2)
+        #expect(report.unavailable == 3 && report.deferred == 1, "two too slow, one over the cap")
+        #expect(progress.asked == [0, 3, 6, 9])
+    }
+}
+
+private final class ProgressLog: @unchecked Sendable {
+    private let lock = NSLock()
+    private var reports: [CloseUpShelf.StockReport] = []
+
+    func append(_ report: CloseUpShelf.StockReport) {
+        lock.lock(); reports.append(report); lock.unlock()
+    }
+
+    /// While fetching: how many had been asked for at each report.
+    var asked: [Int] {
+        lock.lock(); defer { lock.unlock() }
+        return reports.filter { $0.toFetch > 0 }.map(\.asked)
     }
 }

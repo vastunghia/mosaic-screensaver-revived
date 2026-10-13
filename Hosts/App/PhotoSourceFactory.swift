@@ -227,7 +227,7 @@ extension PhotoSourceFactory {
             report.kept, report.failed, report.unavailable, report.removed, report.tilesOnly
         ))
         if fetching != nil {
-            print("  of those made, \(report.fetched) fetched from iCloud; \(report.deferred) held back by the caps")
+            print("  of those made, \(report.fetched) fetched from iCloud; \(report.deferred) held back by the caps, \(report.timedOut) given up as too slow")
         }
         print("  at \(shelf.directory.path)")
         return report

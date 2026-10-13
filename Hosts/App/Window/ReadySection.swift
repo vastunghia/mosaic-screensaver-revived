@@ -11,7 +11,10 @@ struct ReadySection: View {
     var body: some View {
         Section {
             LabeledContent("Photographs") {
-                if let progress = model.progress, model.isIndexing {
+                if let fetching = model.fetchingCloseUps, model.isIndexing {
+                    Text("Downloading sharp close-ups · \(fetching.asked) of \(fetching.of)")
+                        .monospacedDigit()
+                } else if let progress = model.progress, model.isIndexing {
                     Text("Updating · \(progress.summary)")
                         .monospacedDigit()
                 } else {

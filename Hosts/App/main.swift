@@ -25,17 +25,27 @@ do {
         guard let indexable = try PhotoSourceFactory.indexable(options: options) else {
             throw HarnessError.indexingWithoutAFolder
         }
-        print("mosaic: indexing \(indexable.root)")
-        let store = PhotoIndexStore(directory: options.resolvedIndexDirectory)
-        try PhotoSourceFactory.buildIndex(
-            source: indexable.source, store: store, root: indexable.root, options: options
-        )
-        // What the app does after every build: the .saver's close-ups.
-        try PhotoSourceFactory.stockCloseUps(
-            source: indexable.source, store: store, shelf: options.closeUpShelf,
-            fetching: try options.closeUpFetching(store: store)
-        )
-        exit(0)
+        // Off the main thread, as in the app: a fetch with a deadline is an
+        // asynchronous request, and PhotoKit may answer it on the main queue.
+        DispatchQueue.global(qos: .userInitiated).async {
+            do {
+                print("mosaic: indexing \(indexable.root)")
+                let store = PhotoIndexStore(directory: options.resolvedIndexDirectory)
+                try PhotoSourceFactory.buildIndex(
+                    source: indexable.source, store: store, root: indexable.root, options: options
+                )
+                // What the app does after every build: the .saver's close-ups.
+                try PhotoSourceFactory.stockCloseUps(
+                    source: indexable.source, store: store, shelf: options.closeUpShelf,
+                    fetching: try options.closeUpFetching(store: store)
+                )
+                exit(0)
+            } catch {
+                FileHandle.standardError.write(Data("\(error)\n".utf8))
+                exit(1)
+            }
+        }
+        dispatchMain()
     }
 
     if let file = options.listPhotos {

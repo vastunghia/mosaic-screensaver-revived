@@ -9,7 +9,17 @@ struct PreparationStep: View {
 
     var body: some View {
         Section {
-            if let progress = model.progress, model.isIndexing {
+            if let fetching = model.fetchingCloseUps, model.isIndexing {
+                ProgressView(value: Double(fetching.asked), total: Double(max(fetching.of, 1)))
+                HStack {
+                    Text("Downloading sharp close-ups from iCloud: \(fetching.asked) of \(fetching.of)")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                    Spacer()
+                    Button("Stop", action: model.cancelIndexing)
+                }
+            } else if let progress = model.progress, model.isIndexing {
                 ProgressView(value: Double(progress.completed), total: Double(max(progress.total, 1)))
                 HStack {
                     Text(progress.summary)

@@ -118,27 +118,44 @@ public struct CloseUpShelf: Sendable {
         public var fetched = 0
         /// Of `unavailable`, not fetched because the ledger's caps were reached.
         public var deferred = 0
+        /// How many this run will ask iCloud for, once known, and how many it
+        /// has asked for so far: the window's progress while it fetches.
+        public var toFetch = 0
+        public var asked = 0
+        /// Of `unavailable`, asked for and given up on as too slow.
+        public var timedOut = 0
     }
 
     /// Where the close-ups this Mac does not have may come from: the index
-    /// with originals that may be fetched from iCloud, one at a time, as many
-    /// as `ledger` allows (SPEC § 5). Only for the photographs that fill the
-    /// screen, and only at the shelf's width: never an original.
+    /// with originals that may be fetched from iCloud, `concurrency` at a
+    /// time, as many as `ledger` allows (SPEC § 5). Only for the photographs
+    /// that fill the screen, and only at the shelf's width: never an original.
     public struct Fetching: Sendable {
+        /// One at a time took 33 minutes for 128, most of it waiting
+        /// (2026-10-13): a fetch is iCloud's time, not this Mac's.
+        public static let standardConcurrency = 4
+        /// Seconds a fetch may take before it is given up on, for the source
+        /// behind `index` to apply: 90 % of 128 took under 12 s, three took
+        /// 69 s, 3 and 6 minutes (2026-10-13).
+        public static let standardTimeout: TimeInterval = 15
+
         public var index: IndexedPhotoSource
         public var ledger: URL
         public var dailyLimit: Int
         public var weeklyLimit: Int
+        public var concurrency: Int
         public var now: @Sendable () -> Date
 
         public init(
             index: IndexedPhotoSource, ledger: URL, dailyLimit: Int = DownloadLedger.standardDailyLimit,
-            weeklyLimit: Int = DownloadLedger.standardWeeklyLimit, now: @escaping @Sendable () -> Date = Date.init
+            weeklyLimit: Int = DownloadLedger.standardWeeklyLimit, concurrency: Int = Self.standardConcurrency,
+            now: @escaping @Sendable () -> Date = Date.init
         ) {
             self.index = index
             self.ledger = ledger
             self.dailyLimit = dailyLimit
             self.weeklyLimit = weeklyLimit
+            self.concurrency = max(1, concurrency)
             self.now = now
         }
     }
@@ -208,42 +225,75 @@ public struct CloseUpShelf: Sendable {
         return report
     }
 
-    /// One at a time, in the index's order, each counted in the ledger
-    /// before it is asked for. Returns whether it was stopped.
+    /// `concurrency` at a time, in the index's order, each counted in the
+    /// ledger before it is asked for. Returns whether it was stopped.
     private func fetch(
         _ entries: [IndexEntry], with fetching: Fetching, into report: inout StockReport,
         progress: (@Sendable (StockReport) -> Void)?, isCancelled: (@Sendable () -> Bool)?
     ) -> Bool {
         var ledger = DownloadLedger.load(from: fetching.ledger)
-        for (offset, entry) in entries.sorted(by: { $0.id < $1.id }).enumerated() {
+        let sorted = entries.sorted(by: { $0.id < $1.id })
+        report.toFetch = min(
+            sorted.count, ledger.remaining(at: fetching.now(), daily: fetching.dailyLimit, weekly: fetching.weeklyLimit)
+        )
+        progress?(report)
+        var offset = 0
+        while offset < sorted.count {
             if isCancelled?() == true { return true }
             let now = fetching.now()
-            guard ledger.remaining(at: now, daily: fetching.dailyLimit, weekly: fetching.weeklyLimit) > 0 else {
-                report.deferred = entries.count - offset
-                break
-            }
-            ledger.record(at: now)
+            let allowed = ledger.remaining(at: now, daily: fetching.dailyLimit, weekly: fetching.weeklyLimit)
+            guard allowed > 0 else { break }
+            let batch = Array(sorted[offset..<min(offset + min(fetching.concurrency, allowed), sorted.count)])
+            for _ in batch { ledger.record(at: now) }
             // Not written down, not asked: a ledger that cannot be kept
             // cannot keep the caps either.
-            guard (try? ledger.save(to: fetching.ledger)) != nil else {
-                report.deferred = entries.count - offset
-                break
+            guard (try? ledger.save(to: fetching.ledger)) != nil else { break }
+            offset += batch.count
+
+            let tally = Tally()
+            Self.onThreads(batch.count) { index in
+                let entry = batch[index]
+                do {
+                    let image = try fetching.index.canonicalImage(for: entry.photoID, maxPixelWidth: width)
+                    try write(image, for: entry)
+                    tally.add(\.made)
+                } catch PhotoSourceError.unavailable {
+                    // Still elsewhere: counted as it was.
+                } catch PhotoSourceError.timedOut {
+                    tally.add(\.unavailable)
+                } catch {
+                    tally.add(\.failed)
+                }
             }
-            do {
-                let image = try fetching.index.canonicalImage(for: entry.photoID, maxPixelWidth: width)
-                try write(image, for: entry)
-                report.made += 1
-                report.fetched += 1
-                report.unavailable -= 1
-            } catch PhotoSourceError.unavailable {
-                // Still elsewhere: counted as it was.
-            } catch {
-                report.failed += 1
-                report.unavailable -= 1
-            }
+            let counts = tally.counts
+            report.asked += batch.count
+            report.made += counts.made
+            report.fetched += counts.made
+            report.timedOut += counts.unavailable
+            report.failed += counts.failed
+            report.unavailable -= counts.made + counts.failed
             progress?(report)
         }
+        report.deferred = sorted.count - offset
         return false
+    }
+
+    /// `work` for `count` indices, each on a thread of its own, and back when
+    /// all are done. Not `concurrentPerform`: that runs them one after the
+    /// other when the cores are busy (measured in the tests), and a fetch
+    /// waits on iCloud, not on a core.
+    private static func onThreads(_ count: Int, _ work: @escaping @Sendable (Int) -> Void) {
+        let group = DispatchGroup()
+        for index in 0..<count {
+            group.enter()
+            let thread = Thread {
+                work(index)
+                group.leave()
+            }
+            thread.qualityOfService = Thread.current.qualityOfService
+            thread.start()
+        }
+        group.wait()
     }
 
     /// Deletes every file that is not the rendition of one of `wanted`, half
