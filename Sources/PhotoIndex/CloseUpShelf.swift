@@ -131,6 +131,8 @@ public struct CloseUpShelf: Sendable {
         /// Whether the run stopped because iCloud stopped answering
         /// (`Fetching.standardStallLimit`).
         public var stalled = false
+        /// Of `unavailable`, not asked for because the run stopped on a stall.
+        public var leftForLater = 0
     }
 
     /// Where the close-ups this Mac does not have may come from: the index
@@ -255,7 +257,11 @@ public struct CloseUpShelf: Sendable {
     ) -> Bool {
         var ledger = DownloadLedger.load(from: fetching.ledger)
         let resting = ledger.resting(at: fetching.now())
-        let sorted = entries.filter { !resting.contains($0.id) }.sorted(by: { $0.id < $1.id })
+        // In the index's order, except that those given up on before come
+        // last: a run that stalled on them would stop on them again.
+        let byID = Dictionary(uniqueKeysWithValues: entries.map { ($0.id, $0) })
+        let sorted = ledger.ordered(entries.map(\.id).filter { !resting.contains($0) }.sorted())
+            .compactMap { byID[$0] }
         report.resting = entries.count - sorted.count
         var queue = sorted
         var slow: [IndexEntry] = []
@@ -265,8 +271,9 @@ public struct CloseUpShelf: Sendable {
         var givenUp: Set<String> = []
         // Given up on at their first request since the last that came in.
         var streak: [String] = []
+        var stalled: [String] = []
         defer {
-            ledger.gaveUp(on: givenUp, at: fetching.now())
+            ledger.gaveUp(on: givenUp, stalled: stalled, at: fetching.now())
             try? ledger.save(to: fetching.ledger)
         }
         func remaining() -> Int {
@@ -343,10 +350,11 @@ public struct CloseUpShelf: Sendable {
                 // Stalled: nothing more this run, and no rest for those it
                 // cost. The next run asks them again.
                 givenUp.subtract(streak)
+                stalled = streak
                 report.stalled = true
                 report.toFetch = report.asked
                 progress?(report)
-                report.deferred = sorted.count - min(offset, sorted.count)
+                report.leftForLater = sorted.count - min(offset, sorted.count)
                 return false
             }
             progress?(report)

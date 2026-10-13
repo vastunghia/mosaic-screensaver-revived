@@ -36,6 +36,8 @@ private final class CloudSource: PhotoSource, @unchecked Sendable {
     private var running = 0
     private var asked: Set<String> = []
     private(set) var mostAtOnce = 0
+    /// Every request, in the order made.
+    private(set) var order: [String] = []
 
     init(_ base: SyntheticPhotoSource, slow: Set<String>, slowOnce: Set<String> = []) {
         self.base = base
@@ -50,6 +52,7 @@ private final class CloudSource: PhotoSource, @unchecked Sendable {
         running += 1
         mostAtOnce = max(mostAtOnce, running)
         let first = asked.insert(id.rawValue).inserted
+        order.append(id.rawValue)
         lock.unlock()
         defer { lock.lock(); running -= 1; lock.unlock() }
         Thread.sleep(forTimeInterval: 0.05)
@@ -253,10 +256,17 @@ struct CloseUpShelfTests {
         let report = try shelf.stock(from: local, fetching: fetching)
         #expect(report.stalled)
         #expect(report.asked == 6 && report.fetched == 2 && report.timedOut == 4)
-        #expect(report.deferred == 2 && report.toFetch == 6)
+        #expect(report.deferred == 0 && report.leftForLater == 2 && report.toFetch == 6)
         let ledger = DownloadLedger.load(from: fetching.ledger)
-        #expect(Set(ledger.slow.keys) == [sorted[1]], "only the one slow on its own counts")
+        #expect(ledger.slow.filter { $0.value.runs > 0 }.map(\.key) == [sorted[1]],
+                "only the one slow on its own counts")
         #expect(ledger.requests.count == 2 && ledger.abandoned.count == 4)
+
+        // Next time those it stalled on come last: the two never asked come
+        // in before the run stops again.
+        let again = try shelf.stock(from: local, fetching: fetching)
+        #expect(cloud.order.suffix(again.asked).prefix(2) == sorted[6...].prefix(2))
+        #expect(again.stalled && again.fetched == 0)
     }
 
     @Test("one never fetched in time rests after three runs, and is not asked for while it does")

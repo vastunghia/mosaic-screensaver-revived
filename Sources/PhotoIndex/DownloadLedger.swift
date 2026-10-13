@@ -37,14 +37,17 @@ public struct DownloadLedger: Codable, Equatable, Sendable {
     private static let week: TimeInterval = 7 * day
 
     /// A photograph given up on: in how many runs since it last came in or
-    /// last rested, and until when it rests.
+    /// last rested, until when it rests, and when it was last given up on,
+    /// in a stall too: those are asked for last.
     public struct SlowPhoto: Codable, Equatable, Sendable {
         public var runs: Int
         public var restingUntil: Date?
+        public var lastGivenUp: Date?
 
-        public init(runs: Int = 0, restingUntil: Date? = nil) {
+        public init(runs: Int = 0, restingUntil: Date? = nil, lastGivenUp: Date? = nil) {
             self.runs = runs
             self.restingUntil = restingUntil
+            self.lastGivenUp = lastGivenUp
         }
     }
 
@@ -99,19 +102,41 @@ public struct DownloadLedger: Codable, Equatable, Sendable {
 
     /// A run ended with `ids` given up on and still not here: each counts one
     /// more run, and rests from `now` once it reaches `runsBeforeRest`.
+    ///
+    /// `stalled` were given up on while iCloud did not answer at all: they
+    /// count no run, but are asked for last next time, so that a run does
+    /// not stop on the same ones again.
     public mutating func gaveUp(
-        on ids: some Sequence<String>, at now: Date, runsBeforeRest: Int = Self.standardRunsBeforeRest,
-        rest: TimeInterval = Self.standardRest
+        on ids: some Sequence<String>, stalled: some Sequence<String> = [String](), at now: Date,
+        runsBeforeRest: Int = Self.standardRunsBeforeRest, rest: TimeInterval = Self.standardRest
     ) {
-        slow = slow.filter { _, photo in photo.runs > 0 || photo.restingUntil.map { $0 > now } == true }
+        slow = slow.filter { _, photo in
+            photo.runs > 0 || photo.restingUntil.map { $0 > now } == true
+                || photo.lastGivenUp.map { now.timeIntervalSince($0) < Self.week } == true
+        }
         for id in ids {
             var photo = slow[id] ?? SlowPhoto()
             photo.runs += 1
+            photo.lastGivenUp = now
             if photo.runs >= runsBeforeRest {
-                photo = SlowPhoto(runs: 0, restingUntil: now.addingTimeInterval(rest))
+                photo = SlowPhoto(runs: 0, restingUntil: now.addingTimeInterval(rest), lastGivenUp: now)
             }
             slow[id] = photo
         }
+        for id in stalled {
+            slow[id, default: SlowPhoto()].lastGivenUp = now
+        }
+    }
+
+    /// `ids` in the order to ask for them: those never given up on first, in
+    /// their order, then the others from the longest ago given up on.
+    public func ordered(_ ids: [String]) -> [String] {
+        let fresh = ids.filter { slow[$0]?.lastGivenUp == nil }
+        let given = ids.compactMap { id in slow[id]?.lastGivenUp.map { (id, $0) } }
+            .enumerated()
+            .sorted { $0.element.1 != $1.element.1 ? $0.element.1 < $1.element.1 : $0.offset < $1.offset }
+            .map(\.element.0)
+        return fresh + given
     }
 
     /// `id` came in: whatever it cost before is forgotten.

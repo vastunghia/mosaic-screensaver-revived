@@ -599,7 +599,7 @@ final class AppModel: ObservableObject {
             \(report.unavailable, privacy: .public) not on this Mac (\(report.deferred, privacy: .public) held \
             back by the caps, \(report.timedOut, privacy: .public) given up as too slow, \
             \(report.resting, privacy: .public) resting after too many\
-            \(report.stalled ? ", stopped as iCloud stalled" : "", privacy: .public)), \
+            \(report.stalled ? ", \(report.leftForLater) left for later as iCloud stalled" : "", privacy: .public)), \
             \(report.removed, privacy: .public) removed, \(report.tilesOnly, privacy: .public) tiles only
             """)
     }

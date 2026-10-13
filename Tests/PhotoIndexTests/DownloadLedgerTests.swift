@@ -68,7 +68,17 @@ struct DownloadLedgerTests {
         ledger.gaveUp(on: [], at: free)
         #expect(ledger.slow.isEmpty)
         ledger.gaveUp(on: ["a"], at: free)
-        #expect(ledger.slow["a"] == DownloadLedger.SlowPhoto(runs: 1))
+        #expect(ledger.slow["a"] == DownloadLedger.SlowPhoto(runs: 1, lastGivenUp: free))
+    }
+
+    @Test("those given up on, in a stall too, are asked for last, the longest ago first")
+    func order() {
+        var ledger = DownloadLedger()
+        ledger.gaveUp(on: ["c"], at: now)
+        ledger.gaveUp(on: [], stalled: ["a", "e"], at: now.addingTimeInterval(hour))
+        #expect(ledger.slow["a"]?.runs == 0, "a stall counts no run")
+        #expect(ledger.ordered(["a", "b", "c", "d", "e"]) == ["b", "d", "c", "a", "e"])
+        #expect(ledger.resting(at: now.addingTimeInterval(2 * hour)).isEmpty)
     }
 
     @Test("saved and loaded whole; a missing or broken file is an empty ledger")
