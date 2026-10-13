@@ -235,6 +235,30 @@ struct CloseUpShelfTests {
         #expect(ledger.slow.isEmpty, "come in at the end: nothing to remember")
     }
 
+    @Test("three given up on in a row stop the run, and do not count towards a rest")
+    func stall() throws {
+        let (index, shelf) = try fixture(count: 8)
+        let synthetic = SyntheticPhotoSource(count: 8)
+        let local = IndexedPhotoSource(
+            store: index.store, manifest: index.manifest,
+            originals: AwaySource(synthetic, away: Set(index.entries.map(\.id)))
+        )
+        let sorted = index.entries.map(\.id).sorted()
+        // One slow on its own, then iCloud stops answering from the fourth.
+        let cloud = CloudSource(synthetic, slow: Set([sorted[1]] + sorted[3...]))
+        let fetching = CloseUpShelf.Fetching(
+            index: IndexedPhotoSource(store: index.store, manifest: index.manifest, originals: cloud),
+            ledger: temporaryDirectory().appendingPathComponent("ledger.json")
+        )
+        let report = try shelf.stock(from: local, fetching: fetching)
+        #expect(report.stalled)
+        #expect(report.asked == 6 && report.fetched == 2 && report.timedOut == 4)
+        #expect(report.deferred == 2 && report.toFetch == 6)
+        let ledger = DownloadLedger.load(from: fetching.ledger)
+        #expect(Set(ledger.slow.keys) == [sorted[1]], "only the one slow on its own counts")
+        #expect(ledger.requests.count == 2 && ledger.abandoned.count == 4)
+    }
+
     @Test("one never fetched in time rests after three runs, and is not asked for while it does")
     func alwaysSlow() throws {
         let (index, shelf) = try fixture(count: 4)

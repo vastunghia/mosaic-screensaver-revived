@@ -128,6 +128,9 @@ public struct CloseUpShelf: Sendable {
         /// resting (`DownloadLedger`). Only until the next build, which picks
         /// other subjects.
         public var resting = 0
+        /// Whether the run stopped because iCloud stopped answering
+        /// (`Fetching.standardStallLimit`).
+        public var stalled = false
     }
 
     /// Where the close-ups this Mac does not have may come from: the index
@@ -145,24 +148,32 @@ public struct CloseUpShelf: Sendable {
         /// up to 6 minutes: 15 s gives up on those 10 and takes 12 minutes
         /// instead of 33.
         public static let standardTimeout: TimeInterval = 15
+        /// Given up on in a row, at their first request, before the run stops:
+        /// iCloud is not answering. On 2026-10-13 it stopped for six minutes
+        /// halfway through a run, 17 were given up on one after the other,
+        /// and the same came in within seconds afterwards. Those given up on
+        /// in a stall do not count towards a rest (`DownloadLedger`).
+        public static let standardStallLimit = 3
 
         public var index: IndexedPhotoSource
         public var ledger: URL
         public var dailyLimit: Int
         public var weeklyLimit: Int
         public var concurrency: Int
+        public var stallLimit: Int
         public var now: @Sendable () -> Date
 
         public init(
             index: IndexedPhotoSource, ledger: URL, dailyLimit: Int = DownloadLedger.standardDailyLimit,
             weeklyLimit: Int = DownloadLedger.standardWeeklyLimit, concurrency: Int = Self.standardConcurrency,
-            now: @escaping @Sendable () -> Date = Date.init
+            stallLimit: Int = Self.standardStallLimit, now: @escaping @Sendable () -> Date = Date.init
         ) {
             self.index = index
             self.ledger = ledger
             self.dailyLimit = dailyLimit
             self.weeklyLimit = weeklyLimit
             self.concurrency = max(1, concurrency)
+            self.stallLimit = max(1, stallLimit)
             self.now = now
         }
     }
@@ -252,6 +263,8 @@ public struct CloseUpShelf: Sendable {
         // Given up on in this run and not come in since: a run more for each,
         // however the run ends.
         var givenUp: Set<String> = []
+        // Given up on at their first request since the last that came in.
+        var streak: [String] = []
         defer {
             ledger.gaveUp(on: givenUp, at: fetching.now())
             try? ledger.save(to: fetching.ledger)
@@ -297,7 +310,11 @@ public struct CloseUpShelf: Sendable {
                 }
             }
             let counts = tally.counts
-            givenUp.formUnion(tally.elsewhereEntries.map(\.id))
+            let timedOut = tally.elsewhereEntries.map(\.id)
+            givenUp.formUnion(timedOut)
+            if !retried {
+                streak = tally.arrivedIDs.isEmpty ? streak + timedOut : []
+            }
             for id in tally.arrivedIDs {
                 givenUp.remove(id)
                 ledger.arrived(id)
@@ -322,6 +339,16 @@ public struct CloseUpShelf: Sendable {
             // One given up on gives its place back, and will be asked again.
             let left = queue.count - offset + (retried ? 0 : slow.count)
             report.toFetch = report.asked + min(left, remaining())
+            if streak.count >= fetching.stallLimit {
+                // Stalled: nothing more this run, and no rest for those it
+                // cost. The next run asks them again.
+                givenUp.subtract(streak)
+                report.stalled = true
+                report.toFetch = report.asked
+                progress?(report)
+                report.deferred = sorted.count - min(offset, sorted.count)
+                return false
+            }
             progress?(report)
         }
         report.deferred = sorted.count - min(offset, sorted.count)
