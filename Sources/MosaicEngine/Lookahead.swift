@@ -152,7 +152,7 @@ final class Lookahead: @unchecked Sendable {
 
     private func build(cycle: Int, rows: Int) -> Built {
         let subject = planner.subject(ofCycle: cycle)
-        let previous = cycle > 0 ? planner.subject(ofCycle: cycle - 1) : nil
+        let previous = cycle > 0 ? planner.subject(ofCycle: cycle - 1) : planner.openingSubject
         let layoutSeed = seed &+ UInt64(bitPattern: Int64(cycle)) &* 0x2545_F491
 
         do {

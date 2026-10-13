@@ -79,6 +79,11 @@ struct PinnedSubjectPlanner: MosaicPlanner {
         index == cycle ? subject : inner.subject(ofCycle: index)
     }
 
+    var openingSubject: PhotoID? {
+        let opening = inner.openingSubject
+        return cycle == 0 && opening == subject ? nil : opening
+    }
+
     func plan(
         rows: Int,
         subject: PhotoID,

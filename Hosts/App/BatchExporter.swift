@@ -204,7 +204,7 @@ enum BatchExporter {
         let planned = try planner.plan(
             rows: options.rows,
             subject: photo,
-            previousSubject: cycle > 0 ? sequence.subject(ofCycle: cycle - 1) : nil,
+            previousSubject: cycle > 0 ? sequence.subject(ofCycle: cycle - 1) : sequence.openingSubject,
             seed: UInt64(cycle)
         )
         guard let statistics = planned.statistics else {

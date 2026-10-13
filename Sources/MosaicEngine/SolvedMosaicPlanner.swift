@@ -64,7 +64,17 @@ public final class SolvedMosaicPlanner: MosaicPlanner, @unchecked Sendable {
         // run. `layout` throws, the engine falls back, and the reason reaches
         // the readout.
         guard !subjects.isEmpty else { return PhotoID("") }
-        return subjects[sequence.index(ofCycle: index)]
+        return subjects[sequence.index(ofCycle: index + 1)]
+    }
+
+    /// The sequence's first photograph, so that cycle 0 opens on one that
+    /// fills the screen, its close-up sharp, and its subject is chosen to
+    /// fit it like any other. Left to the solver, the anchor was any tile:
+    /// on an optimised library nine in ten have no more than 427 px
+    /// (Sergio, 2026-10-13).
+    public var openingSubject: PhotoID? {
+        guard subjects.count > 1 else { return nil }
+        return subjects[sequence.index(ofCycle: 0)]
     }
 
     public func plan(

@@ -20,6 +20,10 @@ public protocol MosaicPlanner: Sendable {
     /// The photograph cycle `index` zooms out to reveal.
     func subject(ofCycle index: Int) -> PhotoID
 
+    /// The photograph full screen as cycle 0 begins: its anchor, as a
+    /// subject is the next cycle's. Nil leaves the anchor to the solver.
+    var openingSubject: PhotoID? { get }
+
     /// - Parameters:
     ///   - previousSubject: the photograph of the cycle before, which has to
     ///     occupy the anchor cell — the constraint of SPEC § 5, step 4.
@@ -33,6 +37,10 @@ public protocol MosaicPlanner: Sendable {
         previousSubject: PhotoID?,
         seed: UInt64
     ) throws -> PlannedMosaic
+}
+
+extension MosaicPlanner {
+    public var openingSubject: PhotoID? { nil }
 }
 
 /// A mosaic and, when the planner is the sort that can say, how it scored.

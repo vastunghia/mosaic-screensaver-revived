@@ -174,6 +174,23 @@ struct MosaicPlannerTests {
         let fallback = SolvedMosaicPlanner(catalog: catalog)
         #expect(fallback.subject(ofCycle: 0) != PhotoID(""))
     }
+
+    @Test("the first cycle opens on a photograph that can fill the screen, in its anchor cell")
+    func opening() throws {
+        var catalog = lattice(perAxis: 4)
+        catalog.tilesOnly = Set(catalog.photos.map(\.rawValue).filter { !$0.hasSuffix("0") })
+        let planner = SolvedMosaicPlanner(catalog: catalog)
+        let opening = try #require(planner.openingSubject)
+        #expect(catalog.canFillScreen(opening))
+        #expect(opening != planner.subject(ofCycle: 0))
+
+        let lookahead = Lookahead(
+            planner: planner, fallback: RandomMosaicPlanner(pool: catalog.photos, seed: 5), seed: 11, rows: 8
+        )
+        let layout = lookahead.mosaic(forCycle: 0, counting: false).planned.layout
+        #expect(layout[layout.anchor].photo == opening)
+        #expect(layout.tiles.filter { $0.photo == opening }.count == 1)
+    }
 }
 
 @Suite("Looping planner")
