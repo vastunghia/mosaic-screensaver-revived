@@ -1,3 +1,4 @@
+import PhotoIndex
 import SwiftUI
 
 /// What Mosaic may fetch from iCloud, said with what it costs: the user's
@@ -24,10 +25,10 @@ struct DownloadOptions: View {
     private var footnote: String {
         switch model.preferences.downloads ?? .nothing {
         case .nothing:
-            return "Mosaic uses only what Photos keeps on this Mac. If your library keeps originals in iCloud, some close-ups are blurry."
+            return "Mosaic uses only what Photos keeps on this Mac. If your library keeps originals in iCloud, only the photographs this Mac keeps large are shown full screen, often from a few years only, and some close-ups are blurry."
         case .closeUps:
             let recent = model.closeUpsFetchedThisWeek
-            return "For each photograph shown full screen that this Mac has no sharp copy of, a copy of about 2 MB, never the original: at most 128 a day and 256 a week, and none on a hotspot or in Low Data Mode. Photos keeps them in your library until it needs the space. "
+            return "The photographs shown full screen, one in sixteen, are chosen from your whole library, and Mosaic downloads a sharp copy of each that this Mac lacks, about 1.3 MB, never the original: at most \(DownloadLedger.standardDailyLimit) a day and \(DownloadLedger.standardWeeklyLimit) a week, and none on a hotspot or in Low Data Mode. Photos keeps them in your library until it needs the space. "
                 + (recent == 1 ? "1 downloaded in the last 7 days." : "\(recent) downloaded in the last 7 days.")
         case .everything:
             return "Mosaic downloads whatever it needs to prepare your photographs, originals included. It can take a long time and a lot of space on disk: choose it only if too few photographs are ready otherwise."
