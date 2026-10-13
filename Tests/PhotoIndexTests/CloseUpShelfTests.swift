@@ -173,7 +173,7 @@ struct CloseUpShelfTests {
         #expect(plain.fetched == 0 && plain.unavailable == 1)
     }
 
-    @Test("close-ups are fetched a few at a time, and one too slow is given up on and counted")
+    @Test("close-ups may be fetched a few at a time; one too slow is given up on, counted apart")
     func fetchingInParallel() throws {
         let (index, shelf) = try fixture(count: 10)
         let synthetic = SyntheticPhotoSource(count: 10)
@@ -192,10 +192,13 @@ struct CloseUpShelfTests {
         let report = try shelf.stock(from: local, fetching: fetching, progress: { progress.append($0) })
 
         #expect(cloud.mostAtOnce == 3)
-        #expect(report.toFetch == 9 && report.asked == 9)
-        #expect(report.fetched == 7 && report.timedOut == 2)
-        #expect(report.unavailable == 3 && report.deferred == 1, "two too slow, one over the cap")
-        #expect(progress.asked == [0, 3, 6, 9])
+        // The two given up on give their places back: the tenth is asked too.
+        #expect(report.toFetch == 10 && report.asked == 10)
+        #expect(report.fetched == 8 && report.timedOut == 2)
+        #expect(report.unavailable == 2 && report.deferred == 0)
+        #expect(progress.asked == [0, 3, 6, 9, 10])
+        let ledger = DownloadLedger.load(from: fetching.ledger)
+        #expect(ledger.requests.count == 8 && ledger.abandoned.count == 2)
     }
 }
 

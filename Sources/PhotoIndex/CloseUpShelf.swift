@@ -128,15 +128,18 @@ public struct CloseUpShelf: Sendable {
 
     /// Where the close-ups this Mac does not have may come from: the index
     /// with originals that may be fetched from iCloud, `concurrency` at a
-    /// time, as many as `ledger` allows (SPEC § 5). Only for the photographs
+    /// time (one by default), as many as `ledger` allows (SPEC § 5). Only for the photographs
     /// that fill the screen, and only at the shelf's width: never an original.
     public struct Fetching: Sendable {
-        /// One at a time took 33 minutes for 128, most of it waiting
-        /// (2026-10-13): a fetch is iCloud's time, not this Mac's.
-        public static let standardConcurrency = 4
+        /// One at a time: four at a time each took two or three times as long
+        /// (9–13 s against a median of 4.5), and the first four all ran out
+        /// of time (2026-10-13).
+        public static let standardConcurrency = 1
         /// Seconds a fetch may take before it is given up on, for the source
-        /// behind `index` to apply: 90 % of 128 took under 12 s, three took
-        /// 69 s, 3 and 6 minutes (2026-10-13).
+        /// behind `index` to apply. Of 128 asked one at a time with no limit
+        /// (2026-10-13), 118 took under 12.6 s and the other 10 over 32 s,
+        /// up to 6 minutes: 15 s gives up on those 10 and takes 12 minutes
+        /// instead of 33.
         public static let standardTimeout: TimeInterval = 15
 
         public var index: IndexedPhotoSource
@@ -226,7 +229,8 @@ public struct CloseUpShelf: Sendable {
     }
 
     /// `concurrency` at a time, in the index's order, each counted in the
-    /// ledger before it is asked for. Returns whether it was stopped.
+    /// ledger before it is asked for, and moved to its abandoned ones when it
+    /// is given up on. Returns whether it was stopped.
     private func fetch(
         _ entries: [IndexEntry], with fetching: Fetching, into report: inout StockReport,
         progress: (@Sendable (StockReport) -> Void)?, isCancelled: (@Sendable () -> Bool)?
@@ -266,12 +270,22 @@ public struct CloseUpShelf: Sendable {
                 }
             }
             let counts = tally.counts
+            if counts.unavailable > 0 {
+                let givenUp = fetching.now()
+                for _ in 0..<counts.unavailable { ledger.abandon(requestedAt: now, at: givenUp) }
+                try? ledger.save(to: fetching.ledger)
+            }
             report.asked += batch.count
             report.made += counts.made
             report.fetched += counts.made
             report.timedOut += counts.unavailable
             report.failed += counts.failed
             report.unavailable -= counts.made + counts.failed
+            // One given up on gives its place back: there may be one more to ask.
+            report.toFetch = report.asked + min(
+                sorted.count - offset,
+                ledger.remaining(at: fetching.now(), daily: fetching.dailyLimit, weekly: fetching.weeklyLimit)
+            )
             progress?(report)
         }
         report.deferred = sorted.count - offset
