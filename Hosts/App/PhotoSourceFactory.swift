@@ -233,6 +233,7 @@ extension PhotoSourceFactory {
         ))
         if fetching != nil {
             print("  of those made, \(report.fetched) fetched from iCloud; \(report.deferred) held back by the caps, \(report.timedOut) given up as too slow, \(report.resting) resting after too many\(report.stalled ? "; \(report.leftForLater) left for later as iCloud stalled" : "")")
+            print("  for the ring: \(report.ringFetched) fetched, \(report.ringWaiting) still to fetch, \(report.ringDeferred) held back by the caps")
         }
         print("  at \(shelf.directory.path)")
         return report

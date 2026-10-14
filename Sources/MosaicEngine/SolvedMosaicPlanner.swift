@@ -48,7 +48,8 @@ public final class SolvedMosaicPlanner: MosaicPlanner, @unchecked Sendable {
         var entries: [PoolEntry] = []
         for photo in catalog.photos {
             guard let signature = catalog.signature(for: photo) else { continue }
-            let isSharp = catalog.pixelWidth(of: photo).map { $0 >= ringWidth } ?? true
+            // A pixel of slack, as for the screen's width: a crop rounds.
+            let isSharp = catalog.pixelWidth(of: photo).map { $0 >= ringWidth - 1 } ?? true
             entries.append(PoolEntry(id: photo, signature: signature, isSharp: isSharp))
         }
         pool = entries

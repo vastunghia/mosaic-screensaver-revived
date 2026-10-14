@@ -33,7 +33,9 @@ struct DownloadOptions: View {
             return "Mosaic uses only what Photos keeps on this Mac. If your library keeps originals in iCloud, only the photographs this Mac keeps large are shown full screen, often from a few years only, and some close-ups are blurry."
         case .closeUps:
             let recent = model.closeUpsFetchedThisWeek
-            return "The photographs shown full screen, one in sixteen, are chosen from your whole library, and Mosaic downloads a sharp copy of each that this Mac lacks, about 1.3 MB, never the original: at most \(DownloadLedger.standardDailyLimit) a day and \(DownloadLedger.standardWeeklyLimit) a week, and none on a hotspot or in Low Data Mode. Photos keeps them in your library until it needs the space. "
+            let ring = model.ringCopiesAtMost
+            let around = ring > 0 ? ", and of up to \(ring.formatted()) of the photographs shown large around them" : ""
+            return "The photographs shown full screen, one in sixteen, are chosen from your whole library, and Mosaic downloads a sharp copy of each that this Mac lacks\(around), about 1.3 MB each, never the original: at most \(DownloadLedger.standardDailyLimit) a day and \(DownloadLedger.standardWeeklyLimit) a week, and none on a hotspot or in Low Data Mode. Photos keeps them in your library until it needs the space. "
                 + (recent == 1 ? "1 downloaded in the last 7 days." : "\(recent) downloaded in the last 7 days.")
         case .everything:
             return "Mosaic downloads whatever it needs to prepare your photographs, originals included. It can take a long time and a lot of space on disk: choose it only if too few photographs are ready otherwise."

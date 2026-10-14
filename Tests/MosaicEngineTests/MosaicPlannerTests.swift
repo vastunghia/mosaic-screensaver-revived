@@ -1,6 +1,7 @@
 import Foundation
 import MosaicCore
 import MosaicSolver
+import PhotoIndex
 import Testing
 @testable import MosaicEngine
 
@@ -234,5 +235,13 @@ struct LoopingPlannerTests {
             ).layout
         }
         #expect(layouts[0] != layouts[1] && layouts[1] != layouts[2])
+    }
+}
+
+@Suite("Close-up options")
+struct CloseUpOptionsTests {
+    @Test("the index picks tiles for the ring at the width the engine shows it")
+    func ringWidth() {
+        #expect(CloseUpOptions.standard.ringWidth == PhotoIndexBuilder.CloseUpPreference.standardRingWidth)
     }
 }

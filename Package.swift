@@ -115,7 +115,7 @@ let package = Package(
         .testTarget(name: "MosaicPhotosTests", dependencies: ["MosaicPhotos", "MosaicCore"]),
         .testTarget(name: "MosaicPhotoKitTests", dependencies: ["MosaicPhotoKit", "MosaicPhotos", "MosaicCore"]),
         .testTarget(name: "PhotoIndexTests", dependencies: ["PhotoIndex", "MosaicPhotos", "MosaicCore"]),
-        .testTarget(name: "MosaicEngineTests", dependencies: ["MosaicEngine", "MosaicSolver", "MosaicCore"]),
+        .testTarget(name: "MosaicEngineTests", dependencies: ["MosaicEngine", "MosaicSolver", "MosaicCore", "PhotoIndex"]),
         .testTarget(name: "CycleEngineTests", dependencies: ["CycleEngine", "MosaicCore"]),
         .testTarget(name: "SharedStoreTests", dependencies: ["SharedStore"]),
         .testTarget(name: "AppUpdateTests", dependencies: ["AppUpdate"]),

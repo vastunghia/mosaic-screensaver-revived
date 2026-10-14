@@ -126,14 +126,33 @@ public struct PhotoIndexBuilder: Sendable {
         /// 12 a year from 2020 to 2022, none in 2025).
         public var fetches: Bool
 
+        /// With close-ups fetched, the share of the target that should be at
+        /// least `ringWidth` across, subjects counted: the tiles short of it
+        /// are picked for a copy at that width (`IndexManifest.ringPicks`),
+        /// which the shelf fetches after the subjects' close-ups. 0 picks none.
+        public var ringShare: Double
+        public var ringWidth: Int
+
+        /// Chosen by Sergio on 2026-10-14 from specimens of the anchor's ring
+        /// on his corpus (`--compare-ring --simulate-sharp`): with 8 % of the
+        /// photographs sharp enough the ring was 4.1 delta E off what it was
+        /// with any photograph, with 16 % 1.8. A copy costs about as much as a
+        /// close-up, 1.05 MB on 2026-10-13: Photos fetches the same ~2048
+        /// pixel derivative however little is asked for.
+        public static let standardRingShare = 0.16
+        /// `CloseUpOptions.standard.ringWidth`, which this module cannot see.
+        public static let standardRingWidth = 640
+
         public init(
             width: Int, isStocked: @escaping @Sendable (IndexEntry) -> Bool, resting: Set<String> = [],
-            fetches: Bool = false
+            fetches: Bool = false, ringShare: Double = 0, ringWidth: Int = Self.standardRingWidth
         ) {
             self.width = width
             self.isStocked = isStocked
             self.resting = resting
             self.fetches = fetches
+            self.ringShare = ringShare
+            self.ringWidth = ringWidth
         }
     }
 
@@ -400,12 +419,75 @@ public struct PhotoIndexBuilder: Sendable {
         // with what this build added, and the next one settles it.
         var entries = screen.merging(tiles) { first, _ in first }
         if cancelled { entries = previous.merging(entries) { _, new in new } }
+        if fetches, !cancelled, let closeUps, closeUps.ringShare > 0 {
+            manifest.ringPicks = try sharpenRing(
+                &entries, picked: manifest.ringPicks, preference: closeUps, target: target, library: library,
+                fillable: fillable, subjects: Set(manifest.subjects), resting: resting, from: source, into: store
+            )
+        } else if !cancelled {
+            manifest.ringPicks = []
+        }
         progress?(IndexProgress(
             completed: entries.count, reused: reused(entries.keys), skipped: leftOut.skipped.count,
             unavailable: leftOut.unavailable.count, total: cancelled ? target : total, ready: entries.count,
             fullScreen: entries.values.filter(\.canFillScreen).count, fellShort: fellShort
         ))
         return try finish(&manifest, entries: entries, leftOut: leftOut, store: store)
+    }
+
+    /// Phase C, with close-ups fetched: the tiles the anchor's ring wants at
+    /// `ringWidth` (SPEC § 5). Those picked before whose copy has come in are
+    /// read again at that width, without the network, and stay tiles. Then as
+    /// many more are picked, in the rule's order among the tiles too narrow,
+    /// as bring `ringShare` of the target to that width, the subjects counted
+    /// as there: their close-up brings it. Those picked before come first, so
+    /// that nothing fetched is fetched for nothing.
+    private func sharpenRing(
+        _ entries: inout [String: IndexEntry], picked: [String], preference: CloseUpPreference, target: Int,
+        library: [PhotoDescriptor], fillable: any FillablePhotoSource, subjects: Set<String>, resting: Set<String>,
+        from source: some PhotoSource, into store: PhotoIndexStore
+    ) throws -> [String] {
+        let width = preference.ringWidth
+        let narrowest = width - 1
+        func isSharp(_ entry: IndexEntry) -> Bool { entry.pixelWidth >= narrowest }
+
+        let due = picked.compactMap { entries[$0] }.filter { !isSharp($0) && !$0.canFillScreen }
+        if !due.isEmpty {
+            let read = Sharpened()
+            let side = signatureSide
+            let rule = cropRule
+            DispatchQueue.concurrentPerform(iterations: due.count) { offset in
+                let entry = due[offset]
+                // Not here yet, or not readable now: as it was.
+                guard let (image, cropStart) = try? Self.canonicalImage(
+                    of: entry.photoID, from: source, width: width, rule: rule
+                ), image.width >= narrowest,
+                    let signature = try? ImageSampling.signature(of: image, side: side),
+                    (try? store.writeThumbnail(image, named: entry.thumbnail)) != nil else { return }
+                read.add(IndexEntry(
+                    id: entry.id, versionToken: entry.versionToken, thumbnail: entry.thumbnail,
+                    signature: signature, pixelWidth: image.width, pixelHeight: image.height,
+                    cropStart: cropStart, tileOnly: true
+                ))
+            }
+            for entry in read.entries { entries[entry.id] = entry }
+        }
+
+        let ringTarget = Int((Double(target) * preference.ringShare).rounded())
+        let sharp = Set(entries.values.filter(isSharp).map(\.id)).union(subjects)
+        let needed = ringTarget - sharp.count
+        guard needed > 0 else { return [] }
+        // A narrow original stays narrow whatever is fetched.
+        let eligible = library.filter { descriptor in
+            let id = descriptor.id.rawValue
+            guard let entry = entries[id], !sharp.contains(id), !entry.canFillScreen, !resting.contains(id),
+                  entry.versionToken == descriptor.versionToken else { return false }
+            return descriptor.cropWidth.map { $0 >= narrowest } ?? true
+        }
+        let eligibleIDs = Set(eligible.map(\.id.rawValue))
+        let kept = Array(picked.filter(eligibleIDs.contains).prefix(needed))
+        let more = fillable.choose(from: eligible, excluding: Set(kept), count: needed - kept.count)
+        return kept + more.map(\.id.rawValue)
     }
 
     /// The photographs that fill the screen whose close-up this Mac has: the
@@ -769,6 +851,21 @@ private final class Missing: @unchecked Sendable {
 }
 
 /// The one piece of shared state in a concurrent build.
+/// Tiles read again for the ring, from every core at once.
+private final class Sharpened: @unchecked Sendable {
+    private let lock = NSLock()
+    private var read: [IndexEntry] = []
+
+    func add(_ entry: IndexEntry) {
+        lock.lock(); read.append(entry); lock.unlock()
+    }
+
+    var entries: [IndexEntry] {
+        lock.lock(); defer { lock.unlock() }
+        return read
+    }
+}
+
 private final class Collector: @unchecked Sendable {
     struct Drained {
         var entries: [IndexEntry] = []

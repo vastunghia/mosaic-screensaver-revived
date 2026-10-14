@@ -216,6 +216,47 @@ struct CloseUpShelfTests {
         #expect(manifest.entries.filter { tiles.contains($0.id) && $0.id != waiting }.allSatisfy { !shelf.has($0) })
     }
 
+    @Test("tiles picked for the ring are fetched after the close-ups, within the same caps, and not shelved")
+    func ringPicks() throws {
+        let (built, shelf) = try fixture(count: 6)
+        var manifest = built.manifest
+        // The first four only tiles here, 16 across; the first a subject,
+        // the next two picked for a ring that wants 24.
+        let tiles = manifest.entries.map(\.id).sorted().prefix(4)
+        let waiting = try #require(tiles.first)
+        let picks = Array(tiles.dropFirst().prefix(2))
+        manifest.entries = try manifest.entries.map { entry in
+            guard tiles.contains(entry.id) else { return entry }
+            return IndexEntry(
+                id: entry.id, versionToken: entry.versionToken, thumbnail: entry.thumbnail,
+                signature: try #require(entry.tileSignature), pixelWidth: 16, pixelHeight: 9,
+                cropStart: entry.cropStart, tileOnly: true
+            )
+        }
+        manifest.subjects = [waiting] + manifest.entries.filter(\.canFillScreen).map(\.id)
+        manifest.ringPicks = picks
+        let synthetic = SyntheticPhotoSource(count: 6)
+        let cloud = CloudSource(synthetic, slow: [])
+        let index = IndexedPhotoSource(store: built.store, manifest: manifest, originals: cloud)
+        let local = IndexedPhotoSource(
+            store: built.store, manifest: manifest, originals: AwaySource(synthetic, away: Set(tiles))
+        )
+        let ledger = temporaryDirectory().appendingPathComponent("ledger.json")
+        let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
+
+        let report = try shelf.stock(from: local, fetching: CloseUpShelf.Fetching(
+            index: index, ledger: ledger, dailyLimit: 2, ringWidth: 24, now: { now }
+        ))
+        #expect(cloud.order == [waiting, picks[0]], "the subject first, then the ring, until the cap")
+        #expect(report.fetched == 1 && report.ringFetched == 1)
+        #expect(report.ringWaiting == 1 && report.ringDeferred == 1)
+        #expect(DownloadLedger.load(from: ledger).requests.count == 2)
+        for id in picks {
+            let entry = try #require(manifest.entries.first { $0.id == id })
+            #expect(!shelf.has(entry), "the index reads them again from Photos")
+        }
+    }
+
     @Test("close-ups may be fetched a few at a time; one too slow is given up on, counted apart")
     func fetchingInParallel() throws {
         let (index, shelf) = try fixture(count: 10)

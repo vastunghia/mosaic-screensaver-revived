@@ -352,10 +352,19 @@ final class AppModel: ObservableObject {
     private func closeUpsStocked(_ report: CloseUpShelf.StockReport, metered: Bool) {
         closeUpsWaiting = preferences.downloads == .closeUps ? CloseUpsWaiting(report, metered: metered) : nil
         stalledThisRun = report.stalled
-        fetchedThisRun = report.fetched > 0
+        fetchedThisRun = report.fetched + report.ringFetched > 0
         closeUpsNotHere = report.unavailable
         UserDefaults.standard.set(report.unavailable, forKey: Self.closeUpsNotHereKey)
         refreshFetchedCount()
+    }
+
+    /// At most how many tiles have a copy fetched for the anchor's ring, on
+    /// top of the subjects' close-ups: as many as bring `ringShare` of the
+    /// photographs to its width, fewer when some already are.
+    var ringCopiesAtMost: Int {
+        let share = preferences.options().ringShare
+        let subjects = indexedCount / PhotoIndexBuilder.fullScreenShare
+        return max(0, Int((Double(indexedCount) * share).rounded()) - subjects)
     }
 
     /// Only once a run has stopped at the caps, and never during one: the
@@ -622,6 +631,8 @@ final class AppModel: ObservableObject {
             \(manifest.entries.filter(\.canFillScreen).count, privacy: .public) fill the screen, \
             \(manifest.unavailable.count, privacy: .public) not on this Mac, \
             \(manifest.belowFullScreen.count, privacy: .public) below full screen, \
+            \(manifest.entries.filter { $0.pixelWidth >= options.ringWidth - 1 }.count, privacy: .public) wide enough \
+            for the ring, \(manifest.ringPicks.count, privacy: .public) picked for it, \
             \(manifest.skipped.count, privacy: .public) unreadable
             """)
         guard !flag.isSet else { return }
@@ -646,7 +657,9 @@ final class AppModel: ObservableObject {
             back by the caps, \(report.timedOut, privacy: .public) given up as too slow, \
             \(report.resting, privacy: .public) resting after too many\
             \(report.stalled ? ", \(report.leftForLater) left for later as iCloud stalled" : "", privacy: .public)), \
-            \(report.removed, privacy: .public) removed, \(report.tilesOnly, privacy: .public) tiles only
+            \(report.removed, privacy: .public) removed, \(report.tilesOnly, privacy: .public) tiles only; \
+            ring: \(report.ringFetched, privacy: .public) fetched, \(report.ringWaiting, privacy: .public) still to \
+            fetch (\(report.ringDeferred, privacy: .public) held back by the caps)
             """)
     }
 

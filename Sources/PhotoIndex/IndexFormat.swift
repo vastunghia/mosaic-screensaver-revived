@@ -212,6 +212,11 @@ public struct IndexManifest: Codable, Equatable, Sendable {
     public var subjects: [String]
     public var subjectsChoice: String?
 
+    /// Tiles this Mac has narrower than the anchor's ring wants, picked for
+    /// their copy to be fetched (`PhotoIndexBuilder.CloseUpPreference.ringShare`),
+    /// in the order to fetch them.
+    public var ringPicks: [String]
+
     public init(
         formatVersion: Int = IndexManifest.currentFormatVersion,
         root: String,
@@ -227,7 +232,8 @@ public struct IndexManifest: Codable, Equatable, Sendable {
         belowFullScreen: [String] = [],
         belowCloseUp: [String] = [],
         subjects: [String] = [],
-        subjectsChoice: String? = nil
+        subjectsChoice: String? = nil,
+        ringPicks: [String] = []
     ) {
         self.formatVersion = formatVersion
         self.root = root
@@ -244,12 +250,13 @@ public struct IndexManifest: Codable, Equatable, Sendable {
         self.belowCloseUp = belowCloseUp
         self.subjects = subjects
         self.subjectsChoice = subjectsChoice
+        self.ringPicks = ringPicks
     }
 
     private enum CodingKeys: String, CodingKey {
         case formatVersion, root, thumbnailWidth, thumbnailHeight, signatureSide, cropRule
         case entries, skipped, unavailable, unavailableCheckedAt, unavailableContext, belowFullScreen
-        case belowCloseUp, subjects, subjectsChoice
+        case belowCloseUp, subjects, subjectsChoice, ringPicks
     }
 
     public init(from decoder: any Decoder) throws {
@@ -271,10 +278,11 @@ public struct IndexManifest: Codable, Equatable, Sendable {
         belowCloseUp = try container.decodeIfPresent([String].self, forKey: .belowCloseUp) ?? []
         subjects = try container.decodeIfPresent([String].self, forKey: .subjects) ?? []
         subjectsChoice = try container.decodeIfPresent(String.self, forKey: .subjectsChoice)
+        ringPicks = try container.decodeIfPresent([String].self, forKey: .ringPicks) ?? []
     }
 
     /// As synthesised, except that an empty `belowFullScreen`,
-    /// `belowCloseUp` or `subjects` is left out, so
+    /// `belowCloseUp`, `subjects` or `ringPicks` is left out, so
     /// a folder's manifest is written byte for byte as before it existed.
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
@@ -298,6 +306,9 @@ public struct IndexManifest: Codable, Equatable, Sendable {
         if !subjects.isEmpty {
             try container.encode(subjects, forKey: .subjects)
             try container.encodeIfPresent(subjectsChoice, forKey: .subjectsChoice)
+        }
+        if !ringPicks.isEmpty {
+            try container.encode(ringPicks, forKey: .ringPicks)
         }
     }
 

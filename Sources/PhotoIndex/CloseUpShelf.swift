@@ -133,6 +133,12 @@ public struct CloseUpShelf: Sendable {
         public var stalled = false
         /// Of `unavailable`, not asked for because the run stopped on a stall.
         public var leftForLater = 0
+        /// The tiles picked for the anchor's ring (`IndexManifest.ringPicks`),
+        /// asked for after the close-ups: fetched in this run, still to
+        /// fetch, and of those, held back by the caps.
+        public var ringFetched = 0
+        public var ringWaiting = 0
+        public var ringDeferred = 0
     }
 
     /// Where the close-ups this Mac does not have may come from: the index
@@ -163,12 +169,16 @@ public struct CloseUpShelf: Sendable {
         public var weeklyLimit: Int
         public var concurrency: Int
         public var stallLimit: Int
+        /// The width the ring's picks are fetched at.
+        public var ringWidth: Int
         public var now: @Sendable () -> Date
 
         public init(
             index: IndexedPhotoSource, ledger: URL, dailyLimit: Int = DownloadLedger.standardDailyLimit,
             weeklyLimit: Int = DownloadLedger.standardWeeklyLimit, concurrency: Int = Self.standardConcurrency,
-            stallLimit: Int = Self.standardStallLimit, now: @escaping @Sendable () -> Date = Date.init
+            stallLimit: Int = Self.standardStallLimit,
+            ringWidth: Int = PhotoIndexBuilder.CloseUpPreference.standardRingWidth,
+            now: @escaping @Sendable () -> Date = Date.init
         ) {
             self.index = index
             self.ledger = ledger
@@ -176,6 +186,7 @@ public struct CloseUpShelf: Sendable {
             self.weeklyLimit = weeklyLimit
             self.concurrency = max(1, concurrency)
             self.stallLimit = max(1, stallLimit)
+            self.ringWidth = ringWidth
             self.now = now
         }
     }
@@ -238,8 +249,37 @@ public struct CloseUpShelf: Sendable {
         }
 
         if let fetching, !cancelled {
-            cancelled = fetch(tally.elsewhereEntries, with: fetching, into: &report, progress: progress,
-                              isCancelled: isCancelled)
+            cancelled = fetch(tally.elsewhereEntries, width: width, keeps: true, with: fetching, into: &report,
+                              progress: progress, isCancelled: isCancelled)
+        }
+        // Then the tiles picked for the ring, once every close-up has been
+        // asked for: within the same caps, and nothing kept here, since the
+        // index reads them again from Photos.
+        let picks = index.manifest.ringPicks.compactMap { index.entry(for: PhotoID($0)) }
+            .filter { $0.pixelWidth < (fetching?.ringWidth ?? 0) - 1 }
+        report.ringWaiting = picks.count
+        if let fetching, !cancelled, !report.stalled, !picks.isEmpty {
+            var ring = StockReport()
+            ring.unavailable = picks.count
+            let before = report
+            cancelled = fetch(
+                picks, width: fetching.ringWidth, keeps: false, with: fetching, into: &ring,
+                progress: progress.map { progress -> @Sendable (StockReport) -> Void in
+                    { ring in
+                        var both = before
+                        both.asked += ring.asked
+                        both.toFetch += ring.toFetch
+                        progress(both)
+                    }
+                },
+                isCancelled: isCancelled
+            )
+            report.ringFetched = ring.fetched
+            report.ringWaiting = ring.unavailable
+            report.ringDeferred = ring.deferred
+            report.stalled = ring.stalled
+            report.asked += ring.asked
+            report.toFetch += ring.toFetch
         }
 
         if !cancelled {
@@ -254,8 +294,10 @@ public struct CloseUpShelf: Sendable {
     /// first requests of a run ran out of time one after the other while
     /// iCloud woke up, for a minute or more, and the same photographs came in
     /// seconds later (2026-10-13). Returns whether it was stopped.
+    ///
+    /// `width` is what is asked for; `keeps` writes it to the shelf.
     private func fetch(
-        _ entries: [IndexEntry], with fetching: Fetching, into report: inout StockReport,
+        _ entries: [IndexEntry], width: Int, keeps: Bool, with fetching: Fetching, into report: inout StockReport,
         progress: (@Sendable (StockReport) -> Void)?, isCancelled: (@Sendable () -> Bool)?
     ) -> Bool {
         var ledger = DownloadLedger.load(from: fetching.ledger)
@@ -306,8 +348,14 @@ public struct CloseUpShelf: Sendable {
             Self.onThreads(batch.count) { index in
                 let entry = batch[index]
                 do {
-                    let image = try fetching.index.canonicalImage(for: entry.photoID, maxPixelWidth: width)
-                    try write(image, for: entry)
+                    if keeps {
+                        let image = try fetching.index.canonicalImage(for: entry.photoID, maxPixelWidth: width)
+                        try write(image, for: entry)
+                    } else {
+                        // Not through the index: at a tile's width it would
+                        // serve its own thumbnail.
+                        _ = try fetching.index.uprightImage(for: entry.photoID, cropWidth: width)
+                    }
                     tally.add(\.made)
                     tally.arrived(entry)
                 } catch PhotoSourceError.unavailable {

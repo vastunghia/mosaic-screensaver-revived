@@ -18,18 +18,21 @@ struct CloseUpsWaiting: Equatable {
     }
 
     var count: Int
+    /// Tiles picked for the anchor's ring, still to download after them.
+    var ring = 0
     var reason: Reason?
 
     /// From a run's report, when sharp close-ups may be downloaded; nil
     /// when none is missing.
     init?(_ report: CloseUpShelf.StockReport, metered: Bool) {
-        guard report.unavailable > 0 else { return nil }
+        guard report.unavailable + report.ringWaiting > 0 else { return nil }
         count = report.unavailable
+        ring = report.ringWaiting
         reason = if metered {
             .metered
         } else if report.stalled {
             .stalled(retry: nil)
-        } else if report.deferred > 0 {
+        } else if report.deferred + report.ringDeferred > 0 {
             .limits
         } else if report.timedOut + report.resting > 0 {
             .slow
@@ -39,7 +42,13 @@ struct CloseUpsWaiting: Equatable {
     }
 
     var summary: String {
-        let missing = count == 1 ? "1 sharp close-up" : "\(count) sharp close-ups"
+        let closeUps = count == 1 ? "1 sharp close-up" : "\(count) sharp close-ups"
+        let tiles = ring == 1 ? "1 sharper tile" : "\(ring) sharper tiles"
+        let missing = switch (count > 0, ring > 0) {
+        case (true, true): "\(closeUps) and \(tiles)"
+        case (false, true): tiles
+        default: closeUps
+        }
         let why = switch reason {
         case .stalled(let retry?):
             "iCloud stopped answering. Mosaic tries again at \(retry.formatted(date: .omitted, time: .shortened))."

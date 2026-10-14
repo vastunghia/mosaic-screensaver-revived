@@ -77,15 +77,19 @@ public struct PhotoIndexStore: Sendable {
         try FileManager.default.createDirectory(
             at: url.deletingLastPathComponent(), withIntermediateDirectories: true
         )
+        // Beside its name and renamed into place: a tile read again for the
+        // anchor's ring replaces a thumbnail the saver may be reading.
+        let partial = url.appendingPathExtension("partial")
         guard let destination = CGImageDestinationCreateWithURL(
-            url as CFURL, UTType.jpeg.identifier as CFString, 1, nil
+            partial as CFURL, UTType.jpeg.identifier as CFString, 1, nil
         ) else {
             throw PhotoIndexError.couldNotWriteThumbnail(name)
         }
         CGImageDestinationAddImage(destination, image, [
             kCGImageDestinationLossyCompressionQuality: 0.8,
         ] as CFDictionary)
-        guard CGImageDestinationFinalize(destination) else {
+        guard CGImageDestinationFinalize(destination), rename(partial.path, url.path) == 0 else {
+            try? FileManager.default.removeItem(at: partial)
             throw PhotoIndexError.couldNotWriteThumbnail(name)
         }
     }

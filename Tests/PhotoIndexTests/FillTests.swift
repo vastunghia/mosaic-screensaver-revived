@@ -480,6 +480,51 @@ struct FillTests {
         }
     }
 
+    @Test("with close-ups fetched, tiles are picked for the ring until a share is wide enough, and read again once in")
+    func ringPicks() throws {
+        let library = optimised(400)
+        let index = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: index) }
+        let store = PhotoIndexStore(directory: index)
+        let source = SubsetPhotoSource(library, rule: .uniformInTime, count: 160, seed: 9)
+        func ring(_ share: Double) -> PhotoIndexBuilder.CloseUpPreference {
+            var preference = preference(fetches: true)
+            preference.ringShare = share
+            preference.ringWidth = 48
+            return preference
+        }
+
+        let none = try builder().build(from: source, into: store, root: "library", preferring: ring(0))
+        #expect(none.ringPicks.isEmpty, "a share of 0 picks none")
+
+        let first = try builder().build(from: source, into: store, root: "library", preferring: ring(0.5))
+        let subjects = Set(first.subjects)
+        let sharp = Set(first.entries.filter { $0.pixelWidth >= 47 }.map(\.id)).union(subjects)
+        try #require(first.ringPicks.count > 5)
+        #expect(first.ringPicks.count == 80 - sharp.count)
+        #expect(Set(first.ringPicks).count == first.ringPicks.count)
+        let entries = Dictionary(uniqueKeysWithValues: first.entries.map { ($0.id, $0) })
+        for id in first.ringPicks {
+            let entry = try #require(entries[id])
+            #expect(!entry.canFillScreen && entry.pixelWidth < 47 && !subjects.contains(id))
+        }
+
+        // Five copies come in: read again at the ring's width, still tiles,
+        // and the others stay picked, in their order.
+        let arrived = Array(first.ringPicks.prefix(5))
+        for id in arrived { library.localWidths[id] = nil }
+        library.asked = []
+        let second = try builder().build(from: source, into: store, root: "library", preferring: ring(0.5))
+        for id in arrived {
+            let entry = try #require(second.entries.first { $0.id == id })
+            #expect(entry.pixelWidth == 48 && !entry.canFillScreen)
+        }
+        let askedAtRing = Set(library.askedAt.filter { $0.hasSuffix("@48") }.map { String($0.dropLast(3)) })
+        #expect(askedAtRing == Set(first.ringPicks), "only the picks are asked at the ring's width")
+        #expect(second.ringPicks == Array(first.ringPicks.dropFirst(5)))
+        #expect(Set(second.subjects) == subjects)
+    }
+
     @Test("with close-ups fetched, a photograph whose original is too narrow is never a subject")
     func fetchedSubjectsAreWideEnough() throws {
         // Every third a portrait 40 pixels wide, whose crop is 40 across:

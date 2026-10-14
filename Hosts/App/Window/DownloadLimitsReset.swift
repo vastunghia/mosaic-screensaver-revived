@@ -18,7 +18,7 @@ struct DownloadLimitsReset: View {
         guard let waiting = model.closeUpsWaiting else { return }
         let alert = NSAlert()
         alert.messageText = "Reset the download limits?"
-        alert.informativeText = Self.cost(waiting: waiting.count)
+        alert.informativeText = Self.cost(waiting: waiting.count + waiting.ring)
         alert.alertStyle = .warning
         alert.addButton(withTitle: "Reset Limits")
         alert.addButton(withTitle: "Cancel")
@@ -49,7 +49,7 @@ struct DownloadLimitsReset: View {
             : "\(now) of the \(waiting) still missing"
         let rest = now == waiting ? "" : ", and the others as the limits allow"
         return """
-            Mosaic downloads at most \(daily) sharp close-ups a day and \(weekly) a week, to \
+            Mosaic downloads at most \(daily) copies a day and \(weekly) a week, to \
             protect the space on this Mac and your network data.
 
             If you reset the limits, Mosaic counts from zero and right away downloads \(which), \

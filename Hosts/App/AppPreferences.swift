@@ -138,6 +138,11 @@ struct AppPreferences: Equatable {
             options.subsetRule = subsetRule
             options.subsetSize = subsetSize
             options.subsetSeed = subsetSeed
+            // Not in Settings: a way back, should fetching the ring's tiles
+            // prove too slow (Sergio, 2026-10-14).
+            if let share = UserDefaults.standard.object(forKey: "ringShare") as? Double {
+                options.ringShare = min(1, max(0, share))
+            }
         case .folder:
             options.folder = folder
         }

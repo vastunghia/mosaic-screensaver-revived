@@ -326,6 +326,8 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
         // (`PhotoIndexBuilder.fullScreenShare`): nearly all of them are
         // fetched, not only those missing now (2026-10-13: 109 said, 123 due).
         let subjects = max(1, model.indexedCount / PhotoIndexBuilder.fullScreenShare)
+        let ring = model.ringCopiesAtMost
+        let around = ring > 0 ? ", and of up to \(ring.formatted()) more it shows large around them" : ""
         let alert = NSAlert()
         alert.messageText = "Download sharp close-ups from iCloud?"
         alert.informativeText = """
@@ -333,7 +335,8 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
             some of your photographs, mostly from a few years: only those can be shown full screen.
 
             Mosaic can download a sharp copy of the \(subjects.formatted()) photographs it shows \
-            full screen, chosen from your whole library: about 1.3 MB each, never the original. At \
+            full screen, chosen from your whole library\(around): about 1.3 MB each, never the \
+            original. At \
             most \(DownloadLedger.standardDailyLimit) a day and \(DownloadLedger.standardWeeklyLimit) \
             a week, and none on a hotspot or in Low Data Mode. Photos keeps them in your library \
             until it needs the space.

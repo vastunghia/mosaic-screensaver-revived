@@ -156,6 +156,13 @@ struct Options {
     /// Whether the anchor's ring takes only photographs sharp enough for it
     /// (`SolverOptions.sharpRing`); `--sharp-ring off` lets it take any.
     var sharpRing = true
+    /// With close-ups fetched, the share of the photographs to bring to the
+    /// ring's width, fetching a copy of the tiles short of it
+    /// (`PhotoIndexBuilder.CloseUpPreference.ringShare`). `--ring-share 0`,
+    /// or `defaults write com.vastunghia.Mosaic ringShare -float 0` for the
+    /// app, fetches none.
+    var ringShare = PhotoIndexBuilder.CloseUpPreference.standardRingShare
+    var ringWidth: Int { closeUpOptions.ringWidth ?? PhotoIndexBuilder.CloseUpPreference.standardRingWidth }
     /// Pretends only this share of the pool is sharp enough for the ring, the
     /// rest 427 px across, to see on a library kept whole what an optimised
     /// one costs (`--simulate-sharp 0.08`). Only the solver is told.
@@ -258,7 +265,8 @@ struct Options {
             ? DownloadLedger.load(from: SharedLocations.closeUpFetchLedger).resting(at: Date())
             : []
         return PhotoIndexBuilder.CloseUpPreference(
-            width: shelf.width, isStocked: { shelf.has($0) }, resting: resting, fetches: fetchesCloseUps
+            width: shelf.width, isStocked: { shelf.has($0) }, resting: resting, fetches: fetchesCloseUps,
+            ringShare: ringShare, ringWidth: ringWidth
         )
     }
 
@@ -271,7 +279,8 @@ struct Options {
             index: try IndexedPhotoSource(store: store, originals: PhotoKitPhotoSource(
                 allowsNetworkAccess: true, fetchTimeout: CloseUpShelf.Fetching.standardTimeout
             )),
-            ledger: SharedLocations.closeUpFetchLedger
+            ledger: SharedLocations.closeUpFetchLedger,
+            ringWidth: ringWidth
         )
     }
 
@@ -378,6 +387,8 @@ struct Options {
                 options.batchTolerances = next()?.split(separator: ",").compactMap { Double($0) } ?? []
             case "--compare-ring": options.batchComparesRing = true
             case "--sharp-ring": options.sharpRing = next() != "off"
+            case "--ring-share":
+                options.ringShare = next().flatMap(Double.init).map { min(1, max(0, $0)) } ?? options.ringShare
             case "--simulate-sharp":
                 options.simulatedSharpShare = next().flatMap(Double.init).map { min(1, max(0, $0)) }
             case "--export-cycle": options.exportDirectory = path()
