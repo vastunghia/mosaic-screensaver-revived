@@ -67,6 +67,7 @@ enum MosaicApplication {
         app.addItem(withTitle: "About Mosaic",
                     action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
         app.addItem(withTitle: "Check for Updates…", action: #selector(AppDelegate.checkForUpdates(_:)), keyEquivalent: "")
+        app.addItem(withTitle: "Set Up Mosaic…", action: #selector(AppDelegate.showSetup(_:)), keyEquivalent: "")
         app.addItem(.separator())
         app.addItem(withTitle: "Settings…", action: #selector(AppDelegate.showSettings(_:)), keyEquivalent: ",")
         app.addItem(.separator())
@@ -131,10 +132,13 @@ enum MosaicApplication {
 private final class AppDelegate: NSObject, NSApplicationDelegate {
     private var window: NSWindow?
     private var settingsWindow: NSWindow?
+    private var setupWindow: NSWindow?
+    /// Closed halfway this launch: the window opens instead, and the setup
+    /// waits for the next launch or the menu.
+    private var setupPutOff = false
     private var model: AppModel?
     private let updater = Updater()
     private var updateWatch: AnyCancellable?
-    private var downloadsWatch: AnyCancellable?
 
     private var launchedAtLogin = false
     /// Off for the app's own restarts (`MosaicApplication.quitWithoutAsking`).
@@ -183,13 +187,6 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        // The question about downloads, once indexing has found close-ups
-        // missing, if the window is there to ask it in.
-        downloadsWatch = model.$closeUpsNotHere.dropFirst().receive(on: DispatchQueue.main).sink { [weak self] _ in
-            guard let self, window?.isVisible == true else { return }
-            showNextSheet()
-        }
-
         updater.start()
         if launchedAtLogin { model.updateRequested(reason: "login") }
         for call in earlyCalls { handle(call) }
@@ -231,6 +228,10 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func showWindow() {
         guard let model else { return }
+        if SetupAssistant.isDue, !setupPutOff {
+            showSetup(nil)
+            return
+        }
         NSApp.setActivationPolicy(.regular)
         if window == nil {
             NSApp.mainMenu = MosaicApplication.mainMenu()
@@ -257,13 +258,10 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: Sheets on the window
 
-    private var invitedToOpenAtLogin = false
-    private var askedAboutDownloads = false
     private var offeredUpdate: ReleaseVersion?
 
-    /// One sheet at a time, each at most once a launch: the invitation to
-    /// open at login, the question about downloads, then an update. Called
-    /// again as each one ends.
+    /// One sheet at a time, at most once a launch: an update ready to
+    /// install. Called again as a sheet ends.
     private func showNextSheet() {
         guard let window, window.isVisible else { return }
         // Called from a sheet's completion handler, the sheet is still
@@ -275,87 +273,49 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             return
         }
-        if inviteToOpenAtLogin() { return }
-        if askAboutDownloads() { return }
         if let release = updater.readyRelease, offeredUpdate != release.version {
             offerUpdate()
         }
     }
 
-    /// Once a launch, as the window opens: without opening at login, the
-    /// screen saver's photographs fall behind the library unseen. A sheet,
-    /// not a step: everything else may be done, and it can be declined.
-    /// Whether it was shown.
-    private func inviteToOpenAtLogin() -> Bool {
-        guard let model, let window, !invitedToOpenAtLogin else { return false }
-        model.refreshLoginItem()
-        guard model.invitesToOpenAtLogin else { return false }
-        invitedToOpenAtLogin = true
-        Self.log.notice("inviting to open at login")
+    // MARK: Setup
 
-        let alert = NSAlert()
-        alert.messageText = "Open Mosaic at login?"
-        alert.informativeText = "Mosaic keeps the screen saver’s photographs up to date only while it runs. At login it opens without a window and stays in the background."
-        alert.addButton(withTitle: "Open at Login")
-        alert.addButton(withTitle: "Not Now")
-        alert.showsSuppressionButton = true
-        alert.suppressionButton?.title = "Don’t ask again"
-        alert.beginSheetModal(for: window) { [weak self, weak alert] answer in
-            guard let model = self?.model else { return }
-            if answer == .alertFirstButtonReturn {
-                model.setOpensAtLogin(true, reportingAt: .screenSaver)
-            } else if alert?.suppressionButton?.state == .on {
-                model.declineOpeningAtLogin()
-            } else {
-                Self.log.notice("opening at login put off until the next launch")
-            }
-            self?.showNextSheet()
+    /// The setup, in a window of its own: by itself at the first launch and
+    /// after an update that changes it (`SetupAssistant`), or from the menu.
+    /// The main window opens when it ends, finished or closed.
+    @objc func showSetup(_ sender: Any?) {
+        guard let model else { return }
+        NSApp.setActivationPolicy(.regular)
+        if window == nil { NSApp.mainMenu = MosaicApplication.mainMenu() }
+        if setupWindow == nil {
+            let controller = NSHostingController(rootView: SetupView(model: model) { [weak self] in
+                self?.finishSetup()
+            })
+            let window = NSWindow(contentViewController: controller)
+            window.styleMask = [.titled, .closable]
+            window.title = "Set Up Mosaic"
+            window.isReleasedWhenClosed = false
+            window.delegate = self
+            // Its size before centring it: the view sets it only once laid out.
+            window.setContentSize(controller.view.fittingSize)
+            window.center()
+            setupWindow = window
         }
-        return true
+        Self.log.notice("setup shown")
+        model.windowOpened()
+        window?.orderOut(nil)
+        setupWindow?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
     }
 
-    /// What may be fetched from iCloud, asked once there is something to
-    /// gain: nothing is fetched until the user answers, and the answer can be
-    /// changed in Settings (SPEC § 5). "Not Now" asks again next launch.
-    /// Whether it was shown.
-    private func askAboutDownloads() -> Bool {
-        guard let model, let window, !askedAboutDownloads, model.asksAboutDownloads else { return false }
-        askedAboutDownloads = true
-        Self.log.notice("asking about downloads from iCloud")
-
-        // As many as the index's subjects with downloads on, one in sixteen
-        // (`PhotoIndexBuilder.fullScreenShare`): nearly all of them are
-        // fetched, not only those missing now (2026-10-13: 109 said, 123 due).
-        let subjects = max(1, model.indexedCount / PhotoIndexBuilder.fullScreenShare)
-        let ring = model.ringCopiesAtMost
-        let around = ring > 0 ? ", and of up to \(ring.formatted()) more it shows large around them" : ""
-        let alert = NSAlert()
-        alert.messageText = "Download sharp close-ups from iCloud?"
-        alert.informativeText = """
-            Your Photos library keeps originals in iCloud, and this Mac has large copies of only \
-            some of your photographs, mostly from a few years: only those can be shown full screen.
-
-            Mosaic can download a sharp copy of the \(subjects.formatted()) photographs it shows \
-            full screen, chosen from your whole library\(around): about 1.3 MB each, never the \
-            original. At \
-            most \(DownloadLedger.standardDailyLimit) a day and \(DownloadLedger.standardWeeklyLimit) \
-            a week, and none on a hotspot or in Low Data Mode. Photos keeps them in your library \
-            until it needs the space.
-
-            You can change this later in Mosaic Settings.
-            """
-        alert.addButton(withTitle: "Download Close-Ups")
-        alert.addButton(withTitle: "Don’t Download")
-        alert.addButton(withTitle: "Not Now")
-        alert.beginSheetModal(for: window) { [weak self] answer in
-            switch answer {
-            case .alertFirstButtonReturn: self?.model?.answerAboutDownloads(.closeUps)
-            case .alertSecondButtonReturn: self?.model?.answerAboutDownloads(.nothing)
-            default: Self.log.notice("downloads from iCloud put off until the next launch")
-            }
-            self?.showNextSheet()
-        }
-        return true
+    private func finishSetup() {
+        SetupAssistant.finish()
+        Self.log.notice("setup finished, revision \(SetupAssistant.revision, privacy: .public)")
+        let setup = setupWindow
+        setupWindow = nil
+        setup?.delegate = nil
+        setup?.close()
+        showWindow()
     }
 
     /// The prepared update, with its notes: install and relaunch, later, or
@@ -517,7 +477,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
         guard model.opensAtLogin else { return .terminateNow }
 
         // Without a window there is nothing to close: Quit is the default.
-        let windows = [window, settingsWindow].compactMap { $0 }.filter(\.isVisible)
+        let windows = [window, settingsWindow, setupWindow].compactMap { $0 }.filter(\.isVisible)
         NSApp.activate(ignoringOtherApps: true)
         let alert = NSAlert()
         alert.messageText = "Quit Mosaic?"
@@ -568,6 +528,16 @@ extension AppDelegate: NSMenuItemValidation {
 extension AppDelegate: NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         guard let model else { return }
+        // The setup closed before its end: put off, and the window opens.
+        if let closing = notification.object as? NSWindow, closing === setupWindow {
+            setupWindow = nil
+            setupPutOff = true
+            Self.log.notice("setup closed before its end: put off until the next launch")
+            // Now, not later: with no window left, an app that is not a
+            // login item would quit.
+            showWindow()
+            return
+        }
         model.refreshLoginItem()
         if model.opensAtLogin {
             model.windowClosed()

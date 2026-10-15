@@ -7,7 +7,7 @@ import os
 /// Mosaic open at login and never open its window again: the sheet would
 /// wait for them for ever, so the update is announced where they will see it.
 ///
-/// The permission is asked for only in the window's Updates step, or in
+/// The permission is asked for only in the setup's Updates page, or in
 /// Settings, beside a sentence that says what it is for: the system's prompt
 /// cannot say it (`AppModel.requestNotifications`).
 @MainActor

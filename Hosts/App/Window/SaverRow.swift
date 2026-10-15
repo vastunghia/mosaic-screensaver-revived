@@ -4,6 +4,8 @@ import SwiftUI
 /// what to do about it. In the window's status and in the setup.
 struct SaverRow: View {
     @ObservedObject var model: AppModel
+    /// Off in the setup, which shows where to choose it at its end.
+    var showingSettings = true
 
     var body: some View {
         switch model.saver {
@@ -14,13 +16,13 @@ struct SaverRow: View {
             HStack {
                 Text("The screen saver is not installed.")
                 Spacer()
-                Button("Install…", action: model.installSaver)
+                Button("Install…", action: install)
             }
         case .different:
             HStack {
                 Label("The installed screen saver is not this version.", systemImage: "arrow.triangle.2.circlepath")
                 Spacer()
-                Button("Update", action: model.installSaver)
+                Button("Update", action: install)
             }
         case .installed:
             HStack {
@@ -29,5 +31,9 @@ struct SaverRow: View {
                 Button("Open Screen Saver Settings…", action: model.openScreenSaverSettings)
             }
         }
+    }
+
+    private func install() {
+        model.installSaver(showingSettings: showingSettings)
     }
 }

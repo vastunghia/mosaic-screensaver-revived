@@ -18,8 +18,8 @@ struct AppPreferences: Equatable {
     /// Albums and folders. Empty is the whole library (SPEC § 5).
     var collectionIdentifiers: [String] = []
     /// What may be fetched from iCloud (SPEC § 5). Nil until the user has
-    /// answered, which fetches nothing: the question comes as a sheet, and
-    /// only to a library that needs it (`AppModel.asksAboutDownloads`).
+    /// answered, which fetches nothing: the setup asks, and the window
+    /// advises when it turns out to matter (`AppModel.advisesDownloads`).
     var downloads: Downloads?
     var subsetRule = SubsetRule.uniformInTime
     var subsetSize = 2048

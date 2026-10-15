@@ -79,6 +79,15 @@ struct StatusSection: View {
                 }
             }
         }
+        if model.advisesDownloads, !model.isIndexing {
+            HStack {
+                note(model.closeUpsNotHere == 1
+                     ? "1 photograph shown full screen has a blurry close-up: its original is in iCloud."
+                     : "\(model.closeUpsNotHere.formatted()) photographs shown full screen have blurry close-ups: their originals are in iCloud.")
+                Spacer()
+                Button("Download Settings…", action: MosaicApplication.showSettings)
+            }
+        }
         ProblemRow(model: model, place: .photographs)
         ProblemRow(model: model, place: .preparing)
     }

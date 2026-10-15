@@ -246,22 +246,17 @@ final class AppModel: ObservableObject {
         saver = SaverInstaller.state
     }
 
-    /// Installs or updates the saver, then shows where it is chosen. The
-    /// first time, Mosaic also starts opening at login, which is what keeps
-    /// the screen saver's photographs current; Settings turns it off.
-    func installSaver() {
-        let first = saver == .notInstalled
+    /// Installs or updates the saver, then shows where it is chosen — not
+    /// from the setup, which says so at its end. Opening at login is asked
+    /// for on its own, in the setup and in the window.
+    func installSaver(showingSettings: Bool = true) {
         do {
-            try SaverInstaller.install { SaverInstaller.openSettings() }
+            try SaverInstaller.install { if showingSettings { SaverInstaller.openSettings() } }
             clearProblem(at: .screenSaver)
         } catch {
             report(.screenSaver, "The screen saver could not be installed: \(error.localizedDescription)")
         }
         refreshSaver()
-        refreshLoginItem()
-        if first, saver == .installed, !isTranslocated, loginItem == .notRegistered {
-            setOpensAtLogin(true, reportingAt: .screenSaver)
-        }
     }
 
     func openScreenSaverSettings() {
@@ -294,9 +289,6 @@ final class AppModel: ObservableObject {
     }
 
     func setOpensAtLogin(_ on: Bool, reportingAt place: Problem.Place = .background) {
-        // Turned off by hand is an answer: the window stops asking. Turned on
-        // again, it may ask once more if the system later loses it.
-        UserDefaults.standard.set(!on, forKey: Self.declinedLoginKey)
         do {
             if on {
                 try SMAppService.mainApp.register()
@@ -319,34 +311,17 @@ final class AppModel: ObservableObject {
         SMAppService.openSystemSettingsLoginItems()
     }
 
-    /// Whether to invite the user, as a window opens, to let Mosaic open at
-    /// login: without it the index is brought up to date only while the app
-    /// happens to run, and the screen saver falls behind the library unseen.
-    /// Installing the saver turns it on, but a saver installed some other way
-    /// (`build.sh --install`), or a login item removed in System Settings,
-    /// leaves it off with nobody saying so. Not once the user has said no:
-    /// "Don't ask again" in the invitation, or the switch in Settings.
-    var invitesToOpenAtLogin: Bool {
-        !isTranslocated && saver == .installed && !opensAtLogin
-            && !UserDefaults.standard.bool(forKey: Self.declinedLoginKey)
-    }
-
-    /// "Don't ask again", in the invitation.
-    func declineOpeningAtLogin() {
-        UserDefaults.standard.set(true, forKey: Self.declinedLoginKey)
-        Self.log.notice("opening at login declined: no more invitations")
-    }
-
-    private static let declinedLoginKey = "declinesOpeningAtLogin"
-
     // MARK: Downloads
 
-    /// Whether to ask, as a window opens, what may be fetched from iCloud:
-    /// only while nobody has answered, and only for a library whose subjects
-    /// lack sharp close-ups here — a library kept whole on this Mac is never
-    /// asked about something that would change nothing.
-    var asksAboutDownloads: Bool {
-        preferences.source == .photos && access.isGranted && preferences.downloads == nil && closeUpsNotHere > 0
+    /// Whether the window's status advises downloading close-ups: the setup
+    /// asks before anyone knows whether the library keeps its originals in
+    /// iCloud, so once indexing has found subjects without a sharp close-up
+    /// here, and nothing is fetched for them, a row says so and leads to
+    /// Settings (Sergio, 2026-10-15). A library kept whole on this Mac never
+    /// sees it.
+    var advisesDownloads: Bool {
+        preferences.source == .photos && access.isGranted
+            && (preferences.downloads ?? .nothing) == .nothing && closeUpsNotHere > 0
     }
 
     func answerAboutDownloads(_ downloads: AppPreferences.Downloads) {
