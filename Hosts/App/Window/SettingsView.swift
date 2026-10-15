@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Mosaic Settings: what people change seldom, out of the window.
+/// Mosaic Companion Settings: what people change seldom, out of the window.
 struct SettingsView: View {
     @ObservedObject var model: AppModel
 

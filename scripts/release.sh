@@ -42,7 +42,8 @@ APP=".build/bundle/$APP_NAME.app"
 SAVER="$APP/Contents/Resources/$SAVER_NAME.saver"
 # Not .build/release, which is SwiftPM's own build products.
 OUT=".build/dist"
-NAME="$APP_NAME-$VERSION"
+# Named after the product, which the app updater looks for (`Updater.productName`).
+NAME="$PRODUCT_NAME-$VERSION"
 DMG="$OUT/$NAME.dmg"
 
 echo "==> verify"
@@ -111,4 +112,4 @@ echo "==> $DMG"
 du -h "$DMG" | cut -f1
 cat "$OUT/$NAME.dmg.sha256"
 echo "    to publish, once the tag is pushed:"
-echo "    gh release create v$VERSION \"$DMG\" \"$OUT/$NAME.dmg.sha256\" --title \"$APP_NAME $VERSION\""
+echo "    gh release create v$VERSION \"$DMG\" \"$OUT/$NAME.dmg.sha256\" --title \"$PRODUCT_NAME $VERSION\""

@@ -1,5 +1,6 @@
 #!/bin/bash
-# Builds Mosaic.app: the container app, which is also the development harness.
+# Builds Mosaic Companion.app: the app that carries and prepares the screen
+# saver, which is also the development harness.
 #
 # Three things SwiftPM will not do on its own, and this is where they happen:
 # compiling the Metal shaders (swift build has no rule for .metal), assembling
@@ -81,7 +82,7 @@ cat > "$HELP/Contents/Info.plist" <<PLIST
     <key>CFBundleVersion</key><string>$BUILD_NUMBER</string>
     <key>HPDBookAccessPath</key><string>index.html</string>
     <key>HPDBookIndexPath</key><string>$APP_NAME.cshelpindex</string>
-    <key>HPDBookTitle</key><string>$APP_NAME Help</string>
+    <key>HPDBookTitle</key><string>$PRODUCT_NAME Help</string>
     <key>HPDBookType</key><string>3</string>
 </dict>
 </plist>
@@ -118,7 +119,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
         </dict>
     </array>
     <key>NSPhotoLibraryUsageDescription</key>
-    <string>Mosaic reads your photo library to build the screen saver's mosaics.</string>
+    <string>Mosaic Companion reads your photo library to prepare the photographs for the Mosaic screen saver.</string>
 </dict>
 </plist>
 PLIST

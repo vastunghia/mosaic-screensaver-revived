@@ -7,7 +7,7 @@ struct LocationRow: View {
 
     var body: some View {
         HStack {
-            Text("Mosaic is running from where it was downloaded.")
+            Text("Mosaic Companion is running from where it was downloaded.")
             Spacer()
             Button("Move to Applications", action: model.moveToApplications)
         }

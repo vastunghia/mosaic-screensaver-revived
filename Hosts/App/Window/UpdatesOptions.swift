@@ -11,7 +11,7 @@ struct UpdatesOptions: View {
         } header: {
             Text("Updates")
         } footer: {
-            Footnote("Mosaic checks for a new version once a day. Notifications tell you only that one is ready, even if you never open its window.")
+            Footnote("Mosaic Companion checks for a new version once a day. Notifications tell you only that one is ready, even if you never open its window.")
         }
     }
 }

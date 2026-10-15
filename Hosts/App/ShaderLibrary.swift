@@ -50,7 +50,7 @@ enum HarnessError: Error, CustomStringConvertible {
         case .photosNotAuthorized(let status):
             return """
                 no access to the Photos library (\(status)). Grant it in System Settings › \
-                Privacy & Security › Photos, and launch with `open Mosaic.app --args …` so the \
+                Privacy & Security › Photos, and launch with `open "Mosaic Companion.app" --args …` so the \
                 grant is the app's and not the terminal's.
                 """
         case .unknownAlbums(let missing, let known):

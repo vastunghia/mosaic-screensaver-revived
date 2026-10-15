@@ -30,7 +30,7 @@ struct Options {
 
     /// The Photos library instead of a folder, optionally narrowed to albums
     /// by title (SPEC § 5: no albums is the whole library). The app must be
-    /// launched as an app — `open Mosaic.app --args …` — or TCC hands the grant
+    /// launched as an app — `open "Mosaic Companion.app" --args …` — or TCC hands the grant
     /// to the terminal instead.
     var photosLibrary = false
     var albums: [String] = []

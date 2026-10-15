@@ -25,7 +25,7 @@ public enum PhotoLibraryAccess {
     ///
     /// TCC attributes the request to the *responsible* process: run from a
     /// terminal, the prompt names the terminal and the grant goes to it. The app
-    /// has to be launched as an app (`open Mosaic.app`) for the grant to be its own.
+    /// has to be launched as an app (`open "Mosaic Companion.app"`) for the grant to be its own.
     public static func request() async -> Status {
         Status(await PHPhotoLibrary.requestAuthorization(for: .readWrite))
     }

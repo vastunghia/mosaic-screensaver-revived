@@ -15,7 +15,7 @@ struct NotificationsRow: View {
             }
         case .denied:
             HStack {
-                Text("Notifications are off: new versions show only in Mosaic’s window")
+                Text("Notifications are off: new versions show only in this window")
                     .foregroundStyle(.secondary)
                 Spacer()
                 Button("Open Notification Settings…", action: model.openNotificationSettings)

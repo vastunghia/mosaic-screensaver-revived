@@ -73,7 +73,7 @@ struct SetupView: View {
         case .welcome:
             Section {
                 Text("Mosaic turns your photographs into an endless zoom: every photograph turns out to be one tile of a mosaic, which makes up another photograph, which is one tile of the next mosaic.")
-                Text("These pages set up the screen saver. You can come back to them at any time from the Mosaic menu, with Set Up Mosaic.")
+                Text("Mosaic is a screen saver. Mosaic Companion, this app, prepares your photographs for it and keeps its settings. These pages set it up; you can come back to them at any time from the Mosaic Companion menu, with Set Up Mosaic.")
                     .foregroundStyle(.secondary)
             }
         case .location:
@@ -97,7 +97,7 @@ struct SetupView: View {
                 }
                 ProblemRow(model: model, place: .photographs)
             } footer: {
-                Footnote("They never leave this Mac: Mosaic keeps a small copy of each, to build the mosaics from. Which albums, and how many photographs, are in Mosaic Settings.")
+                Footnote("They never leave this Mac: Mosaic Companion keeps a small copy of each, to build the mosaics from. Which albums, and how many photographs, are in Settings.")
             }
         case .screenSaver:
             Section {
@@ -109,7 +109,7 @@ struct SetupView: View {
                 }
                 ProblemRow(model: model, place: .screenSaver)
             } footer: {
-                Footnote("Mosaic carries its screen saver and installs it for you. At the end of the setup you choose it in System Settings.")
+                Footnote("Mosaic Companion carries the screen saver and installs it for you. At the end of the setup you choose it in System Settings.")
             }
         case .background:
             Section {
@@ -129,7 +129,7 @@ struct SetupView: View {
                 }
                 ProblemRow(model: model, place: .background)
             } footer: {
-                Footnote("Mosaic keeps the screen saver’s photographs up to date only while it runs. At login it opens without a window and stays in the background, so new photographs reach the screen saver without your opening Mosaic. You can change this in Mosaic’s window.")
+                Footnote("Mosaic Companion keeps the screen saver’s photographs up to date only while it runs. At login it opens without a window and stays in the background, so new photographs reach the screen saver without your opening it. You can change this in its window.")
             }
         case .downloads:
             Section {
@@ -147,13 +147,13 @@ struct SetupView: View {
                 }
                 .pickerStyle(.radioGroup)
             } footer: {
-                Footnote("This matters only if your Photos library keeps its originals in iCloud. Then Mosaic can download a sharp copy of the photographs it shows full screen, about 1.3 MB each, never the original: at most \(DownloadLedger.standardDailyLimit) a day and \(DownloadLedger.standardWeeklyLimit) a week, and none on a hotspot or in Low Data Mode. With Nothing, Mosaic tells you in its window if some close-ups turn out blurry. You can change this in Mosaic Settings.")
+                Footnote("This matters only if your Photos library keeps its originals in iCloud. Then Mosaic Companion can download a sharp copy of the photographs it shows full screen, about 1.3 MB each, never the original: at most \(DownloadLedger.standardDailyLimit) a day and \(DownloadLedger.standardWeeklyLimit) a week, and none on a hotspot or in Low Data Mode. With Nothing, Mosaic Companion tells you in its window if some close-ups turn out blurry. You can change this in Settings.")
             }
         case .updates:
             Section {
                 NotificationsRow(model: model)
             } footer: {
-                Footnote("Mosaic checks for a new version once a day. Allow notifications so that it can tell you when one is ready, even if you never open its window: they are used for nothing else. You can change this in Mosaic Settings.")
+                Footnote("Mosaic Companion checks for a new version once a day. Allow notifications so that it can tell you when one is ready, even if you never open its window: they are used for nothing else. You can change this in Settings.")
             }
         case .done:
             Section {
@@ -169,7 +169,7 @@ struct SetupView: View {
                     }
                 }
             } footer: {
-                Footnote("What is left undone stays in Mosaic’s window, with what to do about it.")
+                Footnote("What is left undone stays in the Mosaic Companion window, with what to do about it.")
             }
             if model.saver == .installed {
                 Section {

@@ -29,10 +29,10 @@ struct LoginItemOption: View {
             Text("In the Background")
         } footer: {
             Footnote(model.isTranslocated
-                 ? "Available once Mosaic is in Applications."
+                 ? "Available once Mosaic Companion is in Applications."
                  : model.opensAtLogin
-                    ? "Mosaic opens at login without a window and keeps the screen saver’s photographs up to date."
-                    : "Mosaic keeps the screen saver’s photographs up to date only while it is open.")
+                    ? "Mosaic Companion opens at login without a window and keeps the screen saver’s photographs up to date."
+                    : "Mosaic Companion keeps the screen saver’s photographs up to date only while it is open.")
         }
     }
 }

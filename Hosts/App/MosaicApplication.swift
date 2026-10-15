@@ -8,7 +8,7 @@ import UserNotifications
 import os
 
 /// M9 as a user sees it: launched with no flags — from the Finder, or with a
-/// bare `open Mosaic.app` — the app opens its own window instead of the
+/// bare `open "Mosaic Companion.app"` — the app opens its own window instead of the
 /// harness. Any flag keeps the harness exactly as it was, so every export and
 /// specimen regenerates byte for byte.
 @MainActor
@@ -63,21 +63,21 @@ enum MosaicApplication {
     static func mainMenu() -> NSMenu {
         let menu = NSMenu()
 
-        let app = submenu(of: menu, titled: "Mosaic")
-        app.addItem(withTitle: "About Mosaic",
+        let app = submenu(of: menu, titled: "Mosaic Companion")
+        app.addItem(withTitle: "About Mosaic Companion",
                     action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
         app.addItem(withTitle: "Check for Updates…", action: #selector(AppDelegate.checkForUpdates(_:)), keyEquivalent: "")
         app.addItem(withTitle: "Set Up Mosaic…", action: #selector(AppDelegate.showSetup(_:)), keyEquivalent: "")
         app.addItem(.separator())
         app.addItem(withTitle: "Settings…", action: #selector(AppDelegate.showSettings(_:)), keyEquivalent: ",")
         app.addItem(.separator())
-        app.addItem(withTitle: "Hide Mosaic", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
+        app.addItem(withTitle: "Hide Mosaic Companion", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
         let hideOthers = app.addItem(withTitle: "Hide Others",
                                      action: #selector(NSApplication.hideOtherApplications(_:)), keyEquivalent: "h")
         hideOthers.keyEquivalentModifierMask = [.command, .option]
         app.addItem(withTitle: "Show All", action: #selector(NSApplication.unhideAllApplications(_:)), keyEquivalent: "")
         app.addItem(.separator())
-        app.addItem(withTitle: "Quit Mosaic", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        app.addItem(withTitle: "Quit Mosaic Companion", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
 
         let file = submenu(of: menu, titled: "File")
         file.addItem(withTitle: "Close", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
@@ -107,7 +107,7 @@ enum MosaicApplication {
         NSApp.windowsMenu = window
 
         let help = submenu(of: menu, titled: "Help")
-        help.addItem(withTitle: "Mosaic Help", action: #selector(NSApplication.showHelp(_:)), keyEquivalent: "?")
+        help.addItem(withTitle: "Mosaic Companion Help", action: #selector(NSApplication.showHelp(_:)), keyEquivalent: "?")
         NSApp.helpMenu = help
         return menu
     }
@@ -242,7 +242,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
             controller.sizingOptions = [.preferredContentSize]
             let window = NSWindow(contentViewController: controller)
             window.styleMask = [.titled, .closable, .miniaturizable]
-            window.title = "Mosaic"
+            window.title = "Mosaic Companion"
             window.isReleasedWhenClosed = false
             window.delegate = self
             window.setFrameAutosaveName("Mosaic")
@@ -328,7 +328,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let alert = NSAlert()
         alert.messageText = "Mosaic \(release.version) is available"
-        var text = "You have \(current). Mosaic will relaunch in the new version and update the screen saver too."
+        var text = "You have \(current). Mosaic Companion will relaunch in the new version and update the screen saver too."
         if updater.needsAdministrator {
             text += " Replacing it in Applications needs an administrator’s name and password."
         }
@@ -439,7 +439,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
         model?.startIndexing()
     }
 
-    /// One pane, so no toolbar; titled "Mosaic Settings", and neither
+    /// One pane, so no toolbar; titled "Mosaic Companion Settings", and neither
     /// minimised nor zoomed (HIG, "Settings").
     @objc func showSettings(_ sender: Any?) {
         guard let model else { return }
@@ -448,7 +448,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
             controller.sizingOptions = [.preferredContentSize]
             let window = NSWindow(contentViewController: controller)
             window.styleMask = [.titled, .closable]
-            window.title = "Mosaic Settings"
+            window.title = "Mosaic Companion Settings"
             window.isReleasedWhenClosed = false
             window.setFrameAutosaveName("Mosaic Settings")
             window.center()
@@ -480,7 +480,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
         let windows = [window, settingsWindow, setupWindow].compactMap { $0 }.filter(\.isVisible)
         NSApp.activate(ignoringOtherApps: true)
         let alert = NSAlert()
-        alert.messageText = "Quit Mosaic?"
+        alert.messageText = "Quit Mosaic Companion?"
         alert.informativeText = "The screen saver won't pick up new photographs until you next log in."
         let close = windows.isEmpty ? nil : alert.addButton(withTitle: "Close Window")
         let quit = alert.addButton(withTitle: "Quit")

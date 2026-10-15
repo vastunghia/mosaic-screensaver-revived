@@ -13,7 +13,7 @@ struct PhotosAccessRow: View {
         switch model.access {
         case .notDetermined:
             HStack {
-                Text("Mosaic needs to read your photo library.")
+                Text("Mosaic Companion needs to read your photo library.")
                 Spacer()
                 Button("Allow Access…", action: model.requestAccess)
             }
@@ -37,11 +37,11 @@ struct PhotosAccessRow: View {
                     // macOS gives the access to a Mosaic opened afresh, not to
                     // this one: it says so itself, and offers to quit it.
                     HStack {
-                        Text("Turn Mosaic on under Photos, then reopen it: the access starts with the next launch. A folder of photographs works too.")
+                        Text("Turn Mosaic Companion on under Photos, then reopen it: the access starts with the next launch. A folder of photographs works too.")
                             .font(.callout)
                             .foregroundStyle(.secondary)
                         Spacer()
-                        Button("Reopen Mosaic", action: model.reopen)
+                        Button("Reopen Mosaic Companion", action: model.reopen)
                     }
                 }
             }

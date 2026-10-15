@@ -51,17 +51,17 @@ struct CloseUpsWaiting: Equatable {
         }
         let why = switch reason {
         case .stalled(let retry?):
-            "iCloud stopped answering. Mosaic tries again at \(retry.formatted(date: .omitted, time: .shortened))."
+            "iCloud stopped answering. Mosaic Companion tries again at \(retry.formatted(date: .omitted, time: .shortened))."
         case .stalled(nil):
-            "iCloud stopped answering. Mosaic tries again later."
+            "iCloud stopped answering. Mosaic Companion tries again later."
         case .limits:
-            "the limit of \(DownloadLedger.standardDailyLimit) a day or \(DownloadLedger.standardWeeklyLimit) a week is reached. Mosaic goes on as soon as it allows."
+            "the limit of \(DownloadLedger.standardDailyLimit) a day or \(DownloadLedger.standardWeeklyLimit) a week is reached. Mosaic Companion goes on as soon as it allows."
         case .metered:
             "the network is metered (a hotspot, or Low Data Mode)."
         case .slow:
-            "iCloud was too slow to send them. Mosaic asks again later."
+            "iCloud was too slow to send them. Mosaic Companion asks again later."
         case nil:
-            "Mosaic tries again later."
+            "Mosaic Companion tries again later."
         }
         return "\(missing) still to download: \(why)"
     }

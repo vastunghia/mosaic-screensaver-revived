@@ -466,11 +466,11 @@ final class MosaicSaverView: ScreenSaverView {
         let status = NSTextField(wrappingLabelWithString: Self.indexStatus())
         let settings = SharedSettings.read() ?? .standard
         let effect = NSTextField(labelWithString: "\(settings.rows) rows, \(Int(settings.cycleDuration)) seconds a photograph.")
-        let note = NSTextField(wrappingLabelWithString: "The photographs and the settings are chosen in the Mosaic app.")
+        let note = NSTextField(wrappingLabelWithString: "The photographs and the settings are chosen in Mosaic Companion.")
         note.textColor = .secondaryLabelColor
         note.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
 
-        let open = NSButton(title: "Open Mosaic…", target: self, action: #selector(openApp(_:)))
+        let open = NSButton(title: "Open Mosaic Companion…", target: self, action: #selector(openApp(_:)))
         let done = NSButton(title: "Done", target: self, action: #selector(closeOptions(_:)))
         done.keyEquivalent = "\r"
         let buttons = NSStackView(views: [open, NSView(), done])
@@ -504,7 +504,7 @@ final class MosaicSaverView: ScreenSaverView {
     private static func indexStatus() -> String {
         let store = PhotoIndexStore(directory: SharedLocations.indexDirectory)
         guard let manifest = try? store.load(), !manifest.entries.isEmpty else {
-            return "No photographs yet. Open Mosaic to choose them."
+            return "No photographs yet. Open Mosaic Companion to choose them."
         }
         var text = "\(manifest.entries.count) photographs"
         if let date = try? store.manifestURL.resourceValues(forKeys: [.contentModificationDateKey])
@@ -585,11 +585,11 @@ final class MosaicSaverView: ScreenSaverView {
     private static func explanation(of error: Error?) -> String {
         switch error {
         case PhotoIndexError.missing?:
-            return "Open Mosaic to choose the photographs for the screen saver."
+            return "Open Mosaic Companion to choose the photographs for the screen saver."
         case SaverError.tooFewPhotographs(let count)?:
-            return "Mosaic has \(count) photographs so far. Open Mosaic to add more."
+            return "Mosaic has \(count) photographs so far. Open Mosaic Companion to add more."
         default:
-            return "Mosaic could not start. Open Mosaic to check its photographs."
+            return "Mosaic could not start. Open Mosaic Companion to check its photographs."
         }
     }
 

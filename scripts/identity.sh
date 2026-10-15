@@ -7,7 +7,11 @@
 # Application Support directory name, which is the path contract between the app
 # and the saver (M11, spike 2).
 
-APP_NAME="Mosaic"
+# The product is the screen saver, Mosaic; the app is its companion, which
+# prepares the photographs and holds the settings (2026-10-15). The names may
+# change, the identifiers below may not.
+PRODUCT_NAME="Mosaic"
+APP_NAME="Mosaic Companion"
 APP_BUNDLE_ID="com.vastunghia.Mosaic"
 SAVER_NAME="Mosaic"
 SAVER_BUNDLE_ID="com.vastunghia.Mosaic.saver"

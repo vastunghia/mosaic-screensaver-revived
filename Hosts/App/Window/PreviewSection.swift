@@ -49,7 +49,7 @@ struct PreviewSection: View {
             HStack {
                 // Under the mosaic it changes, so the options are found where
                 // they act; the menu item and ⌘, open the same window.
-                Button("Mosaic Settings…", systemImage: "gearshape", action: MosaicApplication.showSettings)
+                Button("Settings…", systemImage: "gearshape", action: MosaicApplication.showSettings)
                     .help("Rows, zoom duration, the photographs to use and updates (⌘,)")
                 Spacer()
             }

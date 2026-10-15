@@ -297,7 +297,7 @@ final class AppModel: ObservableObject {
             }
             clearProblem(at: place)
         } catch {
-            report(place, "Mosaic could not \(on ? "be added to" : "be removed from") the login items: \(error.localizedDescription)")
+            report(place, "Mosaic Companion could not \(on ? "be added to" : "be removed from") the login items: \(error.localizedDescription)")
         }
         refreshLoginItem()
         Self.log.notice("login item \(on ? "registered" : "unregistered", privacy: .public), status \(self.loginItem.rawValue, privacy: .public)")
@@ -363,7 +363,7 @@ final class AppModel: ObservableObject {
         do {
             try ledger.save(to: SharedLocations.closeUpFetchLedger)
         } catch {
-            report(.settings, "Mosaic could not reset the download limits: \(error.localizedDescription)")
+            report(.settings, "Mosaic Companion could not reset the download limits: \(error.localizedDescription)")
             return
         }
         Self.log.notice("download limits reset by the user, \(forgotten, privacy: .public) requests of the last 7 days forgotten")

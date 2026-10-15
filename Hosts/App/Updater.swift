@@ -133,7 +133,7 @@ final class Updater: ObservableObject {
         if let status = (response as? HTTPURLResponse)?.statusCode, status != 200 {
             throw UpdateError.server(status, feed)
         }
-        return try Release(gitHub: data, app: Self.appName)
+        return try Release(gitHub: data, app: Self.productName)
     }
 
     // MARK: Preparing
@@ -238,7 +238,9 @@ final class Updater: ObservableObject {
 
     // MARK: Private
 
-    private static let appName = "Mosaic"
+    /// The release's disk image is named after the product, the screen
+    /// saver, not after this app (`scripts/release.sh`).
+    private static let productName = "Mosaic"
     private static let interval: TimeInterval = 24 * 3600
     private static let lastCheckKey = "lastUpdateCheck"
     private static let skippedKey = "skippedUpdate"
