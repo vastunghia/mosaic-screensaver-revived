@@ -15,6 +15,7 @@ struct AppView: View {
             PreviewSection(model: model, play: play, stepsToggle: stepsToggle)
             if model.isSetUp, !showingSteps {
                 ReadySection(model: model, updater: updater)
+                LoginItemOption(model: model)
             } else {
                 // Numbered from 1 whether or not the move is one of them.
                 let first = model.isTranslocated ? 2 : 1
@@ -25,6 +26,7 @@ struct AppView: View {
                 PreparationStep(model: model, number: first + 1)
                 ScreenSaverStep(model: model, number: first + 2)
                 UpdatesStep(model: model, number: first + 3)
+                LoginItemOption(model: model)
             }
         }
         .formStyle(.grouped)

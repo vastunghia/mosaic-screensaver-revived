@@ -12,7 +12,7 @@ struct SettingsView: View {
                 DownloadOptions(model: model)
             }
             MosaicOptions(model: model)
-            LoginItemOption(model: model)
+            UpdatesOptions(model: model)
         }
         .formStyle(.grouped)
         // The window's one help button, in its lower trailing corner (HIG,

@@ -293,7 +293,7 @@ final class AppModel: ObservableObject {
         loginItem = SMAppService.mainApp.status
     }
 
-    func setOpensAtLogin(_ on: Bool, reportingAt place: Problem.Place = .settings) {
+    func setOpensAtLogin(_ on: Bool, reportingAt place: Problem.Place = .background) {
         // Turned off by hand is an answer: the window stops asking. Turned on
         // again, it may ask once more if the system later loses it.
         UserDefaults.standard.set(!on, forKey: Self.declinedLoginKey)

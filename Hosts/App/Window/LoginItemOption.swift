@@ -1,7 +1,9 @@
 import SwiftUI
 
-/// Whether the app keeps the index fresh on its own. The system's word is the
-/// truth: the user can switch it off in System Settings.
+/// Whether the app keeps the index fresh on its own, in the window: it decides
+/// whether the screen saver's photographs follow the library, which is the
+/// window's business more than a setting's. The system's word is the truth:
+/// the user can switch it off in System Settings.
 struct LoginItemOption: View {
     @ObservedObject var model: AppModel
 
@@ -20,14 +22,15 @@ struct LoginItemOption: View {
                     Button("Open Login Items…", action: model.openLoginItemsSettings)
                 }
             }
-            NotificationsRow(model: model)
-            ProblemRow(model: model, place: .settings)
+            ProblemRow(model: model, place: .background)
         } header: {
             Text("In the Background")
         } footer: {
             Footnote(model.isTranslocated
                  ? "Available once Mosaic is in Applications."
-                 : "Mosaic runs without a window and keeps the screen saver's photographs up to date. Notifications tell you only that a new version of Mosaic is ready.")
+                 : model.opensAtLogin
+                    ? "Mosaic opens at login without a window and keeps the screen saver’s photographs up to date."
+                    : "Mosaic keeps the screen saver’s photographs up to date only while it is open.")
         }
     }
 }

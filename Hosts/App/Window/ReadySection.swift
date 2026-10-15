@@ -38,21 +38,6 @@ struct ReadySection: View {
                 Spacer()
                 Button("Open Screen Saver Settings…", action: model.openScreenSaverSettings)
             }
-            // Whatever the invitation got for an answer, the window says what
-            // it means for the photographs.
-            if !model.opensAtLogin {
-                HStack {
-                    Text("Updated only while Mosaic is open")
-                    Spacer()
-                    Button("Open at Login") { model.setOpensAtLogin(true, reportingAt: .screenSaver) }
-                }
-            } else if model.loginItem == .requiresApproval {
-                HStack {
-                    Text("Waiting for approval in System Settings")
-                    Spacer()
-                    Button("Open Login Items…", action: model.openLoginItemsSettings)
-                }
-            }
             switch updater.state {
             case .preparing(let version):
                 Text("Downloading Mosaic \(version.description)…")
