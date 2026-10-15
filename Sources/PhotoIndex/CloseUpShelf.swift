@@ -216,17 +216,25 @@ public struct CloseUpShelf: Sendable {
         let missing = entries.filter { !has($0) }
         var report = StockReport(kept: entries.count - missing.count, total: entries.count)
         report.tilesOnly = index.entries.count - entries.count
+        // And, made only from what is here, never fetched nor counted as
+        // missing, the tiles kept from the screen by their role alone: with
+        // close-ups fetched, one that is not a subject fills the screen once
+        // its close-up is here (`PhotoIndexBuilder`).
+        let narrowest = index.manifest.thumbnailWidth - 1
+        let spares = index.entries.filter { !$0.canFillScreen && !subjects.contains($0.id) && $0.pixelWidth >= narrowest }
+        let spareIDs = Set(spares.map(\.id))
+        let attempted = missing + spares.filter { !has($0) }
         progress?(report)
 
         let tally = Tally()
         let batchSize = 48
         var cancelled = false
-        for batch in stride(from: 0, to: missing.count, by: batchSize) {
+        for batch in stride(from: 0, to: attempted.count, by: batchSize) {
             if isCancelled?() == true {
                 cancelled = true
                 break
             }
-            let slice = Array(missing[batch..<min(batch + batchSize, missing.count)])
+            let slice = Array(attempted[batch..<min(batch + batchSize, attempted.count)])
             // Decoding originals is the whole cost, as for the index.
             DispatchQueue.concurrentPerform(iterations: slice.count) { offset in
                 let entry = slice[offset]
@@ -235,9 +243,11 @@ public struct CloseUpShelf: Sendable {
                     try write(image, for: entry)
                     tally.add(\.made)
                 } catch PhotoSourceError.unavailable {
+                    guard !spareIDs.contains(entry.id) else { return }
                     tally.add(\.unavailable)
                     tally.elsewhere(entry)
                 } catch {
+                    guard !spareIDs.contains(entry.id) else { return }
                     tally.add(\.failed)
                 }
             }
@@ -283,7 +293,7 @@ public struct CloseUpShelf: Sendable {
         }
 
         if !cancelled {
-            report.removed = collectOrphans(keeping: Set(entries.map(name(for:))))
+            report.removed = collectOrphans(keeping: Set((entries + spares).map(name(for:))))
         }
         return report
     }

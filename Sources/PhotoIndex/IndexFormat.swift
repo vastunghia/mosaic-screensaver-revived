@@ -40,8 +40,9 @@ public struct IndexEntry: Codable, Equatable, Sendable {
     /// optimised library keeps of it on this Mac — so it is a tile and never
     /// fills the screen (SPEC § 5, the two roles). Absent, not false, for every
     /// other photograph, a small original included: manifests that have none
-    /// are written as they always were.
-    public let tileOnly: Bool?
+    /// are written as they always were. With close-ups fetched, also one
+    /// this Mac has large enough that is not a subject (`role(tileOnly:)`).
+    public private(set) var tileOnly: Bool?
 
     public var canFillScreen: Bool { tileOnly != true }
 
@@ -67,6 +68,14 @@ public struct IndexEntry: Codable, Equatable, Sendable {
     }
 
     public var photoID: PhotoID { PhotoID(id) }
+
+    /// The same pixels in the other role: a tile, or one that fills the
+    /// screen. Nothing is read again.
+    public func role(tileOnly: Bool) -> IndexEntry {
+        var entry = self
+        entry.tileOnly = tileOnly ? true : nil
+        return entry
+    }
 
     /// The stored signature, or nil if the bytes do not match the declared side.
     public var tileSignature: TileSignature? {

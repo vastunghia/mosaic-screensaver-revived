@@ -216,6 +216,36 @@ struct CloseUpShelfTests {
         #expect(manifest.entries.filter { tiles.contains($0.id) && $0.id != waiting }.allSatisfy { !shelf.has($0) })
     }
 
+    @Test("a tile wide enough that is not a subject gets its close-up made from what is here, never fetched")
+    func spareTiles() throws {
+        let (built, shelf) = try fixture(count: 6)
+        var manifest = built.manifest
+        // Tiles by their role alone, as wide as a thumbnail: the first two
+        // have their close-up here, the third not.
+        let spares = Array(manifest.entries.map(\.id).sorted().prefix(3))
+        manifest.entries = manifest.entries.map { entry in
+            spares.contains(entry.id) ? entry.role(tileOnly: true) : entry
+        }
+        manifest.subjects = manifest.entries.filter(\.canFillScreen).map(\.id)
+        let synthetic = SyntheticPhotoSource(count: 6)
+        let index = IndexedPhotoSource(store: built.store, manifest: manifest, originals: synthetic)
+        let local = IndexedPhotoSource(
+            store: built.store, manifest: manifest, originals: AwaySource(synthetic, away: [spares[2]])
+        )
+        let ledger = temporaryDirectory().appendingPathComponent("ledger.json")
+
+        let report = try shelf.stock(from: local, fetching: CloseUpShelf.Fetching(index: index, ledger: ledger))
+        #expect(report.made == 5 && report.fetched == 0 && report.unavailable == 0 && report.failed == 0)
+        #expect(DownloadLedger.load(from: ledger).requests.isEmpty)
+        let entries = Dictionary(uniqueKeysWithValues: manifest.entries.map { ($0.id, $0) })
+        let made = try spares.map { try #require(entries[$0]) }.map(shelf.has)
+        #expect(made == [true, true, false])
+
+        // Made once, and kept.
+        let again = try shelf.stock(from: local, fetching: CloseUpShelf.Fetching(index: index, ledger: ledger))
+        #expect(again.made == 0 && again.removed == 0)
+    }
+
     @Test("tiles picked for the ring are fetched after the close-ups, within the same caps, and not shelved")
     func ringPicks() throws {
         let (built, shelf) = try fixture(count: 6)

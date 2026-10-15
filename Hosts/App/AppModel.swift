@@ -84,7 +84,12 @@ final class AppModel: ObservableObject {
     /// A subject fetched as a tile fills the screen only once the index reads
     /// it again (`PhotoIndexBuilder.CloseUpPreference.fetches`).
     private var fetchedThisRun = false
-    static let stallRetryDelay: TimeInterval = 10 * 60
+    /// Runs in a row that stalled with nothing fetched: each waits longer
+    /// before the next. On a second profile (2026-10-15) iCloud was back
+    /// after a few minutes as often as after ten, and a copy either came in
+    /// within 7.3 s or not at all, so trying again early costs 45 s at most.
+    private var stallsInARow = 0
+    static let stallRetryDelays: [TimeInterval] = [2 * 60, 5 * 60, 10 * 60]
 
     /// Whether a window is, or has been, open: someone may be looking.
     private var foreground: Bool
@@ -684,6 +689,7 @@ final class AppModel: ObservableObject {
             report(.preparing, "Preparing the photographs stopped: \(error.localizedDescription)")
         }
         refreshIndexedCount()
+        if fetchedThisRun { stallsInARow = 0 }
         if restartWhenDone || fetchedThisRun && error == nil && !cancel.isSet {
             startIndexing()
         } else {
@@ -693,9 +699,13 @@ final class AppModel: ObservableObject {
     }
 
     /// One more run a while after one that stopped as iCloud stalled,
-    /// within the same caps; any run starting before it takes its place.
+    /// within the same caps, longer after each in a row; any run starting
+    /// before it takes its place, as one the library's changes start: a
+    /// copy given up on that comes in late is a sign iCloud is back.
     private func retryAfterStall() {
-        let retry = Date().addingTimeInterval(Self.stallRetryDelay)
+        let delay = Self.stallRetryDelays[min(stallsInARow, Self.stallRetryDelays.count - 1)]
+        stallsInARow += 1
+        let retry = Date().addingTimeInterval(delay)
         let item = DispatchWorkItem { [weak self] in
             MainActor.assumeIsolated {
                 Self.log.notice("trying again after iCloud stalled")
@@ -703,9 +713,9 @@ final class AppModel: ObservableObject {
             }
         }
         stallRetry = item
-        DispatchQueue.main.asyncAfter(deadline: .now() + Self.stallRetryDelay, execute: item)
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: item)
         if closeUpsWaiting?.reason == .stalled(retry: nil) { closeUpsWaiting?.reason = .stalled(retry: retry) }
-        Self.log.notice("close-ups: trying again in \(Int(Self.stallRetryDelay), privacy: .public) s, as iCloud stalled")
+        Self.log.notice("close-ups: trying again in \(Int(delay), privacy: .public) s, as iCloud stalled")
     }
 
     /// What is on disk, for the current source. Also right while a build runs,

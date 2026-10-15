@@ -480,6 +480,55 @@ struct FillTests {
         }
     }
 
+    @Test("with close-ups fetched, only the subjects fill the screen, and a tile once its close-up is here")
+    func fetchedTilesFillOnceStocked() throws {
+        let library = optimised(400)
+        let index = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: index) }
+        let store = PhotoIndexStore(directory: index)
+        let source = SubsetPhotoSource(library, rule: .uniformInTime, count: 160, seed: 9)
+        let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
+
+        // Without it, every tile this Mac has whole would want a close-up
+        // fetched: 211 instead of 128 on a second profile (2026-10-15).
+        let first = try builder().build(
+            from: source, into: store, root: "library", now: now, preferring: preference(fetches: true)
+        )
+        let subjects = Set(first.subjects)
+        #expect(Set(first.entries.filter(\.canFillScreen).map(\.id)).isSubset(of: subjects))
+        let spares = Set(first.entries.filter { !subjects.contains($0.id) && $0.pixelWidth == 64 }.map(\.id))
+        try #require(spares.count > 5)
+        #expect(first.belowFullScreen.allSatisfy { !spares.contains($0) }, "short for their role, not for pixels")
+
+        // The shelf made some of their close-ups: those fill the screen,
+        // and nothing is read again.
+        let stocked = Set(spares.sorted().prefix(3))
+        library.asked = []
+        let second = try builder().build(
+            from: source, into: store, root: "library", now: now.addingTimeInterval(60),
+            preferring: preference(stocked: stocked, fetches: true)
+        )
+        #expect(library.askedAt.isEmpty, "asked \(library.askedAt)")
+        #expect(Set(second.subjects) == subjects)
+        let full = Set(second.entries.filter(\.canFillScreen).map(\.id))
+        #expect(full.subtracting(subjects) == stocked)
+
+        // Downloads turned off: every one this Mac has whole fills the screen
+        // again, without being read again.
+        library.asked = []
+        let off = try builder().build(
+            from: source, into: store, root: "library", now: now.addingTimeInterval(120),
+            preferring: preference(fetches: false)
+        )
+        // Asked at the close-up's width is the subjects' choice looking for
+        // close-ups here, not a read.
+        let read = library.askedAt.filter { !$0.hasSuffix("@128") }.map { String($0.split(separator: "@")[0]) }
+        #expect(read.allSatisfy { !spares.contains($0) }, "a spare was read again: \(read.filter(spares.contains))")
+        for entry in off.entries where spares.contains(entry.id) {
+            #expect(entry.canFillScreen, "\(entry.id)")
+        }
+    }
+
     @Test("with close-ups fetched, tiles are picked for the ring until a share is wide enough, and read again once in")
     func ringPicks() throws {
         let library = optimised(400)

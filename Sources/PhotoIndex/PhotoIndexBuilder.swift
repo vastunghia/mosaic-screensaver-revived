@@ -239,7 +239,7 @@ public struct PhotoIndexBuilder: Sendable {
             skipped: Set(manifest.skipped),
             unavailable: carried ? Set(manifest.unavailable) : [],
             belowFullScreen: carried
-                ? Set(manifest.belowFullScreen).union(known.values.filter { !$0.canFillScreen }.map(\.id))
+                ? Set(manifest.belowFullScreen).union(known.values.filter(isShort).map(\.id))
                 : [],
             belowCloseUp: carried ? Set(manifest.belowCloseUp) : []
         )
@@ -322,10 +322,10 @@ public struct PhotoIndexBuilder: Sendable {
             leftOut.skipped.formUnion(round.skipped)
             leftOut.unavailable.formUnion(round.unavailable)
             for entry in round.kept.values {
-                if entry.canFillScreen {
-                    leftOut.belowFullScreen.remove(entry.id)
-                } else {
+                if isShort(entry) {
                     leftOut.belowFullScreen.insert(entry.id)
+                } else {
+                    leftOut.belowFullScreen.remove(entry.id)
                 }
             }
             cancelled = round.cancelled
@@ -376,7 +376,10 @@ public struct PhotoIndexBuilder: Sendable {
             manifest.subjectsChoice = nil
         }
 
-        // Phase B: the rest, as large as this Mac has them.
+        // Phase B: the rest, as large as this Mac has them. With close-ups
+        // fetched, only the subjects' close-ups are fetched: a tile fills the
+        // screen once the shelf could make its close-up from what is here.
+        let tileFillsScreen: (@Sendable (IndexEntry) -> Bool)? = fetches ? closeUps?.isStocked : nil
         var tiles: [String: IndexEntry] = [:]
         var fellShort = false
         var total = target
@@ -392,9 +395,8 @@ public struct PhotoIndexBuilder: Sendable {
             total = screen.count + min(count, chosen.count)
             let carry = previous.merging(screen) { _, new in new }
             let round = try self.round(
-                over: chosen, tier: .any(belowFullScreen: leftOut.belowFullScreen.union(resting)), from: source,
-                into: store,
-                manifest: &manifest, known: known, alreadySkipped: alreadySkipped, carry: carry, leftOut: leftOut,
+                over: chosen, tier: .any(belowFullScreen: leftOut.belowFullScreen.union(resting), fillsScreen: tileFillsScreen),
+                from: source, into: store, manifest: &manifest, known: known, alreadySkipped: alreadySkipped, carry: carry, leftOut: leftOut,
                 indexedBefore: indexedBefore, checkpoints: checkpoints,
                 report: { ready, readyFullScreen, skipped, unavailable, _, _, reusedHere in
                     progress?(IndexProgress(
@@ -410,7 +412,7 @@ public struct PhotoIndexBuilder: Sendable {
             for (id, entry) in round.kept { known[id] = entry }
             leftOut.skipped.formUnion(round.skipped)
             leftOut.unavailable.formUnion(round.unavailable)
-            leftOut.belowFullScreen.formUnion(round.kept.values.filter { !$0.canFillScreen }.map(\.id))
+            leftOut.belowFullScreen.formUnion(round.kept.values.filter(isShort).map(\.id))
             cancelled = round.cancelled
             if round.skipped.isEmpty && round.unavailable.isEmpty || cancelled { break }
         }
@@ -593,8 +595,16 @@ public struct PhotoIndexBuilder: Sendable {
         /// be short starts below. Not there even at the last is unavailable.
         /// A tile in `promoting` is asked again from the top: a subject whose
         /// close-up came in from iCloud, which left this Mac a derivative
-        /// large enough to fill the screen.
-        case any(belowFullScreen: Set<String>, promoting: Set<String> = [])
+        /// large enough to fill the screen. With `fillsScreen`, one read at
+        /// `thumbnailWidth` fills the screen only if it says so: with
+        /// close-ups fetched, a tile that is not a subject only once the shelf
+        /// made its close-up here, or the shelf would fetch one for every tile
+        /// this Mac has that large (2026-10-15: 211 instead of 128 on a second profile's
+        /// profile).
+        case any(
+            belowFullScreen: Set<String>, promoting: Set<String> = [],
+            fillsScreen: (@Sendable (IndexEntry) -> Bool)? = nil
+        )
     }
 
     private struct Round {
@@ -641,10 +651,17 @@ public struct PhotoIndexBuilder: Sendable {
         let tiered: Bool = if case .plain = tier { false } else { true }
         let narrowest = thumbnailWidth - 1
         let narrow: @Sendable (Int) -> Bool = { crop in tiered && crop < narrowest }
+        let fillsScreen = Self.fillsScreen(in: tier)
+        // One read at `thumbnailWidth` takes the role this round gives it,
+        // without being read again.
+        let settle: @Sendable (IndexEntry) -> IndexEntry = { entry in
+            tiered && entry.pixelWidth >= narrowest ? entry.role(tileOnly: !fillsScreen(entry)) : entry
+        }
 
         for descriptor in descriptors {
             let id = descriptor.id.rawValue
-            if let entry = known[id],
+            let settled = known[id].map(settle)
+            if let entry = settled,
                entry.versionToken == descriptor.versionToken,
                store.hasThumbnail(named: entry.thumbnail),
                // Indexed before narrow originals were tiles: read again, to be
@@ -688,7 +705,7 @@ public struct PhotoIndexBuilder: Sendable {
                 let id = descriptor.id.rawValue
                 let widths: [Int] = switch tier {
                 case .plain, .fullScreen: [width]
-                case .any(let below, let promoting):
+                case .any(let below, let promoting, _):
                     (below.contains(id) && !promoting.contains(id) ? [] : [width]) + tileWidths
                 }
                 do {
@@ -709,7 +726,7 @@ public struct PhotoIndexBuilder: Sendable {
                         let signature = try ImageSampling.signature(of: image, side: side)
                         let name = IndexEntry.thumbnailName(id: id, versionToken: descriptor.versionToken)
                         try store.writeThumbnail(image, named: name)
-                        collector.add(IndexEntry(
+                        let entry = IndexEntry(
                             id: id,
                             versionToken: descriptor.versionToken,
                             thumbnail: name,
@@ -718,7 +735,8 @@ public struct PhotoIndexBuilder: Sendable {
                             pixelHeight: image.height,
                             cropStart: cropStart,
                             tileOnly: asked < width || narrow(image.width)
-                        ))
+                        )
+                        collector.add(settle(entry))
                         return
                     }
                     // Not broken, only elsewhere: counted, and asked for again
@@ -745,7 +763,7 @@ public struct PhotoIndexBuilder: Sendable {
             manifest.skipped = Array(leftOut.skipped.union(skipped))
             manifest.unavailable = Array(leftOut.unavailable.union(unavailable))
             manifest.belowFullScreen = Array(leftOut.belowFullScreen.union(short).union(
-                kept.values.filter { !$0.canFillScreen }.map(\.id)
+                kept.values.filter(isShort).map(\.id)
             ))
             manifest.belowCloseUp = Array(leftOut.belowCloseUp)
             try store.save(manifest)
@@ -759,13 +777,24 @@ public struct PhotoIndexBuilder: Sendable {
         return false
     }
 
+    /// Not here at `thumbnailWidth`, or narrower than the screen: a tile for
+    /// lack of pixels, not one that only its role keeps from the screen.
+    private func isShort(_ entry: IndexEntry) -> Bool {
+        !entry.canFillScreen && entry.pixelWidth < thumbnailWidth - 1
+    }
+
+    private static func fillsScreen(in tier: Tier) -> @Sendable (IndexEntry) -> Bool {
+        if case .any(_, _, let fillsScreen?) = tier { return fillsScreen }
+        return { _ in true }
+    }
+
     private static func isBelowFullScreen(_ id: String, in tier: Tier) -> Bool {
-        if case .any(let below, _) = tier { return below.contains(id) }
+        if case .any(let below, _, _) = tier { return below.contains(id) }
         return false
     }
 
     private static func isPromoting(_ id: String, in tier: Tier) -> Bool {
-        if case .any(_, let promoting) = tier { return promoting.contains(id) }
+        if case .any(_, let promoting, _) = tier { return promoting.contains(id) }
         return false
     }
 
