@@ -91,9 +91,10 @@ enum MosaicApplication {
         edit.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
         edit.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
 
-        // As in Music: Play lives in Controls.
+        // Controls, as in Music; "Enter Full Screen", as everywhere, since
+        // the mosaic already runs in the window.
         let controls = submenu(of: menu, titled: "Controls")
-        controls.addItem(withTitle: "Play", action: #selector(AppDelegate.play(_:)), keyEquivalent: "\r")
+        controls.addItem(withTitle: "Enter Full Screen", action: #selector(AppDelegate.play(_:)), keyEquivalent: "\r")
         controls.addItem(withTitle: "Update Photographs",
                          action: #selector(AppDelegate.updatePhotographs(_:)), keyEquivalent: "r")
 

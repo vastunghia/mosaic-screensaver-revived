@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The top of the window: the mosaic itself, moving, and Play on it. Before
+/// The top of the window: the mosaic itself, moving, and Full Screen on it. Before
 /// there are photographs enough, the icon's mosaic in its place.
 struct PreviewSection: View {
     @ObservedObject var model: AppModel
@@ -18,7 +18,7 @@ struct PreviewSection: View {
         Section {
             ZStack(alignment: .bottomTrailing) {
                 // The index on disk is enough, as for the screen saver: also
-                // while the Photos grant is missing, which Play needs.
+                // while the Photos grant is missing, which full screen needs.
                 if model.hasIndex {
                     // A button only while it can play: otherwise a click,
                     // or VoiceOver's action, would do nothing at all.
@@ -28,7 +28,7 @@ struct PreviewSection: View {
                     if model.canPlay {
                         preview
                             .accessibilityAddTraits(.isButton)
-                            .accessibilityAction(named: "Play", play)
+                            .accessibilityAction(named: "Full Screen", play)
                     } else {
                         preview
                     }
@@ -38,7 +38,9 @@ struct PreviewSection: View {
                     if model.canPlay {
                         // Dark rather than the accent colour, which some
                         // photographs under it would share.
-                        Button("Play", systemImage: "play.fill", action: play)
+                        // Not "Play": the mosaic already runs here, and the
+                        // button only takes it full screen (Sergio, 2026-10-15).
+                        Button("Full Screen", systemImage: "arrow.up.left.and.arrow.down.right", action: play)
                             .buttonStyle(.borderedProminent)
                             .tint(.black.opacity(0.6))
                             .padding()

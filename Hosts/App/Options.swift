@@ -195,7 +195,7 @@ struct Options {
     /// Quits after so many seconds, for runs nobody is watching.
     var quitAfter: Double?
 
-    /// Plays the effect the way the app's Play button does — borderless, at
+    /// Plays the effect the way the app's Full Screen button does — borderless, at
     /// screen-saver level, on the GPU driving the display — instead of the
     /// harness window: for measuring what a user sees.
     var play = false
