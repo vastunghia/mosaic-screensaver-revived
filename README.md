@@ -33,13 +33,21 @@ It shows its mosaic on the main display; other displays stay black.
    to protect your Mac* and choose **Open Anyway**, then confirm with your password
    (an administrator's, on an account that is not one).
    You only do this once.
-4. Mosaic opens on its setup steps:
-   - **Photographs** — allow access to your Photos library, or choose a folder;
-   - **Preparation** — Mosaic makes a small copy of each photograph to build mosaics from;
-     this runs by itself, and the mosaic appears in the window as soon as 100 are ready;
-   - **Screen Saver** — **Install**, then choose **Mosaic** in the Screen Saver settings,
-     under *Other*. On macOS 26 they are behind the **Screen Saver** button of
-     **System Settings › Wallpaper**, which is where Mosaic takes you.
+4. Mosaic opens on its setup, a page at a time:
+   - **Photographs** — allow access to your Photos library, or choose a folder. Mosaic
+     then makes a small copy of each photograph to build mosaics from, by itself, and the
+     mosaic appears in its window as soon as 100 are ready;
+   - **Screen Saver** — **Install**;
+   - **In the Background** — let Mosaic open at login, without a window, to keep the
+     screen saver's photographs up to date as your library changes;
+   - **Photos in iCloud** — whether to download sharp close-ups of the photographs this
+     Mac keeps only in iCloud;
+   - **Updates** — allow the notification that says a new version is ready;
+   - then choose **Mosaic** in the Screen Saver settings, under *Other*. On macOS 26 they
+     are behind the **Screen Saver** button of **System Settings › Wallpaper**, which is
+     where Mosaic takes you.
+
+   **Mosaic › Set Up Mosaic…** goes through it again.
 
 From then on Mosaic checks for new versions once a day and offers to install them;
 **Mosaic › Check for Updates…** checks at once.
@@ -52,10 +60,11 @@ membership. macOS therefore asks you, once, whether you trust it. If you would r
 
 The window shows the mosaic moving; click it, or press **⌘↩**, to watch it full screen.
 **Mosaic › Settings…** (⌘,) chooses which photographs (albums or whole folders, how many, how they are
-picked over time), how many rows a mosaic has, and how long each zoom lasts.
+picked over time), what to download from iCloud, how many rows a mosaic has, how long
+each zoom lasts, and the notification for new versions.
 
-Mosaic opens at login, without a window, to keep the screen saver's photographs up to
-date as your library changes. You can turn that off in Settings.
+Under the mosaic, the window says what the screen saver has and what it still needs, and
+turns opening at login on and off.
 
 The full guide is inside the app, under **Help › Mosaic Help**, and always matches the
 version you have.
