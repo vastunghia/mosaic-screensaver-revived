@@ -234,7 +234,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.regular)
         if window == nil {
             NSApp.mainMenu = MosaicApplication.mainMenu()
-            // Sized by its content, which grows and shrinks with the steps.
+            // Sized by its content, which grows and shrinks with its status.
             let controller = NSHostingController(rootView: AppView(model: model, updater: updater) { [weak self] in
                 self?.play(nil)
             })

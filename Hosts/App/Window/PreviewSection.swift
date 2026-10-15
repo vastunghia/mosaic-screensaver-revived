@@ -5,14 +5,6 @@ import SwiftUI
 struct PreviewSection: View {
     @ObservedObject var model: AppModel
     let play: () -> Void
-    let stepsToggle: StepsToggle?
-
-    /// Shown once every step is done: the steps fold into one section of
-    /// status, and come back on request.
-    struct StepsToggle {
-        let showing: Bool
-        let action: () -> Void
-    }
 
     var body: some View {
         Section {
@@ -34,7 +26,7 @@ struct PreviewSection: View {
                     }
                     // Full screen needs the library, for its close-ups. Without
                     // it the button is not shown: disabled over a moving
-                    // mosaic it could not be read, and the step above says why.
+                    // mosaic it could not be read, and the status below says why.
                     if model.canPlay {
                         // Dark rather than the accent colour, which some
                         // photographs under it would share.
@@ -60,10 +52,6 @@ struct PreviewSection: View {
                 Button("Mosaic Settings…", systemImage: "gearshape", action: MosaicApplication.showSettings)
                     .help("Rows, zoom duration, the photographs to use and updates (⌘,)")
                 Spacer()
-                if let stepsToggle {
-                    Button(stepsToggle.showing ? "Hide Setup Steps" : "Show Setup Steps", action: stepsToggle.action)
-                        .buttonStyle(.link)
-                }
             }
         }
     }

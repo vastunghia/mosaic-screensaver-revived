@@ -50,7 +50,7 @@ final class AppModel: ObservableObject {
     @Published private(set) var problem: Problem?
     @Published private(set) var loginItem = SMAppService.mainApp.status
     @Published private(set) var saver = SaverInstaller.State.unavailable
-    /// The last answer known, so that the window opens on the right steps
+    /// The last answer known, so that the window opens on the right status
     /// before the system has been asked again.
     @Published private(set) var notifications = UNAuthorizationStatus(
         rawValue: UserDefaults.standard.integer(forKey: AppModel.notificationsKey)) ?? .notDetermined
@@ -122,28 +122,28 @@ final class AppModel: ObservableObject {
 
     var canPlay: Bool { hasIndex && !needsAccess }
 
-    // MARK: The steps of the window
+    // MARK: What the window's status shows
 
     /// Running from where the download was unpacked (`AppLocation`).
     let isTranslocated = AppLocation.isTranslocated
 
-    /// Step: there are photographs to read.
+    /// There are photographs to read.
     var hasPhotographs: Bool {
         preferences.hasSource && !needsAccess
     }
 
-    /// Step: enough of them indexed for the effect, and for the saver.
+    /// Enough of them indexed for the effect, and for the saver.
     var hasIndex: Bool { indexedCount >= Self.minimumPhotographs }
 
-    /// Every step done: the window shows a line of status instead of them.
-    /// Not while something went wrong, which belongs to a step.
+    /// Everything the screen saver needs is in place: the status says Ready.
+    /// Not while something went wrong. Notifications are a setting, not a
+    /// need, and do not count.
     var isSetUp: Bool {
-        !isTranslocated && hasPhotographs && hasIndex && saver == .installed && hasAnsweredNotifications
-            && problem == nil
+        !isTranslocated && hasPhotographs && hasIndex && saver == .installed && problem == nil
     }
 
-    /// Step: the user has said whether Mosaic may announce new versions. A
-    /// no is an answer too, and the step is done with it.
+    /// The user has said whether Mosaic may announce new versions. A no is an
+    /// answer too.
     var hasAnsweredNotifications: Bool { notifications != .notDetermined }
 
     /// Which photographs of the library, in one line, however many albums
@@ -414,7 +414,7 @@ final class AppModel: ObservableObject {
         }
     }
 
-    /// Only from the button of the Updates step, or of Settings, next to what
+    /// Only from the button of the setup, or of Settings, next to what
     /// they are for: the system's prompt cannot say it (2026-10-11).
     func requestNotifications() {
         Task {

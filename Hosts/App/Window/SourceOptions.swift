@@ -1,7 +1,6 @@
 import SwiftUI
 
-/// Where the photographs come from, in Settings too: once every step is done
-/// the steps fold away, and with them the first step's choice.
+/// Where the photographs come from: chosen in the setup, changed here.
 struct SourceOptions: View {
     @ObservedObject var model: AppModel
 

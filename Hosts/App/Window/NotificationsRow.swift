@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The state of the permission, and the way to change it: in the Updates step
+/// The state of the permission, and the way to change it: in the setup
 /// and in Settings.
 struct NotificationsRow: View {
     @ObservedObject var model: AppModel
