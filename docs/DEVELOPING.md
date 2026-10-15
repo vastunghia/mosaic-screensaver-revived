@@ -16,7 +16,7 @@
 ## Building
 
 ```sh
-./Hosts/App/build.sh                  # .build/bundle/Mosaic.app, this Mac's architecture
+./Hosts/App/build.sh                  # ".build/bundle/Mosaic Companion.app", this Mac's architecture
 ./Hosts/App/build.sh --universal      # arm64 and x86_64
 ./Hosts/App/build.sh --install        # and copy it to /Applications
 ./Hosts/Saver/build.sh --install      # the screen saver alone, into ~/Library/Screen Savers
@@ -38,7 +38,7 @@ runs when it changes.
 ## Running the effect on a folder
 
 ```sh
-APP=.build/bundle/Mosaic.app/Contents/MacOS/Mosaic
+APP=".build/bundle/Mosaic Companion.app/Contents/MacOS/Mosaic Companion"
 
 # Index a folder once. It is incremental: adding photographs later re-reads only those.
 "$APP" --folder ~/Pictures/SomeFolder --build-index
@@ -87,7 +87,7 @@ batch is deterministic — the same folder and options give the same files, byte
 With *Optimize Mac Storage*, Photos keeps few originals on the Mac, and Mosaic makes do
 with the smaller copies it has: a photograph fills the screen only if this Mac has it at
 854 pixels or more, and is a tile otherwise. These run on the Photos library, so launch
-the app with `open -W --stdout <file> .build/bundle/Mosaic.app --args …`, or the Photos
+the app with `open -W --stdout <file> ".build/bundle/Mosaic Companion.app" --args …`, or the Photos
 permission goes to the terminal.
 
 - `--photos-library --probe-local N [--probe-csv <file>]` asks Photos, without the network,
@@ -122,7 +122,7 @@ cat > /tmp/feed/latest.json <<'JSON'
 JSON
 (cd /tmp/feed && python3 -m http.server 8765 --bind 127.0.0.1) &
 ./Hosts/App/build.sh --install
-open /Applications/Mosaic.app --args -updateFeed http://127.0.0.1:8765/latest.json
+open "/Applications/Mosaic Companion.app" --args -updateFeed http://127.0.0.1:8765/latest.json
 ```
 
 Without a window, as a login item does, the update comes as a notification: write the

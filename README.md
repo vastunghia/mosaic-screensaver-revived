@@ -20,63 +20,68 @@ The loop above is 60 seconds at 640 pixels; [download it at 1280 pixels](https:/
 - Photographs: your Photos library, or a folder of them. At least 100; a couple of
   thousand look best.
 
-Mosaic has been tested on an Intel Mac. The app is a universal binary and runs on Apple
+Mosaic comes with **Mosaic Companion**, the app that installs the screen saver, prepares
+your photographs for it and holds its settings: the screen saver cannot read the Photos
+library itself.
+
+Mosaic has been tested on an Intel Mac. It is a universal binary and runs on Apple
 silicon too, but nobody has watched it there yet: if you do, please say how it went.
 It shows its mosaic on the main display; other displays stay black.
 
 ## Installing
 
 1. Download `Mosaic-x.y.dmg` from the [latest release](https://github.com/vastunghia/mosaic-screensaver-revived/releases/latest),
-   open it and drag **Mosaic** to **Applications**.
-2. Open Mosaic from Applications. macOS says *"Mosaic" Not Opened*: choose **Done**.
-3. Open **System Settings › Privacy & Security**, scroll down to *"Mosaic" was blocked
+   open it and drag **Mosaic Companion** to **Applications**.
+2. Open Mosaic Companion from Applications. macOS says *"Mosaic Companion" Not Opened*:
+   choose **Done**.
+3. Open **System Settings › Privacy & Security**, scroll down to *"Mosaic Companion" was blocked
    to protect your Mac* and choose **Open Anyway**, then confirm with your password
    (an administrator's, on an account that is not one).
    You only do this once.
-4. Mosaic opens on its setup, a page at a time:
-   - **Photographs** — allow access to your Photos library, or choose a folder. Mosaic
+4. Mosaic Companion opens on its setup, a page at a time:
+   - **Photographs** — allow access to your Photos library, or choose a folder. Mosaic Companion
      then makes a small copy of each photograph to build mosaics from, by itself, and the
      mosaic appears in its window as soon as 100 are ready;
    - **Screen Saver** — **Install**;
-   - **In the Background** — let Mosaic open at login, without a window, to keep the
+   - **In the Background** — let Mosaic Companion open at login, without a window, to keep the
      screen saver's photographs up to date as your library changes;
    - **Photos in iCloud** — whether to download sharp close-ups of the photographs this
      Mac keeps only in iCloud;
    - **Updates** — allow the notification that says a new version is ready;
    - then choose **Mosaic** in the Screen Saver settings, under *Other*. On macOS 26 they
      are behind the **Screen Saver** button of **System Settings › Wallpaper**, which is
-     where Mosaic takes you.
+     where Mosaic Companion takes you.
 
-   **Mosaic › Set Up Mosaic…** goes through it again.
+   **Mosaic Companion › Set Up Mosaic…** goes through it again.
 
-From then on Mosaic checks for new versions once a day and offers to install them;
-**Mosaic › Check for Updates…** checks at once.
+From then on Mosaic Companion checks for new versions once a day and offers to install them;
+**Mosaic Companion › Check for Updates…** checks at once.
 
-Why step 3: Mosaic is signed, but not notarized by Apple, which takes a paid developer
+Why step 3: Mosaic Companion is signed, but not notarized by Apple, which takes a paid developer
 membership. macOS therefore asks you, once, whether you trust it. If you would rather not,
 [build it yourself](#building-from-source).
 
 ## Using it
 
-The window shows the mosaic moving; click it, or press **⌘↩**, to watch it full screen.
-**Mosaic › Settings…** (⌘,) chooses which photographs (albums or whole folders, how many, how they are
+The Mosaic Companion window shows the mosaic moving; click it, or press **⌘↩**, to watch it full screen.
+**Mosaic Companion › Settings…** (⌘,) chooses which photographs (albums or whole folders, how many, how they are
 picked over time), what to download from iCloud, how many rows a mosaic has, how long
 each zoom lasts, and the notification for new versions.
 
 Under the mosaic, the window says what the screen saver has and what it still needs, and
 turns opening at login on and off.
 
-The full guide is inside the app, under **Help › Mosaic Help**, and always matches the
+The full guide is inside the app, under **Help › Mosaic Companion Help**, and always matches the
 version you have.
 
 ## Your photographs
 
-They never leave your Mac. Mosaic reads them through the Photos library (or the folder you
+They never leave your Mac. Mosaic Companion reads them through the Photos library (or the folder you
 chose) and keeps, in `~/Library/Application Support/Mosaic`, a small copy of each and a
 larger one for close-ups: about 1.2 GB for 2,048 photographs. The screen saver reads only
 those copies; it never touches the Photos library.
 
-If your library keeps its originals in iCloud (*Optimize Mac Storage*), Mosaic uses what
+If your library keeps its originals in iCloud (*Optimize Mac Storage*), Mosaic Companion uses what
 Photos keeps on your Mac, and downloads nothing unless you allow it. If you do, it asks
 Photos for a sharper copy of the photographs it shows full screen, and of some it shows
 large around them: about 1 MB each, never the original, at most 256 a day and 512 a week,
@@ -84,13 +89,13 @@ and none on a hotspot or in Low Data Mode. Photos keeps those copies in your lib
 
 ## Uninstalling
 
-Quit Mosaic, then delete:
+Quit Mosaic Companion, then delete:
 
-- `/Applications/Mosaic.app`
+- `/Applications/Mosaic Companion.app`
 - `~/Library/Screen Savers/Mosaic.saver`
 - `~/Library/Application Support/Mosaic`
 
-and remove Mosaic from **System Settings › General › Login Items & Extensions**, if it is still there.
+and remove Mosaic Companion from **System Settings › General › Login Items & Extensions**, if it is still there.
 
 ## Building from source
 
