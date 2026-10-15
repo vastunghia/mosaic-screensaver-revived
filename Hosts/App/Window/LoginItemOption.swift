@@ -13,6 +13,8 @@ struct LoginItemOption: View {
                 get: { model.opensAtLogin },
                 set: { model.setOpensAtLogin($0) }
             ))
+            // One row of a grouped form (HIG, Toggles: mini switch).
+            .controlSize(.mini)
             .disabled(model.isTranslocated)
             if model.loginItem == .requiresApproval {
                 HStack {

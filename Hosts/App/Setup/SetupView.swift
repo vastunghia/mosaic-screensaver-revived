@@ -27,11 +27,13 @@ struct SetupView: View {
                 if index > 0 {
                     Button("Back", action: back)
                 }
+                // "Get Started" opens the flow and "Done" closes it (HIG,
+                // Writing: consistent language through multiple steps).
                 if page == .done {
-                    Button("Open Mosaic", action: finish)
+                    Button("Done", action: finish)
                         .keyboardShortcut(.defaultAction)
                 } else {
-                    Button("Continue", action: next)
+                    Button(page == .welcome ? "Get Started" : "Continue", action: next)
                         .keyboardShortcut(.defaultAction)
                 }
             }
@@ -48,7 +50,7 @@ struct SetupView: View {
                 .resizable()
                 .frame(width: 48, height: 48)
                 .accessibilityHidden(true)
-            Text(page.title)
+            Text(title)
                 .font(.title2.weight(.semibold))
             Spacer()
             if page.isDone(model) == true {
@@ -57,6 +59,13 @@ struct SetupView: View {
             }
         }
         .padding([.horizontal, .top], 24)
+    }
+
+    /// The last page does not claim everything is done when it is not.
+    private var title: String {
+        guard page == .done else { return page.title }
+        let undone = SetupPage.pages(for: model).contains { $0.isDone(model) == false }
+        return undone ? "Almost Done" : page.title
     }
 
     @ViewBuilder private var content: some View {
@@ -108,6 +117,7 @@ struct SetupView: View {
                     get: { model.opensAtLogin },
                     set: { model.setOpensAtLogin($0) }
                 ))
+                .controlSize(.mini)
                 .disabled(model.isTranslocated)
                 if model.loginItem == .requiresApproval {
                     HStack {
