@@ -67,6 +67,12 @@ chose) and keeps, in `~/Library/Application Support/Mosaic`, a small copy of eac
 larger one for close-ups: about 1.2 GB for 2,048 photographs. The screen saver reads only
 those copies; it never touches the Photos library.
 
+If your library keeps its originals in iCloud (*Optimize Mac Storage*), Mosaic uses what
+Photos keeps on your Mac, and downloads nothing unless you allow it. If you do, it asks
+Photos for a sharper copy of the photographs it shows full screen, and of some it shows
+large around them: about 1 MB each, never the original, at most 256 a day and 512 a week,
+and none on a hotspot or in Low Data Mode. Photos keeps those copies in your library.
+
 ## Uninstalling
 
 Quit Mosaic, then delete:

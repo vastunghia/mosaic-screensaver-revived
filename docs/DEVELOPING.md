@@ -82,6 +82,30 @@ A batch also solves each target with every variety constraint off: that *floor* 
 closest the photographs can get at all, and the gap above it is the price of variety. A
 batch is deterministic — the same folder and options give the same files, byte for byte.
 
+## An optimised Photos library
+
+With *Optimize Mac Storage*, Photos keeps few originals on the Mac, and Mosaic makes do
+with the smaller copies it has: a photograph fills the screen only if this Mac has it at
+854 pixels or more, and is a tile otherwise. These run on the Photos library, so launch
+the app with `open -W --stdout <file> .build/bundle/Mosaic.app --args …`, or the Photos
+permission goes to the terminal.
+
+- `--photos-library --probe-local N [--probe-csv <file>]` asks Photos, without the network,
+  for the largest copy it has of `N` photographs, and whether their originals are here.
+- `--photos-library --probe-download N` fetches `N` of the index's full-screen photographs
+  from iCloud at 1920 pixels, one at a time, and says how long and how much it took. With
+  `--close-up-anchor-width 640` it fetches tiles narrower than that instead, as for the
+  anchor's ring. **It downloads**: it counts toward the user's disk and data.
+- `--fetch-close-ups` builds the index and fetches as *Sharp close-ups only* does, within
+  the same daily and weekly limits, so **it downloads** too. `--ring-share F` sets the share
+  of the photographs brought to the ring's width (0.16 by default; 0 fetches none, as does
+  `defaults write com.vastunghia.Mosaic ringShare -float 0` for the app).
+
+On a library kept whole, `--export-batch … --compare-ring --simulate-sharp 0.16` shows what
+an optimised one costs: each tolerance column comes twice, the ring around the anchor taking
+any photograph in one and only those sharp enough in the other, as if only that share of
+the photographs were. `--sharp-ring off` lifts the constraint altogether.
+
 ## Trying an update
 
 The app reads GitHub's `releases/latest` once a day; `-updateFeed <url>` (one dash: two
