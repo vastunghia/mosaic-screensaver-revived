@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Score Distributions</title>
+<style>
+:root {
+  color-scheme: light;
+  --surface: #fcfcfb; --surface-2: #f3f2ef; --text-primary: #0b0b0b; --text-secondary: #52514e;
+  --text-muted: #7a7974; --grid: #e4e3df; --series-1: #2a78d6; --series-2: #eb6834; --border: #dddcd7;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --surface: #1a1a19; --surface-2: #242423; --text-primary: #f0efec; --text-secondary: #c3c2b7;
+    --text-muted: #8f8e88; --grid: #33332f; --series-1: #3987e5; --series-2: #d95926; --border: #3a3a37;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --surface: #1a1a19; --surface-2: #242423; --text-primary: #f0efec; --text-secondary: #c3c2b7;
+  --text-muted: #8f8e88; --grid: #33332f; --series-1: #3987e5; --series-2: #d95926; --border: #3a3a37;
+}
+* { box-sizing: border-box }
+body { margin: 0; padding: 24px 16px 48px; background: var(--surface); color: var(--text-primary);
+       font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif }
+main { max-width: 1280px; margin: 0 auto }
+h1 { font-size: 22px; margin: 0 0 4px } h2 { font-size: 16px; margin: 32px 0 12px }
+p.lede { color: var(--text-secondary); margin: 0 0 16px; max-width: 900px }
+.controls { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin: 12px 0 4px }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 7px; overflow: hidden }
+.seg button { font: inherit; padding: 4px 12px; border: 0; background: transparent; color: var(--text-secondary); cursor: pointer }
+.seg button[aria-pressed="true"] { background: var(--surface-2); color: var(--text-primary); font-weight: 600 }
+.legend { display: flex; gap: 16px; color: var(--text-secondary) }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 20px 24px }
+.card h3 { font-size: 12.5px; margin: 0; font-weight: 600; overflow-wrap: anywhere }
+.card .meta { color: var(--text-muted); font-size: 11.5px; margin: 1px 0 4px }
+.card .q { color: var(--text-secondary); font-size: 11px; margin-top: 2px }
+svg { display: block; width: 100%; height: auto; overflow: visible }
+svg text { fill: var(--text-muted); font-size: 10px }
+svg text.label { fill: var(--text-secondary); font-weight: 600 }
+.axis { stroke: var(--grid) }
+.hit { fill: transparent; cursor: default }
+#tip { position: fixed; pointer-events: none; background: var(--surface-2); color: var(--text-primary);
+       border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font-size: 12px;
+       box-shadow: 0 2px 8px rgb(0 0 0 / .12); display: none; z-index: 2; max-width: 260px }
+#tip b { font-weight: 600 }
+.table-wrap { overflow-x: auto; margin-top: 12px }
+table { border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; min-width: 900px }
+th, td { text-align: right; padding: 4px 8px; border-bottom: 1px solid var(--grid); white-space: nowrap }
+th:first-child, td:first-child, th:nth-child(2), td:nth-child(2) { text-align: left }
+th { color: var(--text-secondary); font-weight: 600 }
+</style>
+<body>
+<main>
+<h1>Score distributions in Photos.sqlite</h1>
+<p class="lede" id="lede"></p>
+<div class="controls">
+  <span class="seg" role="group" aria-label="Count scale">
+    <button type="button" data-scale="linear" aria-pressed="true">Linear</button>
+    <button type="button" data-scale="log" aria-pressed="false">Log</button>
+  </span>
+  <span class="legend">
+    <span><i style="background: var(--series-1)"></i>photos per bin</span>
+    <span><i style="background: var(--series-2)"></i>one exact value, ≥ 2 % of photos</span>
+    <span><i style="background: var(--series-1); border-radius: 50%"></i>mean aesthetic per fifth</span>
+  </span>
+</div>
+<div id="groups"></div>
+<h2>All numbers</h2>
+<div class="table-wrap"><table id="table"></table></div>
+</main>
+<div id="tip" role="tooltip"></div>
+<script>
+const DATA = /*DATA*/null;
+const fmt = (x, d = 3) => Number(x).toFixed(d);
+const pct = (k) => (100 * k / DATA.total).toFixed(1) + ' %';
+const short = (name) => name.replace(/^Z/, '').replace(/SCORE$/, '').toLowerCase();
+const QLO = 0.25, QHI = 0.7;   // common scale of the quintile charts, aesthetic score
+// When one value holds this share, the fifths split ties in database order and their slope means nothing.
+const TIES = 0.2;
+const tied = (s) => s.top[1] / DATA.total >= TIES;
+
+document.getElementById('lede').textContent =
+  `${DATA.total.toLocaleString('en')} photos visible to PhotoKit (images, not hidden, not trashed, burst picks only). ` +
+  `Each histogram has ${DATA.bins} bins between the column's min and max; exact values holding ` +
+  `${DATA.spike * 100} % of the photos or more, and most of their bin, are drawn apart in the second colour, and cut with a notch when ` +
+  `taller than the rest. Under each, the mean aesthetic score (ZOVERALLAESTHETICSCORE) per fifth of the photos ` +
+  `sorted by that column, low to high, on a common scale from ${QLO} to ${QHI}; the dashed line is the library mean. ` +
+  `It rises if high is good.`;
+
+const tip = document.getElementById('tip');
+function showTip(e, html) {
+  tip.innerHTML = html; tip.style.display = 'block';
+  const r = tip.getBoundingClientRect();
+  let x = e.clientX + 12, y = e.clientY + 12;
+  if (x + r.width > innerWidth - 8) x = e.clientX - r.width - 12;
+  if (y + r.height > innerHeight - 8) y = e.clientY - r.height - 12;
+  tip.style.left = x + 'px'; tip.style.top = y + 'px';
+}
+const hideTip = () => { tip.style.display = 'none'; };
+
+// A bar with its top corners rounded and its base square on the baseline.
+function bar(x, y, w, h, fill) {
+  const r = Math.min(4, w / 2, h);
+  if (h <= 0) return '';
+  return `<path fill="${fill}" d="M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z"/>`;
+}
+
+function histogram(s, scale) {
+  const W = 300, H = 110, top = 16, base = top + H;
+  const tr = scale === 'log' ? (k) => Math.log10(1 + k) : (k) => k;
+  const binMax = Math.max(1, ...s.bins);
+  const max = tr(binMax) || 1;
+  const slot = W / s.bins.length;
+  let out = `<line class="axis" x1="0" x2="${W}" y1="${base}" y2="${base}"/>`;
+  let hits = '';
+  s.bins.forEach((k, i) => {
+    const h = H * tr(k) / max;
+    out += bar(i * slot + 1, base - h, Math.max(1, slot - 2), h, 'var(--series-1)');
+    const a = s.lo + i * s.width, b = a + s.width;
+    hits += `<rect class="hit" x="${i * slot}" y="${top}" width="${slot}" height="${H}" data-tip="${fmt(a)} – ${fmt(b)}: <b>${k.toLocaleString('en')}</b> photos (${pct(k)})"/>`;
+  });
+  s.spikes.forEach(([v, k], j) => {
+    const x = Math.min(W - slot, Math.max(0, (v - s.lo) / (s.width * s.bins.length) * W - slot / 2));
+    const full = H * tr(k) / max;
+    const h = Math.min(full, H + 4);
+    out += bar(x + 1, base - h, Math.max(2, slot - 2), h, 'var(--series-2)');
+    if (full > H + 4) out += `<path d="M${x - 1},${top + 6}l${slot + 2},-4M${x - 1},${top + 10}l${slot + 2},-4" stroke="var(--surface)" stroke-width="2"/>`;
+    const lx = Math.min(W - 4, Math.max(4, x + slot / 2));
+    const anchor = lx > W * 0.75 ? 'end' : lx < W * 0.25 ? 'start' : 'middle';
+    out += `<text class="label" x="${lx}" y="${top - 4 - j * 11}" text-anchor="${anchor}">${+v.toFixed(4)} · ${pct(k)}</text>`;
+    hits += `<rect class="hit" x="${x - 2}" y="${top - 12}" width="${slot + 4}" height="${H + 12}" data-tip="exactly <b>${+v.toFixed(6)}</b>: <b>${k.toLocaleString('en')}</b> photos (${pct(k)})"/>`;
+  });
+  out += `<text x="0" y="${base + 12}">${fmt(s.min, 2)}</text><text x="${W}" y="${base + 12}" text-anchor="end">${fmt(s.max, 2)}</text>`;
+  const extra = s.spikes.length > 1 ? (s.spikes.length - 1) * 11 : 0;
+  return `<svg viewBox="0 ${-extra} ${W} ${base + 16 + extra}" role="img" aria-label="Histogram of ${s.name}">${out}${hits}</svg>`;
+}
+
+function quintiles(s) {
+  const W = 300, H = 64, pad = 6;
+  const y = (q) => pad + (H - 2 * pad) * (1 - (Math.min(Math.max(q, QLO), QHI) - QLO) / (QHI - QLO));
+  const x = (i) => 20 + i * (W - 40) / 4;
+  const ref = y(DATA.meanAesthetic);
+  let out = `<line x1="0" x2="${W}" y1="${ref}" y2="${ref}" stroke="var(--text-muted)" stroke-dasharray="3 3"/>`;
+  out += `<polyline fill="none" stroke="var(--series-1)" stroke-width="2" points="${s.quintiles.map((q, i) => `${x(i)},${y(q)}`).join(' ')}"/>`;
+  s.quintiles.forEach((q, i) => {
+    out += `<circle cx="${x(i)}" cy="${y(q)}" r="4" fill="var(--series-1)" stroke="var(--surface)" stroke-width="2"/>`;
+    out += `<rect class="hit" x="${x(i) - 26}" y="0" width="52" height="${H}" data-tip="fifth ${i + 1} of 5 by ${short(s.name)}: mean aesthetic <b>${fmt(q)}</b>"/>`;
+  });
+  out += `<text x="${x(0)}" y="${H + 10}" text-anchor="middle">lowest fifth</text><text x="${x(4)}" y="${H + 10}" text-anchor="middle">highest fifth</text>`;
+  return `<svg viewBox="0 0 ${W} ${H + 14}" role="img" aria-label="Mean aesthetic score per fifth of ${s.name}">${out}</svg>`;
+}
+
+function render(scale) {
+  const host = document.getElementById('groups');
+  host.innerHTML = DATA.groups.map(g => `<h2>${g.title}</h2><div class="grid">` + g.scores.map(s => `
+    <div class="card">
+      <h3>${s.name}</h3>
+      <div class="meta">${s.table.replace(/^Z/, '')} · mean ${fmt(s.mean)} · median ${fmt(s.median)} · ${s.distinct.toLocaleString('en')} distinct</div>
+      ${histogram(s, scale)}
+      ${tied(s) ? `<div class="q">No fifths: ${+s.top[0].toFixed(4)} alone holds ${pct(s.top[1])} of the photos, so the fifths would split ties in database order.</div>`
+                : quintiles(s) + `<div class="q">aesthetic by fifth: ${s.quintiles.map(q => fmt(q, 2)).join(' → ')}</div>`}
+    </div>`).join('') + '</div>').join('');
+}
+
+document.getElementById('table').innerHTML =
+  '<tr><th>column</th><th>table</th><th>non-null</th><th>min</th><th>p10</th><th>median</th><th>mean</th><th>p90</th><th>max</th><th>distinct</th><th>most common</th><th>share</th><th>aesthetic, low fifth → high fifth</th></tr>' +
+  DATA.groups.flatMap(g => g.scores).map(s =>
+    `<tr><td>${s.name}</td><td>${s.table.replace(/^Z/, '')}</td><td>${s.n.toLocaleString('en')}</td><td>${fmt(s.min)}</td>` +
+    `<td>${fmt(s.p10)}</td><td>${fmt(s.median)}</td><td>${fmt(s.mean)}</td><td>${fmt(s.p90)}</td><td>${fmt(s.max)}</td>` +
+    `<td>${s.distinct.toLocaleString('en')}</td><td>${+s.top[0].toFixed(4)}</td><td>${pct(s.top[1])}</td>` +
+    `<td>${tied(s) ? '— (ties)' : fmt(s.quintiles[0], 2) + ' → ' + fmt(s.quintiles[4], 2)}</td></tr>`).join('');
+
+let scale = 'linear';
+try { scale = localStorage.getItem('scale') || 'linear'; } catch (e) {}
+function setScale(next) {
+  scale = next;
+  document.querySelectorAll('[data-scale]').forEach(b => b.setAttribute('aria-pressed', b.dataset.scale === scale));
+  try { localStorage.setItem('scale', scale); } catch (e) {}
+  render(scale);
+}
+document.querySelectorAll('[data-scale]').forEach(b => b.addEventListener('click', () => setScale(b.dataset.scale)));
+document.addEventListener('mousemove', (e) => {
+  const t = e.target.closest && e.target.closest('[data-tip]');
+  if (t) showTip(e, t.dataset.tip); else hideTip();
+});
+setScale(scale);
+</script>
+</body>
+</html>
