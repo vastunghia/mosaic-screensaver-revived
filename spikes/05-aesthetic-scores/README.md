@@ -193,7 +193,7 @@ be chosen there by eye.
 
 ## Question 4: a second profile on the same iCloud library
 
-a second profile on the same iMac: same iCloud library, *Optimize Mac Storage* on,
+A second profile on the same iMac: same iCloud library, *Optimize Mac Storage* on,
 rarely logged in. Launched from that profile's Terminal:
 
 ```sh
@@ -224,7 +224,7 @@ The two were joined on `ZCLOUDASSETGUID`.
 - The placeholder is the marker to use, not the version alone. 1,562 photos with
   version 0 have a real score (Spearman 0.969 with Sergio's), and 0.5 is also a real
   value: 223 analysed photos in Sergio's library have it. The rule *0.5 and failure 0
-  or `NULL`* flags 43,731 photos on a second profile (76 %). On
+  or `NULL`* flags 43,731 photos on the second profile (76 %). On
   Sergio's it flags 74: the one unanalysed photo and the 73 burst members PhotoKit
   hides anyway.
 
@@ -259,9 +259,9 @@ python3 -I remote.py <results dir>...
   profiles no photo has failure 0 or `NULL` with another score but one, and only 2–76
   photos per profile have 0.5 with a real failure score, so the rule does not depend on
   the curation level a Mac happens to write.
-- **A profile used every day still has half its photos unscored.** On the i3 laptop 52 % of
-  the photos carry the placeholder, against 76 % on the iMac profile that is seldom
-  uses. Its 15,710 version-0 photos with a real score rank like Sergio's (Spearman
+- **A profile used every day still has half its photos unscored.** On the i3 laptop 52 %
+  of the photos carry the placeholder, against 76 % on the iMac profile that is seldom
+  used. Its 15,710 version-0 photos with a real score rank like Sergio's (Spearman
   0.965) as do the analysed ones (0.972). The laptop and the iMac agree with each other
   far more (0.993 on 13,940 photos) than either does with Sergio's profile (0.966):
   some scores may come from the same device through iCloud, not from each Mac.
@@ -282,7 +282,7 @@ by quantiles converts one into the other. A Vision score goes to its quantile am
 Vision scores, then to Photos' score at the same quantile. `calibrate.py` fits the
 map on one half of the 2048 and judges it on the other (two folds, by UUID). The
 yardstick is how far Photos disagrees with itself: the same photo analysed on
-Sergio's and on a second profile. *Same worst x %* is the share of the photos that
+Sergio's and on the second profile. *Same worst x %* is the share of the photos that
 Photos puts in its worst x % which the estimate puts there too.
 
 ```sh
@@ -362,7 +362,7 @@ that were also in this spike's corpus:
 - On the Intel iMac Vision does not scale with cores: about 230 ms a call with six at once,
   about 44 ms of wall time each, as one at a time.
 
-On the i3 laptop (i3, 4 cores), the index's image was there for only 73 of 2048 photographs: on
+On the i3 laptop (4 cores), the index's image was there for only 73 of 2048 photographs: on
 a library that keeps originals in iCloud, a profile used every day has little at 854 px,
 and most of its tiles come from derivatives of about 350 to 430 px. Vision took about
 256 ms a call there, four at a time.

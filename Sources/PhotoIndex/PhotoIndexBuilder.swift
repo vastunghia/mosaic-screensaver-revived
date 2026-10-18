@@ -569,7 +569,7 @@ public struct PhotoIndexBuilder: Sendable {
         // Each round replaces the photographs found missing, and asking the
         // rest again cost a 1920 px decode each: on an optimised library a
         // round per missing photograph, 386 of them, took 13 minutes
-        // (2026-10-18, a second profile).
+        // (2026-10-18, an optimised profile).
         var confirmed: Set<String> = []
         while true {
             let chosen = fillable.choose(
@@ -642,8 +642,8 @@ public struct PhotoIndexBuilder: Sendable {
         /// `thumbnailWidth` fills the screen only if it says so: with
         /// close-ups fetched, a tile that is not a subject only once the shelf
         /// made its close-up here, or the shelf would fetch one for every tile
-        /// this Mac has that large (2026-10-15: 211 instead of 128 on a second profile's
-        /// profile).
+        /// this Mac has that large (2026-10-15: 211 instead of 128 on an
+        /// optimised profile).
         case any(
             belowFullScreen: Set<String>, promoting: Set<String> = [],
             fillsScreen: (@Sendable (IndexEntry) -> Bool)? = nil

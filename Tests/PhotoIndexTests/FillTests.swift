@@ -490,7 +490,7 @@ struct FillTests {
         let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
 
         // Without it, every tile this Mac has whole would want a close-up
-        // fetched: 211 instead of 128 on a second profile (2026-10-15).
+        // fetched: 211 instead of 128 on an optimised profile (2026-10-15).
         let first = try builder().build(
             from: source, into: store, root: "library", now: now, preferring: preference(fetches: true)
         )

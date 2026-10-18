@@ -23,7 +23,7 @@ import Foundation
 /// came in at the third request and one had not after three.
 public struct DownloadLedger: Codable, Equatable, Sendable {
     /// One full set of subjects of a 2048-photograph subset, and the copies
-    /// for the anchor's ring with it: 122 and 62 on a second profile on
+    /// for the anchor's ring with it: 122 and 62 on an optimised profile on
     /// 2026-10-15, so 184 (128 a day until then; Sergio).
     public static let standardDailyLimit = 256
     /// Two such days: a new set in a week, and what Photos took back.

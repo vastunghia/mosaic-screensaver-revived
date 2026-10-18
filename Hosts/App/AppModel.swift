@@ -86,7 +86,7 @@ final class AppModel: ObservableObject {
     /// it again (`PhotoIndexBuilder.CloseUpPreference.fetches`).
     private var fetchedThisRun = false
     /// Runs in a row that stalled with nothing fetched: each waits longer
-    /// before the next. On a second profile (2026-10-15) iCloud was back
+    /// before the next. On an optimised profile (2026-10-15) iCloud was back
     /// after a few minutes as often as after ten, and a copy either came in
     /// within 7.3 s or not at all, so trying again early costs 45 s at most.
     private var stallsInARow = 0
