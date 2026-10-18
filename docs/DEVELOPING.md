@@ -105,6 +105,13 @@ permission goes to the terminal.
   month, and of every utility shot, with the verdicts the index at `--index` remembers: run it
   after a build with `--cull on`. Previews are what this Mac has at 256 pixels; nothing is
   downloaded.
+- `./scripts/cull-probe.sh [--with-previews]` runs all of the above on this profile's own
+  photographs, into a working index it deletes afterwards: a build from scratch without
+  culling and with it, the same again, the culling pages and `--probe-quality 2048`, timed,
+  with the log, in a zip on the Desktop. For another Mac or profile,
+  `./scripts/package-cull-probe.sh` makes `.build/dist/mosaic-cull-probe.zip`, with the
+  universal app and a README; whoever runs it sends back `cull-<user>-<Mac>.zip`. Without
+  `--with-previews` only numbers and identifiers leave that Mac.
 - `--photos-library --probe-download N` fetches `N` of the index's full-screen photographs
   from iCloud at 1920 pixels, one at a time, and says how long and how much it took. With
   `--close-up-anchor-width 640` it fetches tiles narrower than that instead, as for the
