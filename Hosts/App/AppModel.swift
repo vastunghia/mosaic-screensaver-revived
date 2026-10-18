@@ -134,7 +134,18 @@ final class AppModel: ObservableObject {
     }
 
     /// Enough of them indexed for the effect, and for the saver.
-    var hasIndex: Bool { indexedCount >= Self.minimumPhotographs }
+    ///
+    /// While a build runs, also what the index held when it began: a build
+    /// keeps those on disk until it settles, and the saver and the preview go
+    /// on reading them. Counting only the build's own progress hid the
+    /// preview for the two minutes the first build with culling reads every
+    /// photograph again (2026-10-18).
+    var hasIndex: Bool {
+        max(indexedCount, isIndexing ? indexedBeforeBuild : 0) >= Self.minimumPhotographs
+    }
+
+    /// `indexedCount` as the build under way began.
+    private var indexedBeforeBuild = 0
 
     /// Everything the screen saver needs is in place: the status says Ready.
     /// Not while something went wrong. Notifications are a setting, not a
@@ -543,6 +554,7 @@ final class AppModel: ObservableObject {
         let options = preferences.options()
         let flag = CancelFlag()
         cancel = flag
+        indexedBeforeBuild = indexedCount
         isIndexing = true
         clearProblem(at: .preparing)
         restartWhenDone = false
