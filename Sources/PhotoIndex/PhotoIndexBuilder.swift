@@ -769,7 +769,16 @@ public struct PhotoIndexBuilder: Sendable {
                             (image, cropStart) = try Self.canonicalImage(
                                 of: descriptor.id, from: source, width: asked, rule: rule,
                                 inspect: judge.map { judge in
-                                    { upright in try judge.inspect(upright, of: descriptor, from: source) }
+                                    { upright in
+                                        // Too narrow to fill the screen, it is short
+                                        // here whatever Vision says: judged if it
+                                        // comes back as a tile. On an optimised
+                                        // library 1190 small originals were judged
+                                        // for nothing (2026-10-18, an Intel laptop).
+                                        let crop = Int(CanonicalCrop.rect(width: upright.width, height: upright.height).width)
+                                        if case .fullScreen = tier, narrow(crop) { return }
+                                        try judge.inspect(upright, of: descriptor, from: source)
+                                    }
                                 }
                             )
                         } catch PhotoSourceError.unavailable {

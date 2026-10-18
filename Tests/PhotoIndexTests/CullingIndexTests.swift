@@ -12,8 +12,11 @@ private final class MarkedLibrary: PhotoSource, @unchecked Sendable {
     private let lock = NSLock()
     private var _decoded: [String] = []
     private var _tokens: [Int: String] = [:]
+    /// Photographs whose original is this narrow, whatever is asked.
+    let narrow: Set<Int>
 
-    init(count: Int) {
+    init(count: Int, narrow: Set<Int> = []) {
+        self.narrow = narrow
         let start = Date(timeIntervalSinceReferenceDate: 600_000_000)
         descriptors = (0..<count).map {
             PhotoDescriptor(
@@ -45,7 +48,8 @@ private final class MarkedLibrary: PhotoSource, @unchecked Sendable {
     func canonicalImage(for id: PhotoID, maxPixelWidth: Int) throws -> CGImage {
         lock.lock(); _decoded.append(id.rawValue); lock.unlock()
         let index = Self.index(of: id)
-        let width = maxPixelWidth, height = CanonicalAspect.height(forWidth: maxPixelWidth)
+        let width = narrow.contains(index) ? min(maxPixelWidth, 24) : maxPixelWidth
+        let height = CanonicalAspect.height(forWidth: width)
         let context = CGContext(
             data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
             space: Self.space, bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue
@@ -296,6 +300,26 @@ struct CullingIndexTests {
         let manifest = try builder(assessor).build(from: source(library), into: PhotoIndexStore(directory: index), root: "library")
         #expect(manifest.entries.count == 40)
         #expect(manifest.assessments.isEmpty)
+    }
+
+    @Test("a photograph too narrow to fill the screen is not judged while subjects are sought")
+    func narrowSubjectsNotJudged() throws {
+        // Old phone photographs, every one of the first year and more: the
+        // search for subjects walks through each of those months, far past
+        // the share it gets as tiles, and judging them then is wasted.
+        let library = MarkedLibrary(count: 160, narrow: Set(0..<64))
+        let assessor = FakeAssessor()
+        let index = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: index) }
+
+        let manifest = try builder(assessor).build(
+            from: source(library, count: 80), into: PhotoIndexStore(directory: index), root: "library",
+            preferring: PhotoIndexBuilder.CloseUpPreference(width: 128, isStocked: { _ in false })
+        )
+        let ready = indices(manifest.entries.map(\.id))
+        #expect(ready.count == 80)
+        #expect(Set(assessor.asked).isSubset(of: ready), "\(Set(assessor.asked).subtracting(ready).count) judged for nothing")
+        #expect(Set(assessor.asked).count == assessor.asked.count)
     }
 
     @Test("without culling Vision is never asked and the manifest is as it was")
