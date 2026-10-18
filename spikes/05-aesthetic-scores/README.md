@@ -344,3 +344,26 @@ Still to measure while building the module: whether the image the index gets fro
 PhotoKit before the crop can feed Vision (the spike gave it the whole photo, not the
 854×480 crop), and Vision on the i3 laptop, to see which derivatives a profile used every day
 keeps locally.
+
+## Measured while building the module (2026-10-18)
+
+With `--probe-quality 2048` in Mosaic Companion, on the 1930 photographs of Sergio's index
+that were also in this spike's corpus:
+
+- **`isUtility` on the upright image indexing already decodes** (855 px across its crop,
+  so 855×1140 for a portrait) disagrees with this spike's 854 px request on 6 of 1930
+  photographs, 2 of 513 portraits. No extra request is needed for it.
+- **The score at 427 px needs PhotoKit's own scaling.** Asked as this spike asked
+  (`aspectFit`, 427 × 427), the scores are identical to the last bit, Spearman 0.964 with
+  Photos. Asked as indexing asks (5 % more, then scaled down by the app, 428×321), 0.949;
+  the large image scaled down by the app, 0.914. Vision tells the scaling apart.
+- The synchronous `VNCalculateImageAestheticsScoresRequest` and the async request used here
+  give the same numbers on all 2048.
+- On the Intel iMac Vision does not scale with cores: about 230 ms a call with six at once,
+  about 44 ms of wall time each, as one at a time.
+
+On the i3 laptop (i3, 4 cores), the index's image was there for only 73 of 2048 photographs: on
+a library that keeps originals in iCloud, a profile used every day has little at 854 px,
+and most of its tiles come from derivatives of about 350 to 430 px. Vision took about
+256 ms a call there, four at a time.
+
