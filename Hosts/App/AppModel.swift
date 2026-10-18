@@ -33,7 +33,8 @@ final class AppModel: ObservableObject {
                 || preferences.collectionIdentifiers != oldValue.collectionIdentifiers
                 || preferences.downloads != oldValue.downloads
                 || preferences.subsetRule != oldValue.subsetRule
-                || preferences.subsetSize != oldValue.subsetSize {
+                || preferences.subsetSize != oldValue.subsetSize
+                || preferences.leavesOutWeak != oldValue.leavesOutWeak {
                 sourceChanged()
             }
         }
@@ -594,7 +595,7 @@ final class AppModel: ObservableObject {
         guard let indexable = try PhotoSourceFactory.indexable(options: options) else { return }
         let builder = PhotoIndexBuilder(
             thumbnailWidth: options.thumbnailWidth, signatureSide: options.signatureSide,
-            cropRule: options.cropRule
+            cropRule: options.cropRule, assessor: options.assessor
         )
         let store = PhotoIndexStore(directory: options.resolvedIndexDirectory)
         let manifest = try builder.build(
@@ -613,7 +614,8 @@ final class AppModel: ObservableObject {
             \(manifest.belowFullScreen.count, privacy: .public) below full screen, \
             \(manifest.entries.filter { $0.pixelWidth >= options.ringWidth - 1 }.count, privacy: .public) wide enough \
             for the ring, \(manifest.ringPicks.count, privacy: .public) picked for it, \
-            \(manifest.skipped.count, privacy: .public) unreadable
+            \(manifest.skipped.count, privacy: .public) unreadable, \(manifest.assessments.count, privacy: .public) \
+            judged by Vision
             """)
         guard !flag.isSet else { return }
         log.notice("close-ups started")

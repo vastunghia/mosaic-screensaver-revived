@@ -27,6 +27,9 @@ struct Options {
     var folder: URL?
     var indexDirectory: URL?
     var buildIndex = false
+    /// With `--build-index`, stops at the index: no close-ups for the .saver.
+    /// For timing a build without minutes of 1920 px decodes after it.
+    var indexOnly = false
 
     /// The Photos library instead of a folder, optionally narrowed to albums
     /// by title (SPEC § 5: no albums is the whole library). The app must be
@@ -55,6 +58,14 @@ struct Options {
     var subsetRule = SubsetRule.uniformInTime
     var subsetSize = 2048
     var subsetSeed: UInt64 = 0x5B5E_7000
+    /// Leaves screenshots, utility shots and the weakest photographs out of
+    /// the library's subset (evolution 4): Photos' scores before the choice,
+    /// Vision after decoding. Off unless asked, so that what the harness
+    /// exports stays as it was; the app asks unless the user said no.
+    var culls = false
+
+    /// What judges the photographs `culls` keeps once they are decoded.
+    var assessor: (any PhotoAssessing)? { culls && photosLibrary ? VisionAssessor() : nil }
 
     /// Checks the canonical-crop postcondition on this many photographs of the
     /// source and times it, instead of running anything.
@@ -68,6 +79,14 @@ struct Options {
     /// Fetches this many of the index's photographs that fill the screen from
     /// iCloud at 1920 px, one at a time, and says what it cost.
     var probeDownload: Int?
+    /// Runs Vision's aesthetics on this many photographs of the source, on
+    /// the images indexing could give it, and times it (`QualityProbe`).
+    var probeQuality: Int?
+    /// `--probe-quality` one photograph at a time, as spike 5 measured.
+    var probeSerial = false
+    /// Writes pages of what culling leaves out of the library, month by
+    /// month, with the verdicts the index remembers (`CullingSpecimen`).
+    var exportCulling: URL?
 
     /// Checks that close-ups from the originals are cut where the index cut
     /// the thumbnails, on this many photographs whose window moved.
@@ -306,6 +325,7 @@ struct Options {
             case "--folder": options.folder = path()
             case "--index": options.indexDirectory = path()
             case "--build-index": options.buildIndex = true
+            case "--index-only": options.buildIndex = true; options.indexOnly = true
             // The harness with nothing else changed: without any flag the app
             // opens its own window instead (see main.swift).
             case "--harness": break
@@ -322,10 +342,20 @@ struct Options {
                 }
             case "--subset-size": options.subsetSize = next().flatMap(Int.init) ?? options.subsetSize
             case "--subset-seed": options.subsetSeed = next().flatMap(UInt64.init) ?? options.subsetSeed
+            case "--cull":
+                let value = next()
+                switch value {
+                case "on": options.culls = true
+                case "off": options.culls = false
+                default: options.unknown.append("--cull \(value ?? "") (on or off)")
+                }
             case "--verify-canonical": options.verifyCanonical = next().flatMap(Int.init)
             case "--probe-local": options.probeLocal = next().flatMap(Int.init)
             case "--probe-csv": options.probeCSV = path()
             case "--probe-download": options.probeDownload = next().flatMap(Int.init)
+            case "--probe-quality": options.probeQuality = next().flatMap(Int.init)
+            case "--probe-serial": options.probeSerial = true
+            case "--export-culling": options.exportCulling = path()
             case "--verify-windows": options.verifyWindows = next().flatMap(Int.init)
             case "--list-photos": options.listPhotos = path()
             case "--export-faces": options.exportFaces = path()
@@ -411,7 +441,8 @@ struct Options {
 
         let exporting = options.exportMosaic != nil || options.exportBatch != nil
             || options.exportDirectory != nil || options.buildIndex || options.verifyCanonical != nil || options.verifyWindows != nil
-            || options.probeLocal != nil || options.probeDownload != nil
+            || options.probeLocal != nil || options.probeDownload != nil || options.probeQuality != nil
+            || options.exportCulling != nil
             || options.listPhotos != nil || options.exportFaces != nil
         if !options.seedGiven && !exporting {
             options.seed = UInt64.random(in: .min ... .max)

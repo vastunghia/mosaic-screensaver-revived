@@ -62,7 +62,10 @@ enum PhotoSourceFactory {
             let library = PhotoKitPhotoSource(scope: scope, allowsNetworkAccess: options.allowsDownloads)
             return Indexable(
                 source: SubsetPhotoSource(
-                    library, rule: options.subsetRule, count: options.subsetSize, seed: options.subsetSeed
+                    library, rule: options.subsetRule, count: options.subsetSize, seed: options.subsetSeed,
+                    // Read after the permission was asked for, just above:
+                    // before it, the library's files bring up the prompt.
+                    quality: options.culls ? PhotosDatabaseQualitySource() : nil
                 ),
                 root: PhotoKitPhotoSource.indexRoot,
                 name: options.albums.isEmpty
@@ -163,7 +166,8 @@ enum PhotoSourceFactory {
     ) throws -> IndexManifest {
         let started = Date()
         let builder = PhotoIndexBuilder(
-            thumbnailWidth: options.thumbnailWidth, signatureSide: options.signatureSide, cropRule: options.cropRule
+            thumbnailWidth: options.thumbnailWidth, signatureSide: options.signatureSide, cropRule: options.cropRule,
+            assessor: options.assessor
         )
         let reported = Reported()
 
@@ -171,6 +175,7 @@ enum PhotoSourceFactory {
             from: source, into: store, root: root, availability: options.availability,
             preferring: options.closeUpPreference,
             progress: { progress in
+                reported.rejected = progress.rejected
                 guard progress.total > 0 else { return }
                 let percent = progress.completed * 100 / progress.total
                 if reported.shouldReport(percent, of: progress) {
@@ -185,6 +190,9 @@ enum PhotoSourceFactory {
             format: "  indexed %d photographs in %.1f s (%.0f/s), %d skipped, %d not on this Mac",
             manifest.entries.count, elapsed, rate, manifest.skipped.count, manifest.unavailable.count
         ))
+        if options.culls {
+            print("  \(manifest.assessments.count) photographs judged by Vision, \(reported.rejected) left out by it")
+        }
         let tiles = manifest.entries.filter { !$0.canFillScreen }.count
         if tiles > 0 || !manifest.belowFullScreen.isEmpty {
             print("  \(manifest.entries.count - tiles) fill the screen, \(tiles) tiles only; "
@@ -250,6 +258,12 @@ private final class Answer: @unchecked Sendable {
 private final class Reported: @unchecked Sendable {
     private let lock = NSLock()
     private var last = -1
+    private var _rejected = 0
+
+    var rejected: Int {
+        get { lock.lock(); defer { lock.unlock() }; return _rejected }
+        set { lock.lock(); _rejected = newValue; lock.unlock() }
+    }
 
     func shouldReport(_ percent: Int, of progress: IndexProgress) -> Bool {
         lock.lock(); defer { lock.unlock() }

@@ -36,6 +36,15 @@ struct LibraryOptions: View {
         .sheet(isPresented: $choosingAlbums) {
             AlbumPicker(model: model)
         }
+        Section {
+            Toggle("Leave out screenshots, documents and weak photos", isOn: $model.preferences.leavesOutWeak)
+                // One row of a grouped form (HIG, Toggles: mini switch).
+                .controlSize(.mini)
+        } footer: {
+            Footnote(model.preferences.subsetRule == .uniformInTime
+                ? "Receipts, notes and the like, and in each month the tenth of the photographs that Photos rates lowest. Others take their place."
+                : "Receipts, notes and the like, and the tenth of the photographs that Photos rates lowest. Others take their place.")
+        }
     }
 
     private func chooseAlbums() {

@@ -92,6 +92,19 @@ permission goes to the terminal.
 
 - `--photos-library --probe-local N [--probe-csv <file>]` asks Photos, without the network,
   for the largest copy it has of `N` photographs, and whether their originals are here.
+- `--photos-library --probe-quality N [--probe-serial] [--probe-csv <file>]` runs Vision's
+  aesthetics on `N` photographs: on the upright image indexing decodes, on a second request
+  at 427 pixels on the long side, and on the first scaled down to 427, with the times. Without
+  `--probe-serial` it runs on every core, as indexing does. No network.
+- `--photos-library --cull on` leaves screenshots, utility shots and the weakest photographs
+  out of the subset, as the app does unless the user turned it off: Photos' scores from its
+  database before the choice, Vision after decoding (log category `quality`). Off by default in
+  the harness, so exports stay as they were. `--index-only` builds the index and stops, without
+  the screen saver's close-ups, for timing a build.
+- `--photos-library --export-culling <dir>` writes pages of what culling leaves out, month by
+  month, and of every utility shot, with the verdicts the index at `--index` remembers: run it
+  after a build with `--cull on`. Previews are what this Mac has at 256 pixels; nothing is
+  downloaded.
 - `--photos-library --probe-download N` fetches `N` of the index's full-screen photographs
   from iCloud at 1920 pixels, one at a time, and says how long and how much it took. With
   `--close-up-anchor-width 640` it fetches tiles narrower than that instead, as for the

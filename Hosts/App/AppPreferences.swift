@@ -26,6 +26,8 @@ struct AppPreferences: Equatable {
     /// Fixed once, at the first launch, and kept: the indexed subset has to
     /// stay the same from one session to the next.
     var subsetSeed: UInt64 = 0
+    /// Screenshots, utility shots and the weakest tenth left out (evolution 4).
+    var leavesOutWeak = true
     var rows = 90
     var cycleDuration: Double = 25
 
@@ -56,6 +58,7 @@ struct AppPreferences: Equatable {
         static let rule = "subsetRule"
         static let size = "subsetSize"
         static let seed = "subsetSeed"
+        static let leavesOutWeak = "leavesOutWeak"
         static let rows = "rows"
         static let duration = "cycleDuration"
     }
@@ -77,6 +80,9 @@ struct AppPreferences: Equatable {
         }
         if defaults.object(forKey: Key.size) != nil {
             preferences.subsetSize = max(100, defaults.integer(forKey: Key.size))
+        }
+        if defaults.object(forKey: Key.leavesOutWeak) != nil {
+            preferences.leavesOutWeak = defaults.bool(forKey: Key.leavesOutWeak)
         }
         if defaults.object(forKey: Key.rows) != nil {
             preferences.rows = min(max(defaults.integer(forKey: Key.rows), rowRange.lowerBound), rowRange.upperBound)
@@ -105,6 +111,7 @@ struct AppPreferences: Equatable {
         defaults.set(subsetRule.rawValue, forKey: Key.rule)
         defaults.set(subsetSize, forKey: Key.size)
         defaults.set(String(subsetSeed), forKey: Key.seed)
+        defaults.set(leavesOutWeak, forKey: Key.leavesOutWeak)
         defaults.set(rows, forKey: Key.rows)
         defaults.set(cycleDuration, forKey: Key.duration)
     }
@@ -138,6 +145,7 @@ struct AppPreferences: Equatable {
             options.subsetRule = subsetRule
             options.subsetSize = subsetSize
             options.subsetSeed = subsetSeed
+            options.culls = leavesOutWeak
             // Not in Settings: a way back, should fetching the ring's tiles
             // prove too slow (Sergio, 2026-10-14).
             if let share = UserDefaults.standard.object(forKey: "ringShare") as? Double {

@@ -35,6 +35,7 @@ do {
                     source: indexable.source, store: store, root: indexable.root, options: options
                 )
                 // What the app does after every build: the .saver's close-ups.
+                if options.indexOnly { exit(0) }
                 try PhotoSourceFactory.stockCloseUps(
                     source: indexable.source, store: store, shelf: options.closeUpShelf,
                     fetching: try options.closeUpFetching(store: store)
@@ -98,6 +99,26 @@ do {
         try LocalProbe.probe(
             indexable.source, name: indexable.name, count: count, width: options.thumbnailWidth, seed: options.seed,
             csv: options.probeCSV
+        )
+        exit(0)
+    }
+
+    if let directory = options.exportCulling {
+        guard let indexable = try PhotoSourceFactory.indexable(options: options) else {
+            throw HarnessError.verifyingWithoutPhotographs
+        }
+        let manifest = try PhotoIndexStore(directory: options.resolvedIndexDirectory).load()
+        try CullingSpecimen.export(indexable.source, rule: options.subsetRule, manifest: manifest, to: directory)
+        exit(0)
+    }
+
+    if let count = options.probeQuality {
+        guard let indexable = try PhotoSourceFactory.indexable(options: options) else {
+            throw HarnessError.verifyingWithoutPhotographs
+        }
+        try QualityProbe.probe(
+            indexable.source, name: indexable.name, count: count, width: options.thumbnailWidth, seed: options.seed,
+            serial: options.probeSerial, csv: options.probeCSV
         )
         exit(0)
     }
