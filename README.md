@@ -65,8 +65,9 @@ membership. macOS therefore asks you, once, whether you trust it. If you would r
 
 The Mosaic Companion window shows the mosaic moving; click it, or press **⌘↩**, to watch it full screen.
 **Mosaic Companion › Settings…** (⌘,) chooses which photographs (albums or whole folders, how many, how they are
-picked over time), what to download from iCloud, how many rows a mosaic has, how long
-each zoom lasts, and the notification for new versions.
+picked over time, and whether to leave out screenshots, documents and weak photos), what
+to download from iCloud, how many rows a mosaic has, how long each zoom lasts, and the
+notification for new versions.
 
 Under the mosaic, the window says what the screen saver has and what it still needs, and
 turns opening at login on and off.
@@ -80,6 +81,11 @@ They never leave your Mac. Mosaic Companion reads them through the Photos librar
 chose) and keeps, in `~/Library/Application Support/Mosaic`, a small copy of each and a
 larger one for close-ups: about 1.2 GB for 2,048 photographs. The screen saver reads only
 those copies; it never touches the Photos library.
+
+To leave out screenshots, documents and weak photos, Mosaic Companion reads the scores
+Photos gives your photographs from the Photos library's own database, read only, and has
+your Mac judge those Photos has not scored yet. Nothing in your library changes, and
+nothing leaves your Mac.
 
 If your library keeps its originals in iCloud (*Optimize Mac Storage*), Mosaic Companion uses what
 Photos keeps on your Mac, and downloads nothing unless you allow it. If you do, it asks
