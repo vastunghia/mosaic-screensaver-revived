@@ -296,10 +296,19 @@ public struct PhotoIndexBuilder: Sendable {
         let resting = closeUps?.resting ?? []
         let previousSubjects = manifest.subjectsChoice == fillable.choice ? Set(manifest.subjects) : []
         let fetches = closeUps?.fetches == true
+        // Never a subject, with close-ups fetched or not: an original too
+        // narrow to fill the screen, which no download makes wider. Left out
+        // before it is read, it is not read for nothing: the rounds would find
+        // it short and choose again, so the subjects are the same. On an
+        // optimised library 1190 originals of about 350 px were read so
+        // (2026-10-18, an Intel laptop). One whose size is not known is read.
+        let narrowOriginals = Set(library.compactMap { descriptor in
+            descriptor.cropWidth.map { $0 < thumbnailWidth - 1 } == true ? descriptor.id.rawValue : nil
+        })
         let preferred = closeUps.flatMap { closeUps in fetches ? nil : closeUps }.map {
             self.preferred(
                 count: fullScreenTarget, closeUps: $0, fillable: fillable, library: library, from: source,
-                known: known, keeping: previousSubjects, leftOut: &leftOut, budget: target
+                known: known, keeping: previousSubjects, narrow: narrowOriginals, leftOut: &leftOut, budget: target
             )
         } ?? []
 
@@ -307,12 +316,7 @@ public struct PhotoIndexBuilder: Sendable {
         var screen: [String: IndexEntry] = [:]
         var first: [String: IndexEntry] = [:]
         var pending: [PhotoDescriptor]? = preferred.isEmpty ? nil : preferred
-        // Or, with close-ups fetched, the subjects whatever their size here,
-        // but never one whose original is too narrow: no download makes it
-        // fill the screen.
-        let narrowOriginals = Set(library.compactMap { descriptor in
-            descriptor.cropWidth.map { $0 < thumbnailWidth - 1 } == true ? descriptor.id.rawValue : nil
-        })
+        // Or, with close-ups fetched, the subjects whatever their size here.
         while fetches, !cancelled {
             let chosen = fillable.choose(
                 from: library,
@@ -359,7 +363,8 @@ public struct PhotoIndexBuilder: Sendable {
         while !fetches, !cancelled {
             let chosen = pending ?? fillable.choose(
                 from: library,
-                excluding: leftOut.excluded.union(leftOut.belowFullScreen).union(first.keys).union(resting),
+                excluding: leftOut.excluded.union(leftOut.belowFullScreen).union(narrowOriginals)
+                    .union(first.keys).union(resting),
                 count: fullScreenTarget - first.count
             )
             let isPreferred = pending != nil
@@ -538,10 +543,14 @@ public struct PhotoIndexBuilder: Sendable {
     /// come before all that: a build after the shelf fetched (the library
     /// changes with every fetch) keeps what it fetched for, and asks for
     /// nothing.
+    ///
+    /// The `narrow` originals are not looked at: asked for at the close-up's
+    /// width, one comes back whole, as large as it is, and would pass for a
+    /// close-up here, then be found short and replaced by the plain rule.
     private func preferred(
         count: Int, closeUps: CloseUpPreference, fillable: any FillablePhotoSource, library: [PhotoDescriptor],
         from source: some PhotoSource, known: [String: IndexEntry], keeping previous: Set<String>,
-        leftOut: inout LeftOut, budget: Int
+        narrow: Set<String>, leftOut: inout LeftOut, budget: Int
     ) -> [PhotoDescriptor] {
         func isStocked(_ descriptor: PhotoDescriptor) -> Bool {
             guard let entry = known[descriptor.id.rawValue] else { return false }
@@ -551,7 +560,7 @@ public struct PhotoIndexBuilder: Sendable {
         // day's list still says otherwise.
         let stocked = library.filter(isStocked)
         leftOut.belowCloseUp.subtract(stocked.map(\.id.rawValue))
-        let left = leftOut.excluded.union(leftOut.belowFullScreen).union(closeUps.resting)
+        let left = leftOut.excluded.union(leftOut.belowFullScreen).union(narrow).union(closeUps.resting)
         // The last build's subjects first, whether their close-up came in or
         // not: one not yet fetched is asked for again, until it rests.
         let kept = previous.isEmpty ? [] : fillable.choose(

@@ -445,6 +445,126 @@ struct FillTests {
         #expect(manifest.entries.filter(\.canFillScreen).count >= 80 / PhotoIndexBuilder.fullScreenShare)
     }
 
+    /// Every third a portrait whose original is 40 pixels wide, too narrow for
+    /// the 64 of the screen; of the others, those not in `wide` are here only
+    /// up to `localWidth`. With `sizes` false the descriptors give no size, as
+    /// PhotoKit's sometimes do, and nothing is known to be narrow before it
+    /// is read: the build as it was before narrow originals were left out.
+    private func narrowPortraits(
+        _ count: Int, wide: Set<String>, localWidth: Int, sizes: Bool
+    ) -> (library: PatchyLibrary, narrow: Set<String>) {
+        let narrow = Set(stride(from: 0, to: count, by: 3))
+        let library = PatchyLibrary(
+            count: count, sizes: sizes ? Dictionary(uniqueKeysWithValues: (0..<count).map { index in
+                (index, narrow.contains(index) ? (40, 60) : (400, 225))
+            }) : [:]
+        )
+        let narrowIDs = Set(narrow.map { SyntheticPhotoSource.id(for: $0).rawValue })
+        library.originalWidths = Dictionary(uniqueKeysWithValues: narrowIDs.map { ($0, 40) })
+        library.localWidths = Dictionary(uniqueKeysWithValues: library.ids.filter {
+            !narrowIDs.contains($0) && !wide.contains($0)
+        }.map { ($0, localWidth) })
+        return (library, narrowIDs)
+    }
+
+    @Test("leaving narrow originals out before they are read changes nothing chosen")
+    func narrowExclusionKeepsSubjects() throws {
+        for rule in SubsetRule.allCases {
+            let probe = PatchyLibrary(count: 400)
+            let wide = Set(SubsetRule.random.choose(from: probe.descriptors, count: 120, seed: 4).map(\.id.rawValue))
+            var built: [Bool: IndexManifest] = [:]
+            var narrow: Set<String> = []
+            for sizes in [true, false] {
+                let (library, narrowIDs) = narrowPortraits(400, wide: wide, localWidth: 40, sizes: sizes)
+                narrow = narrowIDs
+                let index = temporaryDirectory()
+                defer { try? FileManager.default.removeItem(at: index) }
+                built[sizes] = try builder().build(
+                    from: SubsetPhotoSource(library, rule: rule, count: 160, seed: 9),
+                    into: PhotoIndexStore(directory: index), root: "library"
+                )
+            }
+            let known = try #require(built[true]), unknown = try #require(built[false])
+            func screen(_ manifest: IndexManifest) -> Set<String> {
+                Set(manifest.entries.filter(\.canFillScreen).map(\.id))
+            }
+            #expect(screen(known) == screen(unknown), "\(rule)")
+            #expect(screen(known).count >= 160 / PhotoIndexBuilder.fullScreenShare, "\(rule)")
+            #expect(screen(known).isDisjoint(with: narrow), "\(rule)")
+            #expect(Set(known.entries.map(\.id)) == Set(unknown.entries.map(\.id)), "\(rule)")
+            // A narrow tile is read once, at the top, as wide as it is; before,
+            // one met as a candidate subject was a tile only from below.
+            let widths = Dictionary(uniqueKeysWithValues: unknown.entries.map { ($0.id, $0.pixelWidth) })
+            for entry in known.entries where !narrow.contains(entry.id) {
+                #expect(entry.pixelWidth == widths[entry.id], "\(rule): \(entry.id)")
+            }
+        }
+    }
+
+    @Test("a narrow original is read once, as the tile it is, and never as a candidate subject")
+    func narrowExclusionSavesReads() throws {
+        let probe = PatchyLibrary(count: 400)
+        let wide = Set(SubsetRule.random.choose(from: probe.descriptors, count: 120, seed: 4).map(\.id.rawValue))
+        var reads: [Bool: Int] = [:]
+        for sizes in [true, false] {
+            let (library, narrow) = narrowPortraits(400, wide: wide, localWidth: 40, sizes: sizes)
+            let index = temporaryDirectory()
+            defer { try? FileManager.default.removeItem(at: index) }
+            let manifest = try builder().build(
+                from: SubsetPhotoSource(library, rule: .uniformInTime, count: 160, seed: 9),
+                into: PhotoIndexStore(directory: index), root: "library"
+            )
+            reads[sizes] = library.asked.filter(narrow.contains).count
+            if sizes {
+                let tiles = manifest.entries.filter { narrow.contains($0.id) }
+                #expect(reads[sizes] == tiles.count, "\(library.askedAt.filter { narrow.contains(String($0.prefix { $0 != "@" })) })")
+                #expect(tiles.allSatisfy { $0.pixelWidth == 40 })
+            }
+        }
+        let saved = try #require(reads[false]) - (try #require(reads[true]))
+        #expect(saved > 0, "\(saved) reads saved: \(reads)")
+    }
+
+    @Test("a narrow original never passes for a close-up here: the subjects come from those that are")
+    func preferredSkipsNarrow() throws {
+        for rule in SubsetRule.allCases {
+            let probe = PatchyLibrary(count: 400)
+            let sharp = Set(SubsetRule.random.choose(from: probe.descriptors, count: 60, seed: 3).map(\.id.rawValue))
+                .subtracting(stride(from: 0, to: 400, by: 3).map { SyntheticPhotoSource.id(for: $0).rawValue })
+            var subjects: [Bool: Set<String>] = [:]
+            for sizes in [true, false] {
+                let (library, narrow) = narrowPortraits(400, wide: sharp, localWidth: 100, sizes: sizes)
+                let index = temporaryDirectory()
+                defer { try? FileManager.default.removeItem(at: index) }
+                let manifest = try builder().build(
+                    from: SubsetPhotoSource(library, rule: rule, count: 160, seed: 9),
+                    into: PhotoIndexStore(directory: index), root: "library", preferring: preference()
+                )
+                subjects[sizes] = Set(manifest.subjects)
+                #expect(manifest.subjects.count == 160 / PhotoIndexBuilder.fullScreenShare, "\(rule)")
+                #expect(narrow.isDisjoint(with: manifest.subjects), "\(rule)")
+                guard sizes else { continue }
+                let candidates = library.descriptors.filter { sharp.contains($0.id.rawValue) }
+                let expected = Set(rule.choose(from: candidates, count: 160 / PhotoIndexBuilder.fullScreenShare, seed: 9).map(\.id.rawValue))
+                #expect(Set(manifest.subjects) == expected, "\(rule)")
+                let asked = library.askedAt.filter { $0.hasSuffix("@128") && narrow.contains(String($0.dropLast(4))) }
+                #expect(asked.isEmpty, "\(rule): \(asked)")
+            }
+            let known = try #require(subjects[true]), unknown = try #require(subjects[false])
+            // Before, the preferred were the rule's choice among the sharp and
+            // the narrow, which pass for close-ups here; each narrow one gave
+            // its place up to the plain rule. Only those places change.
+            let narrow = Set(stride(from: 0, to: 400, by: 3).map { SyntheticPhotoSource.id(for: $0).rawValue })
+            let before = Set(rule.choose(
+                from: probe.descriptors.filter { sharp.contains($0.id.rawValue) || narrow.contains($0.id.rawValue) },
+                count: 160 / PhotoIndexBuilder.fullScreenShare, seed: 9
+            ).map(\.id.rawValue)).subtracting(narrow)
+            #expect(before.isSubset(of: unknown), "\(rule)")
+            #expect(before.isSubset(of: known), "\(rule)")
+            #expect(!unknown.isSubset(of: sharp), "\(rule): the narrow passed for close-ups before")
+        }
+    }
+
     /// What `Options.closeUpPreference` passes, at twice the thumbnail's
     /// width, with a shelf that `stocked` says holds a close-up.
     private func preference(
