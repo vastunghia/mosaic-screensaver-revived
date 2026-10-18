@@ -144,6 +144,11 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Off for the app's own restarts (`MosaicApplication.quitWithoutAsking`).
     var asksBeforeQuitting = true
     private static let quietQuitKey = "quitsWithoutWarning"
+    /// Set by NSWorkspace before the system quits the apps to log out,
+    /// restart or shut down; cleared after a while, in case another app
+    /// cancels it.
+    private var systemIsPoweringOff = false
+    private var powerOffReset: Task<Void, Never>?
     /// URLs that arrive before the model exists, during launch.
     private var earlyCalls: [MosaicURL] = []
 
@@ -163,6 +168,21 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
             self, andSelector: #selector(openURL(_:reply:)),
             forEventClass: AEEventClass(kInternetEventClass), andEventID: AEEventID(kAEGetURL)
         )
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self, selector: #selector(systemWillPowerOff(_:)),
+            name: NSWorkspace.willPowerOffNotification, object: nil
+        )
+    }
+
+    @objc private func systemWillPowerOff(_ notification: Notification) {
+        Self.log.notice("the system is logging out, restarting or shutting down")
+        systemIsPoweringOff = true
+        powerOffReset?.cancel()
+        powerOffReset = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(120))
+            guard !Task.isCancelled else { return }
+            self?.systemIsPoweringOff = false
+        }
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -461,17 +481,26 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
     /// A login item that quits stops watching the library until the next
     /// login, and the screen saver's photographs fall behind it: say so, and
     /// offer what keeps them current — closing the window, the default.
-    /// Not when the system quits the app to log out, restart or shut down,
-    /// which it says in the quit event.
+    /// Not when the system quits the app to log out, restart or shut down:
+    /// NSWorkspace says so first, and the quit event carries a reason —
+    /// as an attribute, although AERegistry.h calls it a parameter.
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard asksBeforeQuitting, let model,
               !UserDefaults.standard.bool(forKey: Self.quietQuitKey)
         else { return .terminateNow }
+        if systemIsPoweringOff {
+            Self.log.notice("quit by the system")
+            return .terminateNow
+        }
         if let event = NSAppleEventManager.shared().currentAppleEvent,
            event.eventClass == AEEventClass(kCoreEventClass),
-           event.eventID == AEEventID(kAEQuitApplication),
-           event.paramDescriptor(forKeyword: AEKeyword(kAEQuitReason)) != nil {
-            return .terminateNow
+           event.eventID == AEEventID(kAEQuitApplication) {
+            let reason = AEKeyword(kAEQuitReason)
+            if event.attributeDescriptor(forKeyword: reason) != nil
+                || event.paramDescriptor(forKeyword: reason) != nil {
+                Self.log.notice("quit by the system, with a reason in the quit event")
+                return .terminateNow
+            }
         }
         model.refreshLoginItem()
         guard model.opensAtLogin else { return .terminateNow }
