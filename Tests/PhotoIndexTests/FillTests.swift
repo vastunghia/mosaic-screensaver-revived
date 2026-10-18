@@ -699,6 +699,25 @@ struct FillTests {
         #expect(try Data(contentsOf: store.manifestURL) == first)
     }
 
+    @Test("searching for subjects asks no photograph twice at the close-up's width")
+    func sharpSearchAsksOnce() throws {
+        // Sharp photographs few and far between, so the search takes many
+        // rounds: each must ask only the newcomers.
+        let probe = PatchyLibrary(count: 400)
+        let sharp = Set(SubsetRule.random.choose(from: probe.descriptors, count: 30, seed: 5).map(\.id.rawValue))
+        let library = sharpOnly(400, sharp: sharp)
+        let index = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: index) }
+
+        _ = try builder().build(
+            from: SubsetPhotoSource(library, rule: .uniformInTime, count: 160, seed: 9),
+            into: PhotoIndexStore(directory: index), root: "library", preferring: preference()
+        )
+        let probes = library.askedAt.filter { $0.hasSuffix("@128") }
+        #expect(!probes.isEmpty)
+        #expect(probes.count == Set(probes).count, "\(probes.count - Set(probes).count) asked again")
+    }
+
     @Test("a subject whose close-up the shelf holds is not asked for")
     func stockedIsNotAsked() throws {
         let library = sharpOnly(200, sharp: [])

@@ -565,6 +565,12 @@ public struct PhotoIndexBuilder: Sendable {
         if ready.count == count { return kept + ready }
 
         var found: [PhotoDescriptor] = []
+        // Asked once and found here: not asked again in the rounds after.
+        // Each round replaces the photographs found missing, and asking the
+        // rest again cost a 1920 px decode each: on an optimised library a
+        // round per missing photograph, 386 of them, took 13 minutes
+        // (2026-10-18, a second profile).
+        var confirmed: Set<String> = []
         while true {
             let chosen = fillable.choose(
                 from: library,
@@ -574,7 +580,7 @@ public struct PhotoIndexBuilder: Sendable {
             var here: Set<String> = []
             var unknown: [PhotoDescriptor] = []
             for descriptor in chosen {
-                if isStocked(descriptor) {
+                if isStocked(descriptor) || confirmed.contains(descriptor.id.rawValue) {
                     here.insert(descriptor.id.rawValue)
                 } else {
                     unknown.append(descriptor)
@@ -592,7 +598,9 @@ public struct PhotoIndexBuilder: Sendable {
                 }
             }
             let short = missing.ids
-            here.formUnion(asking.map(\.id.rawValue).filter { !short.contains($0) })
+            let arrived = asking.map(\.id.rawValue).filter { !short.contains($0) }
+            here.formUnion(arrived)
+            confirmed.formUnion(arrived)
             leftOut.belowCloseUp.formUnion(short)
             found = chosen.filter { here.contains($0.id.rawValue) }
             // Done when every one chosen was here, or nothing more may be asked.
