@@ -93,6 +93,20 @@ public enum SubsetRule: String, CaseIterable, Sendable {
         rank(of: PhotoID("month-\(key)"), seed: seed)
     }
 
+    /// The calendar month `date` falls in, UTC, as a number that grows by one a
+    /// month: what `uniformInTime` shares the subset out by, and `Culling`
+    /// sets its bars by.
+    static func month(of date: Date) -> Int {
+        let parts = utc.dateComponents([.year, .month], from: date)
+        return parts.year! * 12 + parts.month!
+    }
+
+    private static let utc: Calendar = {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        return calendar
+    }()
+
     /// Equal shares per calendar month (UTC, so the answer does not depend on
     /// the Mac's time zone), filled like water: every month gives at most what
     /// it has, and the share is the level at which the months together reach
@@ -106,13 +120,10 @@ public enum SubsetRule: String, CaseIterable, Sendable {
             return dated + SubsetRule.random.choose(from: undated, count: count - datedCount, seed: seed)
         }
 
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(identifier: "UTC")!
         var months: [Int: [PhotoDescriptor]] = [:]
         for photo in photos {
             guard let date = photo.creationDate else { continue }
-            let parts = calendar.dateComponents([.year, .month], from: date)
-            months[parts.year! * 12 + parts.month!, default: []].append(photo)
+            months[month(of: date), default: []].append(photo)
         }
         let keys = months.keys.sorted()
         let sizes = keys.map { months[$0]!.count }
@@ -171,6 +182,14 @@ public protocol FillablePhotoSource: PhotoSource {
     /// What the choice depends on besides the library: another value, another
     /// choice.
     var choice: String { get }
+    /// What is left out of `library` before anything is chosen, and the bar
+    /// Vision's verdict is held to (`Culling`); nil when nothing is. Reads
+    /// the source's qualities, so it is asked once a build.
+    func cull(_ library: [PhotoDescriptor]) -> Culling?
+}
+
+extension FillablePhotoSource {
+    public func cull(_ library: [PhotoDescriptor]) -> Culling? { nil }
 }
 
 /// A source narrowed to the subset a rule picks. Everything but the list of
@@ -180,20 +199,34 @@ public struct SubsetPhotoSource<Base: PhotoSource>: FillablePhotoSource {
     public let rule: SubsetRule
     public let count: Int
     public let seed: UInt64
+    /// Where the scores that leave weak photographs and screenshots out come
+    /// from; nil leaves none out (evolution 4).
+    public let quality: (any PhotoQualitySource)?
 
-    public init(_ base: Base, rule: SubsetRule, count: Int, seed: UInt64) {
+    public init(
+        _ base: Base, rule: SubsetRule, count: Int, seed: UInt64, quality: (any PhotoQualitySource)? = nil
+    ) {
         self.base = base
         self.rule = rule
         self.count = count
         self.seed = seed
+        self.quality = quality
     }
 
     public var target: Int { count }
 
+    /// Not changed by `quality`: the subjects a build remembers are kept
+    /// under the same choice, and on an optimised library each cost a
+    /// download (`IndexManifest.subjects`).
     public var choice: String { "\(rule.rawValue) \(count) \(seed)" }
 
     public func photos() throws -> [PhotoDescriptor] {
-        choose(from: try library(), excluding: [], count: count)
+        let library = try library()
+        return choose(from: cull(library)?.kept ?? library, excluding: [], count: count)
+    }
+
+    public func cull(_ library: [PhotoDescriptor]) -> Culling? {
+        quality.map { Culling(library: library, qualities: $0.qualities(of: library), rule: rule) }
     }
 
     public func library() throws -> [PhotoDescriptor] {
@@ -211,5 +244,9 @@ public struct SubsetPhotoSource<Base: PhotoSource>: FillablePhotoSource {
 
     public func uprightImage(for id: PhotoID, cropWidth: Int) throws -> CGImage {
         try base.uprightImage(for: id, cropWidth: cropWidth)
+    }
+
+    public func wholeImage(for id: PhotoID, longSide: Int) -> CGImage? {
+        base.wholeImage(for: id, longSide: longSide)
     }
 }

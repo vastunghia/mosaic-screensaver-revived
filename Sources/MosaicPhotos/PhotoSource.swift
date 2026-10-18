@@ -76,12 +76,21 @@ public protocol PhotoSource: Sendable {
     /// in this and crops these same pixels, so it decodes once. The default is
     /// right only for a source whose photographs are already 16:9.
     func uprightImage(for id: PhotoID, cropWidth: Int) throws -> CGImage
+
+    /// The whole photograph, upright, at most `longSide` on its long side,
+    /// scaled by the source itself from what it has without the network; nil
+    /// when it cannot. For Vision's aesthetics, which tells apart how the
+    /// pixels were scaled (`--probe-quality`, 2026-10-18). The default is nil,
+    /// and the caller scales.
+    func wholeImage(for id: PhotoID, longSide: Int) -> CGImage?
 }
 
 extension PhotoSource {
     public func uprightImage(for id: PhotoID, cropWidth: Int) throws -> CGImage {
         try canonicalImage(for: id, maxPixelWidth: cropWidth)
     }
+
+    public func wholeImage(for id: PhotoID, longSide: Int) -> CGImage? { nil }
 }
 
 public enum PhotoSourceError: Error, CustomStringConvertible {
