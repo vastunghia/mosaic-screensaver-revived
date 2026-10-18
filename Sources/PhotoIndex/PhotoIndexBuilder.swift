@@ -15,6 +15,9 @@ public struct IndexProgress: Equatable, Sendable {
     public var skipped: Int
     /// Not on this Mac, and not allowed to be fetched: see `PhotoSourceError.unavailable`.
     public var unavailable: Int
+    /// Left out by Vision as a utility shot or a weak photograph, and
+    /// replaced (evolution 4).
+    public var rejected: Int
     public var total: Int
     /// Indexed and usable.
     public var ready: Int
@@ -25,13 +28,14 @@ public struct IndexProgress: Equatable, Sendable {
     public var fellShort: Bool
 
     public init(
-        completed: Int = 0, reused: Int = 0, skipped: Int = 0, unavailable: Int = 0, total: Int = 0,
+        completed: Int = 0, reused: Int = 0, skipped: Int = 0, unavailable: Int = 0, rejected: Int = 0, total: Int = 0,
         ready: Int = 0, fullScreen: Int? = nil, fellShort: Bool = false
     ) {
         self.completed = completed
         self.reused = reused
         self.skipped = skipped
         self.unavailable = unavailable
+        self.rejected = rejected
         self.total = total
         self.ready = ready
         self.fullScreen = fullScreen ?? ready
@@ -70,6 +74,11 @@ public struct PhotoIndexBuilder: Sendable {
     public var cropRule: CropRule
     /// See `defaultTileWidths`; only those narrower than `thumbnailWidth` count.
     public var tileWidths: [Int]
+    /// What judges a photograph's looks once it is decoded, for a filled
+    /// source that culls (`FillablePhotoSource.cull`): utility shots, and
+    /// photographs Photos has not scored that fall below their month's bar,
+    /// are left out and replaced. Nil judges nothing.
+    public var assessor: (any PhotoAssessing)?
 
     /// How often progress is written down. Small enough that a crash loses
     /// seconds, large enough that the manifest is not rewritten per photograph.
@@ -86,9 +95,11 @@ public struct PhotoIndexBuilder: Sendable {
         signatureSide: Int = PhotoIndexBuilder.defaultSignatureSide,
         cropRule: CropRule = .standard,
         tileWidths: [Int] = PhotoIndexBuilder.defaultTileWidths,
+        assessor: (any PhotoAssessing)? = nil,
         checkpointEvery: Int = 250
     ) {
         self.tileWidths = tileWidths
+        self.assessor = assessor
         self.thumbnailWidth = thumbnailWidth
         self.signatureSide = signatureSide
         self.cropRule = cropRule
@@ -215,7 +226,8 @@ public struct PhotoIndexBuilder: Sendable {
         guard let fillable = source as? any FillablePhotoSource else {
             let round = try self.round(
                 over: try source.photos(), tier: .plain, from: source, into: store, manifest: &manifest,
-                known: known, alreadySkipped: alreadySkipped, carry: [:], leftOut: LeftOut(), checkpoints: checkpoints,
+                known: known, alreadySkipped: alreadySkipped, carry: [:], leftOut: LeftOut(), judge: nil,
+                checkpoints: checkpoints,
                 report: { kept, _, skipped, unavailable, short, total, reused in
                     progress?(IndexProgress(
                         completed: kept + skipped + unavailable + short, reused: reused, skipped: skipped,
@@ -248,7 +260,19 @@ public struct PhotoIndexBuilder: Sendable {
 
         let target = fillable.target
         let fullScreenTarget = min(target, max(1, target / Self.fullScreenShare))
-        let library = try fillable.library()
+        // What is culled before anything is chosen (`Culling`); with an
+        // assessor, the rest is judged by Vision once decoded. Without one,
+        // the assessments an earlier build made are kept as they are.
+        let whole = try fillable.library()
+        let culling = fillable.cull(whole)
+        let library = culling?.kept ?? whole
+        let judge = culling.flatMap { culling in
+            assessor.map { Judge(assessor: $0, culling: culling, book: AssessmentBook(manifest.assessments)) }
+        }
+        if let judge {
+            // Those an earlier build left out are left out without a look.
+            leftOut.rejected = Set(library.filter { judge.rejected($0) == true }.map(\.id.rawValue))
+        }
         // What the index had: kept in every checkpoint until the build has
         // settled, so a reader never sees the index shrink while it runs.
         let previous = known.filter { id, entry in
@@ -292,7 +316,7 @@ public struct PhotoIndexBuilder: Sendable {
         while fetches, !cancelled {
             let chosen = fillable.choose(
                 from: library,
-                excluding: leftOut.skipped.union(leftOut.unavailable).union(resting).union(narrowOriginals),
+                excluding: leftOut.excluded.union(resting).union(narrowOriginals),
                 count: fullScreenTarget
             )
             // A tile whose close-up came in is read again, to fill the screen.
@@ -306,7 +330,7 @@ public struct PhotoIndexBuilder: Sendable {
             let round = try self.round(
                 over: chosen, tier: .any(belowFullScreen: leftOut.belowFullScreen, promoting: promoting),
                 from: source, into: store, manifest: &manifest, known: known, alreadySkipped: alreadySkipped,
-                carry: previous, leftOut: leftOut, indexedBefore: indexedBefore, checkpoints: checkpoints,
+                carry: previous, leftOut: leftOut, judge: judge, indexedBefore: indexedBefore, checkpoints: checkpoints,
                 report: { ready, readyFullScreen, skipped, unavailable, _, _, reusedHere in
                     progress?(IndexProgress(
                         completed: ready, reused: reusedHere,
@@ -321,6 +345,7 @@ public struct PhotoIndexBuilder: Sendable {
             for (id, entry) in round.kept { known[id] = entry }
             leftOut.skipped.formUnion(round.skipped)
             leftOut.unavailable.formUnion(round.unavailable)
+            leftOut.rejected.formUnion(round.rejected)
             for entry in round.kept.values {
                 if isShort(entry) {
                     leftOut.belowFullScreen.insert(entry.id)
@@ -329,13 +354,12 @@ public struct PhotoIndexBuilder: Sendable {
                 }
             }
             cancelled = round.cancelled
-            if round.skipped.isEmpty && round.unavailable.isEmpty { break }
+            if round.skipped.isEmpty && round.unavailable.isEmpty && round.rejected.isEmpty { break }
         }
         while !fetches, !cancelled {
             let chosen = pending ?? fillable.choose(
                 from: library,
-                excluding: leftOut.skipped.union(leftOut.unavailable).union(leftOut.belowFullScreen).union(first.keys)
-                    .union(resting),
+                excluding: leftOut.excluded.union(leftOut.belowFullScreen).union(first.keys).union(resting),
                 count: fullScreenTarget - first.count
             )
             let isPreferred = pending != nil
@@ -344,7 +368,7 @@ public struct PhotoIndexBuilder: Sendable {
             let round = try self.round(
                 over: chosen, tier: .fullScreen, from: source, into: store, manifest: &manifest,
                 known: known, alreadySkipped: alreadySkipped, carry: previous.merging(before) { _, new in new },
-                leftOut: leftOut, indexedBefore: indexedBefore, checkpoints: checkpoints,
+                leftOut: leftOut, judge: judge, indexedBefore: indexedBefore, checkpoints: checkpoints,
                 report: { ready, _, skipped, unavailable, _, _, reusedHere in
                     progress?(IndexProgress(
                         completed: before.count + ready, reused: reused(before.keys) + reusedHere,
@@ -359,13 +383,14 @@ public struct PhotoIndexBuilder: Sendable {
             for (id, entry) in round.kept { known[id] = entry }
             leftOut.skipped.formUnion(round.skipped)
             leftOut.belowFullScreen.formUnion(round.short)
+            leftOut.rejected.formUnion(round.rejected)
             cancelled = round.cancelled
             if isPreferred {
                 first = screen
                 if first.count < fullScreenTarget { continue }
                 break
             }
-            if round.skipped.isEmpty && round.short.isEmpty { break }
+            if round.skipped.isEmpty && round.short.isEmpty && round.rejected.isEmpty { break }
         }
 
         if closeUps != nil {
@@ -386,7 +411,7 @@ public struct PhotoIndexBuilder: Sendable {
         while !cancelled {
             let count = target - screen.count
             let chosen = fillable.choose(
-                from: library, excluding: leftOut.skipped.union(leftOut.unavailable).union(screen.keys),
+                from: library, excluding: leftOut.excluded.union(screen.keys),
                 count: count
             )
             // Short because photographs were left out, not because the
@@ -397,7 +422,7 @@ public struct PhotoIndexBuilder: Sendable {
             let round = try self.round(
                 over: chosen, tier: .any(belowFullScreen: leftOut.belowFullScreen.union(resting), fillsScreen: tileFillsScreen),
                 from: source, into: store, manifest: &manifest, known: known, alreadySkipped: alreadySkipped, carry: carry, leftOut: leftOut,
-                indexedBefore: indexedBefore, checkpoints: checkpoints,
+                judge: judge, indexedBefore: indexedBefore, checkpoints: checkpoints,
                 report: { ready, readyFullScreen, skipped, unavailable, _, _, reusedHere in
                     progress?(IndexProgress(
                         completed: screen.count + ready, reused: reused(screen.keys) + reusedHere,
@@ -412,9 +437,10 @@ public struct PhotoIndexBuilder: Sendable {
             for (id, entry) in round.kept { known[id] = entry }
             leftOut.skipped.formUnion(round.skipped)
             leftOut.unavailable.formUnion(round.unavailable)
+            leftOut.rejected.formUnion(round.rejected)
             leftOut.belowFullScreen.formUnion(round.kept.values.filter(isShort).map(\.id))
             cancelled = round.cancelled
-            if round.skipped.isEmpty && round.unavailable.isEmpty || cancelled { break }
+            if round.skipped.isEmpty && round.unavailable.isEmpty && round.rejected.isEmpty || cancelled { break }
         }
 
         // Stopped half way, nothing is thrown away: what the index had stays,
@@ -429,9 +455,13 @@ public struct PhotoIndexBuilder: Sendable {
         } else if !cancelled {
             manifest.ringPicks = []
         }
+        if let judge {
+            manifest.assessments = judge.book.assessments(of: Set(whole.map(\.id.rawValue)))
+        }
         progress?(IndexProgress(
             completed: entries.count, reused: reused(entries.keys), skipped: leftOut.skipped.count,
-            unavailable: leftOut.unavailable.count, total: cancelled ? target : total, ready: entries.count,
+            unavailable: leftOut.unavailable.count, rejected: leftOut.rejected.count,
+            total: cancelled ? target : total, ready: entries.count,
             fullScreen: entries.values.filter(\.canFillScreen).count, fellShort: fellShort
         ))
         return try finish(&manifest, entries: entries, leftOut: leftOut, store: store)
@@ -521,8 +551,7 @@ public struct PhotoIndexBuilder: Sendable {
         // day's list still says otherwise.
         let stocked = library.filter(isStocked)
         leftOut.belowCloseUp.subtract(stocked.map(\.id.rawValue))
-        let left = leftOut.skipped.union(leftOut.unavailable).union(leftOut.belowFullScreen)
-            .union(closeUps.resting)
+        let left = leftOut.excluded.union(leftOut.belowFullScreen).union(closeUps.resting)
         // The last build's subjects first, whether their close-up came in or
         // not: one not yet fetched is asked for again, until it rests.
         let kept = previous.isEmpty ? [] : fillable.choose(
@@ -579,8 +608,14 @@ public struct PhotoIndexBuilder: Sendable {
         /// Not here at the close-up's width: left out of the preferred
         /// subjects only (`preferred`).
         var belowCloseUp: Set<String> = []
+        /// Left out by Vision (`Judge`); not written down, but found again
+        /// from the assessments by the next build.
+        var rejected: Set<String> = []
 
-        var isEmpty: Bool { skipped.isEmpty && unavailable.isEmpty }
+        var isEmpty: Bool { skipped.isEmpty && unavailable.isEmpty && rejected.isEmpty }
+
+        /// Never chosen again in this build, whatever the role.
+        var excluded: Set<String> { skipped.union(unavailable).union(rejected) }
     }
 
     /// What a round asks of each photograph.
@@ -612,6 +647,7 @@ public struct PhotoIndexBuilder: Sendable {
         var skipped: [String]
         var unavailable: [String]
         var short: [String]
+        var rejected: [String]
         var cancelled: Bool
     }
 
@@ -629,6 +665,7 @@ public struct PhotoIndexBuilder: Sendable {
         alreadySkipped: Set<String>,
         carry: [String: IndexEntry],
         leftOut: LeftOut,
+        judge: Judge?,
         indexedBefore: Set<String>? = nil,
         checkpoints: Checkpoints,
         report: (
@@ -643,6 +680,7 @@ public struct PhotoIndexBuilder: Sendable {
         var skipped: [String] = []
         var unavailable: [String] = []
         var short: [String] = []
+        var rejected: [String] = []
 
         // Filling the screen takes `thumbnailWidth` across, from an original as
         // from a derivative: a 350 px original shown full screen is as soft as
@@ -660,8 +698,15 @@ public struct PhotoIndexBuilder: Sendable {
 
         for descriptor in descriptors {
             let id = descriptor.id.rawValue
+            // Judged already: left out without being read, or kept only once
+            // judged under the current revision.
+            let verdict = judge?.rejected(descriptor)
+            if verdict == true {
+                rejected.append(id)
+                continue
+            }
             let settled = known[id].map(settle)
-            if let entry = settled,
+            if judge == nil || verdict != nil, let entry = settled,
                entry.versionToken == descriptor.versionToken,
                store.hasThumbnail(named: entry.thumbnail),
                // Indexed before narrow originals were tiles: read again, to be
@@ -714,7 +759,10 @@ public struct PhotoIndexBuilder: Sendable {
                         let cropStart: Double?
                         do {
                             (image, cropStart) = try Self.canonicalImage(
-                                of: descriptor.id, from: source, width: asked, rule: rule
+                                of: descriptor.id, from: source, width: asked, rule: rule,
+                                inspect: judge.map { judge in
+                                    { upright in try judge.inspect(upright, of: descriptor, from: source) }
+                                }
                             )
                         } catch PhotoSourceError.unavailable {
                             continue
@@ -742,6 +790,8 @@ public struct PhotoIndexBuilder: Sendable {
                     // Not broken, only elsewhere: counted, and asked for again
                     // next time.
                     if case .fullScreen = tier { collector.short(id) } else { collector.unavailable(id) }
+                } catch is Judge.Rejection {
+                    collector.reject(id)
                 } catch {
                     // A folder of three thousand files that dies on the corrupt
                     // one is unusable. A failure is a recorded skip.
@@ -754,6 +804,7 @@ public struct PhotoIndexBuilder: Sendable {
             skipped.append(contentsOf: drained.failures)
             unavailable.append(contentsOf: drained.elsewhere)
             short.append(contentsOf: drained.short)
+            rejected.append(contentsOf: drained.rejected)
             report(kept.count, tally(), skipped.count, unavailable.count, short.count, descriptors.count, reused)
 
             guard checkpoints.isDue(adding: drained.entries.count) else { continue }
@@ -766,10 +817,13 @@ public struct PhotoIndexBuilder: Sendable {
                 kept.values.filter(isShort).map(\.id)
             ))
             manifest.belowCloseUp = Array(leftOut.belowCloseUp)
+            if let judge { manifest.assessments = judge.book.assessments() }
             try store.save(manifest)
         }
         if isCancelled?() == true { cancelled = true }
-        return Round(kept: kept, skipped: skipped, unavailable: unavailable, short: short, cancelled: cancelled)
+        return Round(
+            kept: kept, skipped: skipped, unavailable: unavailable, short: short, rejected: rejected, cancelled: cancelled
+        )
     }
 
     private static func isFullScreen(_ tier: Tier) -> Bool {
@@ -817,14 +871,22 @@ public struct PhotoIndexBuilder: Sendable {
     /// Decoded once, whole: faces are looked for in the upright photograph and
     /// the crop is cut from the same pixels, so the face-aware crop costs Vision
     /// (~40 ms a photograph at 854 px, measured 2026-10-02) and no second decode.
+    ///
+    /// `inspect` sees the whole photograph first, and may throw to stop
+    /// there: Vision judges it before faces are looked for. With the centred
+    /// crop there is no whole photograph, and it sees the crop.
     static func canonicalImage(
-        of id: PhotoID, from source: some PhotoSource, width: Int, rule: CropRule
+        of id: PhotoID, from source: some PhotoSource, width: Int, rule: CropRule,
+        inspect: ((CGImage) throws -> Void)? = nil
     ) throws -> (CGImage, cropStart: Double?) {
         switch rule {
         case .centre:
-            return (try source.canonicalImage(for: id, maxPixelWidth: width), nil)
+            let image = try source.canonicalImage(for: id, maxPixelWidth: width)
+            try inspect?(image)
+            return (image, nil)
         case .faces:
             let upright = try source.uprightImage(for: id, cropWidth: width)
+            try inspect?(upright)
             // A photograph Vision cannot read is still a photograph: it keeps
             // the centre, as one without faces does.
             let faces = (try? FaceDetector.faces(in: upright)) ?? []
@@ -901,6 +963,7 @@ private final class Collector: @unchecked Sendable {
         var failures: [String] = []
         var elsewhere: [String] = []
         var short: [String] = []
+        var rejected: [String] = []
     }
 
     private let lock = NSLock()
@@ -924,6 +987,11 @@ private final class Collector: @unchecked Sendable {
     func short(_ id: String) {
         lock.lock(); defer { lock.unlock() }
         current.short.append(id)
+    }
+
+    func reject(_ id: String) {
+        lock.lock(); defer { lock.unlock() }
+        current.rejected.append(id)
     }
 
     func drain() -> Drained {

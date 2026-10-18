@@ -144,6 +144,43 @@ public enum CropRule: String, Codable, Sendable, CaseIterable {
     public static let standard = CropRule.faces
 }
 
+/// What Vision made of one photograph, for leaving utility shots and weak
+/// photographs out of a filled subset (evolution 4). Kept for every
+/// photograph it looked at, those it left out too, so that no build asks it
+/// twice: the decision itself is not kept, but made again by every build
+/// from this, Photos' scores and the bar of the photograph's month
+/// (`Culling`), which change without the pixels changing.
+public struct PhotoAssessment: Codable, Equatable, Sendable {
+    public let id: String
+    public let versionToken: String
+    /// `PhotoAssessing.revision`: another model, or other sizes, another verdict.
+    public let revision: String
+    /// `isUtility` on the image indexing decoded, 854 across its crop.
+    public let utility: Bool
+    /// `isUtility` on the small image, when it was looked at.
+    public let smallUtility: Bool?
+    /// Vision's overall score on the small image, −1 to 1, as Vision gave
+    /// it: mapping it onto Photos' scale is `VisionScoreMap`'s, so changing
+    /// the map asks Vision nothing. Nil when Photos had a score of its own.
+    public let score: Float?
+    /// The long side of the large image: a tile of an optimised library may
+    /// have been judged at 256.
+    public let side: Int
+
+    public init(
+        id: String, versionToken: String, revision: String, utility: Bool, smallUtility: Bool? = nil,
+        score: Float? = nil, side: Int
+    ) {
+        self.id = id
+        self.versionToken = versionToken
+        self.revision = revision
+        self.utility = utility
+        self.smallUtility = smallUtility
+        self.score = score
+        self.side = side
+    }
+}
+
 /// The index, as one file.
 public struct IndexManifest: Codable, Equatable, Sendable {
     /// Bumped whenever anything above changes shape. A mismatch rebuilds; it
@@ -226,6 +263,12 @@ public struct IndexManifest: Codable, Equatable, Sendable {
     /// in the order to fetch them.
     public var ringPicks: [String]
 
+    /// What Vision made of the photographs of a filled subset, sorted by
+    /// identifier (`PhotoAssessment`). Added without bumping `formatVersion`:
+    /// an index without them is still right, and its photographs are looked
+    /// at once more.
+    public var assessments: [PhotoAssessment]
+
     public init(
         formatVersion: Int = IndexManifest.currentFormatVersion,
         root: String,
@@ -242,7 +285,8 @@ public struct IndexManifest: Codable, Equatable, Sendable {
         belowCloseUp: [String] = [],
         subjects: [String] = [],
         subjectsChoice: String? = nil,
-        ringPicks: [String] = []
+        ringPicks: [String] = [],
+        assessments: [PhotoAssessment] = []
     ) {
         self.formatVersion = formatVersion
         self.root = root
@@ -260,12 +304,13 @@ public struct IndexManifest: Codable, Equatable, Sendable {
         self.subjects = subjects
         self.subjectsChoice = subjectsChoice
         self.ringPicks = ringPicks
+        self.assessments = assessments
     }
 
     private enum CodingKeys: String, CodingKey {
         case formatVersion, root, thumbnailWidth, thumbnailHeight, signatureSide, cropRule
         case entries, skipped, unavailable, unavailableCheckedAt, unavailableContext, belowFullScreen
-        case belowCloseUp, subjects, subjectsChoice, ringPicks
+        case belowCloseUp, subjects, subjectsChoice, ringPicks, assessments
     }
 
     public init(from decoder: any Decoder) throws {
@@ -288,10 +333,11 @@ public struct IndexManifest: Codable, Equatable, Sendable {
         subjects = try container.decodeIfPresent([String].self, forKey: .subjects) ?? []
         subjectsChoice = try container.decodeIfPresent(String.self, forKey: .subjectsChoice)
         ringPicks = try container.decodeIfPresent([String].self, forKey: .ringPicks) ?? []
+        assessments = try container.decodeIfPresent([PhotoAssessment].self, forKey: .assessments) ?? []
     }
 
     /// As synthesised, except that an empty `belowFullScreen`,
-    /// `belowCloseUp`, `subjects` or `ringPicks` is left out, so
+    /// `belowCloseUp`, `subjects`, `ringPicks` or `assessments` is left out, so
     /// a folder's manifest is written byte for byte as before it existed.
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
@@ -318,6 +364,9 @@ public struct IndexManifest: Codable, Equatable, Sendable {
         }
         if !ringPicks.isEmpty {
             try container.encode(ringPicks, forKey: .ringPicks)
+        }
+        if !assessments.isEmpty {
+            try container.encode(assessments, forKey: .assessments)
         }
     }
 
