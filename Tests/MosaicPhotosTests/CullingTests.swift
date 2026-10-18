@@ -87,15 +87,21 @@ struct CullingTests {
         #expect(culling.bar(for: photos[50]) == qualities[photos[37].id]?.score)
     }
 
-    @Test("ties at the bar stay")
+    @Test("exactly a tenth goes, ties at the bar in a fixed order")
     func ties() {
+        // As on a second profile: more than a tenth of a month at 0, the
+        // bottom of Photos' scale. A tenth of them goes, not none.
         let photos = month(1, 100, prefix: "p")
         var qualities: [PhotoID: PhotoQuality] = [:]
         for (index, photo) in photos.enumerated() { qualities[photo.id] = PhotoQuality(score: index < 40 ? 0 : 0.5) }
-        let culling = Culling(library: photos, qualities: qualities, rule: .random)
-        // 0 is a real score, the bottom of the scale; a bar of 0 leaves nothing below it.
-        #expect(culling.libraryBar == 0)
-        #expect(culling.weak == 0)
+        let culling = Culling(library: photos, qualities: qualities, rule: .uniformInTime)
+        #expect(culling.weak == 10)
+        let gone = Set(photos.map(\.id)).subtracting(culling.kept.map(\.id))
+        #expect(gone.allSatisfy { qualities[$0]?.score == 0 })
+        #expect(culling.bar(for: photos[0]) == 0)
+        // The same ten whatever order the library comes in.
+        let again = Culling(library: photos.reversed(), qualities: qualities, rule: .uniformInTime)
+        #expect(Set(photos.map(\.id)).subtracting(again.kept.map(\.id)) == gone)
     }
 
     @Test("a small month takes the library's bar, and a small library the reference")

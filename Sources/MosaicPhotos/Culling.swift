@@ -42,10 +42,16 @@ public struct NoPhotoQuality: PhotoQualitySource {
 /// photograph without a score is neither left out nor favoured here; Vision
 /// judges it against the bar of its month when it is indexed.
 ///
-/// The bar is a value, not a rank: what is below the `share` quantile goes, so a
-/// score from Vision, mapped onto Photos' scale, is judged as one from Photos is.
-/// A month with fewer than `minimumScored` scores has too few to set a bar of
-/// its own and takes the library's; a library with fewer takes `referenceBar`.
+/// Exactly `share` goes, by rank: the lowest scores first, and photographs with
+/// the same score in an order fixed by their identifier, which matters where
+/// Photos gives many the bottom of its scale. On a second profile (2026-10-18)
+/// a tenth or more of the photographs of 31 months scored 0, and a bar that
+/// left ties in took nothing out of exactly those months.
+///
+/// The bar, the score of the first photograph kept, is what a score from
+/// Vision, mapped onto Photos' scale, is held to. A month with fewer than
+/// `minimumScored` scores has too few to rank and takes the library's bar,
+/// below which its photographs go; a library with fewer takes `referenceBar`.
 public struct Culling: Sendable {
     /// Decided by Sergio on 2026-10-17.
     public static let standardShare = 0.10
@@ -82,19 +88,25 @@ public struct Culling: Sendable {
         for photo in candidates {
             if let score = qualities[photo.id]?.score { scores[photo.id] = score }
         }
-        let libraryBar = Self.bar(of: Array(scores.values), share: share) ?? Self.referenceBar
-
-        var monthBars: [Int: Double] = [:]
+        // The groups ranked: the months, or the whole library.
         let byMonth = rule == .uniformInTime
+        var groups: [Int: [PhotoDescriptor]] = [:]
+        for photo in candidates where scores[photo.id] != nil {
+            let key = byMonth ? photo.creationDate.map(SubsetRule.month(of:)) ?? Self.undated : Self.undated
+            groups[key, default: []].append(photo)
+        }
+        let all = groups.values.flatMap { $0 }
+        let libraryBar = Self.ranked(all, scores: scores, share: share)?.bar ?? Self.referenceBar
+        var monthBars: [Int: Double] = [:]
+        var weakest: Set<PhotoID> = []
         if byMonth {
-            var months: [Int: [Double]] = [:]
-            for photo in candidates {
-                guard let score = scores[photo.id], let date = photo.creationDate else { continue }
-                months[SubsetRule.month(of: date), default: []].append(score)
+            for (month, photos) in groups where month != Self.undated {
+                guard let ranked = Self.ranked(photos, scores: scores, share: share) else { continue }
+                monthBars[month] = ranked.bar
+                weakest.formUnion(ranked.out)
             }
-            for (month, values) in months {
-                if let bar = Self.bar(of: values, share: share) { monthBars[month] = bar }
-            }
+        } else if let ranked = Self.ranked(all, scores: scores, share: share) {
+            weakest = ranked.out
         }
 
         self.scores = scores
@@ -108,7 +120,11 @@ public struct Culling: Sendable {
         var kept: [PhotoDescriptor] = []
         kept.reserveCapacity(candidates.count)
         for photo in candidates {
-            if let score = scores[photo.id], score < Self.bar(for: photo, months: monthBars, library: libraryBar, byMonth: byMonth) {
+            let ranked = byMonth ? photo.creationDate.map { monthBars[SubsetRule.month(of: $0)] != nil } ?? false : true
+            let goes = ranked
+                ? weakest.contains(photo.id)
+                : scores[photo.id].map { $0 < libraryBar } ?? false
+            if goes {
                 weak += 1
             } else {
                 kept.append(photo)
@@ -133,12 +149,21 @@ public struct Culling: Sendable {
         return months[SubsetRule.month(of: date)] ?? library
     }
 
-    /// The `share` quantile of `values`: of `n` distinct values, the
-    /// `round(n · share)` below it go. Nil with fewer than `minimumScored`.
-    static func bar(of values: [Double], share: Double) -> Double? {
-        guard values.count >= minimumScored else { return nil }
-        let sorted = values.sorted()
-        let index = min(sorted.count - 1, Int((Double(sorted.count) * share).rounded()))
-        return sorted[index]
+    /// The key of the photographs ranked over the whole library, and of the
+    /// undated ones, which take its bar.
+    private static let undated = Int.min
+
+    /// The `round(n · share)` lowest of `photos` by score, ties in the order
+    /// `SubsetRule.rank` gives their identifiers with a fixed seed, and the
+    /// score of the first one kept. Nil with fewer than `minimumScored`.
+    static func ranked(
+        _ photos: [PhotoDescriptor], scores: [PhotoID: Double], share: Double
+    ) -> (out: Set<PhotoID>, bar: Double)? {
+        guard photos.count >= minimumScored else { return nil }
+        let sorted = photos
+            .map { (score: scores[$0.id]!, order: SubsetRule.rank(of: $0.id, seed: 0), id: $0.id) }
+            .sorted { ($0.score, $0.order, $0.id.rawValue) < ($1.score, $1.order, $1.id.rawValue) }
+        let count = min(sorted.count - 1, Int((Double(sorted.count) * share).rounded()))
+        return (Set(sorted.prefix(count).map(\.id)), sorted[count].score)
     }
 }

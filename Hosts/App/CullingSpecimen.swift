@@ -199,7 +199,7 @@ enum CullingSpecimen {
             for photo in month.weak { row(photo, "photos-score") }
             for photo in month.photos where qualities[photo.id]?.isScreenshot == true { row(photo, "screenshot") }
             for photo in month.visionWeak { row(photo, "vision-score") }
-            for photo in month.utility { row(photo, "utility-" + utilityNote(photo).replacingOccurrences(of: " ", with: "-")) }
+            for photo in month.utility { row(photo, "utility-" + utilityNote(photo).replacingOccurrences(of: ",", with: "").replacingOccurrences(of: " ", with: "-")) }
         }
         try (summary.joined(separator: "\n") + "\n").write(to: directory.appendingPathComponent("summary.csv"), atomically: true, encoding: .utf8)
         try (rejected.joined(separator: "\n") + "\n").write(to: directory.appendingPathComponent("rejected.csv"), atomically: true, encoding: .utf8)
