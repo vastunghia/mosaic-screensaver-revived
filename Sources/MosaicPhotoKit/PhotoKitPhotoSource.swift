@@ -268,6 +268,31 @@ public final class PhotoKitPhotoSource: PhotoSource, @unchecked Sendable {
             """)
     }
 
+    /// The whole photograph at most `longSide` on its long side, as PhotoKit
+    /// renders it from what is on this Mac: never the network, `.fast`, and
+    /// nil when there is nothing here.
+    ///
+    /// For Vision's aesthetics, which is sensitive to how the pixels were
+    /// scaled: asked this way, as spike 5 asked, its score ranks the
+    /// photographs as Photos does with Spearman 0.964; asked as indexing asks
+    /// (5 % more, then scaled here), 0.949 (`--probe-quality`, 2026-10-18).
+    public func wholeImage(for id: PhotoID, longSide: Int) -> CGImage? {
+        guard let asset = asset(for: id) else { return nil }
+        let options = PHImageRequestOptions()
+        options.isSynchronous = true
+        options.deliveryMode = .highQualityFormat
+        options.resizeMode = .fast
+        options.isNetworkAccessAllowed = false
+        options.version = .current
+        var image: CGImage?
+        manager.requestImage(
+            for: asset, targetSize: CGSize(width: longSide, height: longSide), contentMode: .aspectFit, options: options
+        ) { result, _ in
+            image = result?.cgImage(forProposedRect: nil, context: nil, hints: nil)
+        }
+        return image
+    }
+
     /// What this Mac holds of a photograph without asking iCloud, for
     /// `--probe-local`: whether the original's data is here, and the largest
     /// image PhotoKit will render from what is here.
