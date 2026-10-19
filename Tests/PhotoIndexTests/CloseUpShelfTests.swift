@@ -99,6 +99,19 @@ struct CloseUpShelfTests {
         #expect(second.made == 0 && second.kept == 5, "nothing is made twice")
     }
 
+    @Test("stocking says how many it has tried of how many it makes, batch by batch")
+    func makingProgress() throws {
+        let (index, shelf) = try fixture(count: 60)
+        let log = ProgressLog()
+        try shelf.stock(from: index, progress: log.append)
+        #expect(log.tried == [0, 48, 60])
+        #expect(log.toMake == [60])
+
+        let again = ProgressLog()
+        try shelf.stock(from: index, progress: again.append)
+        #expect(again.toMake == [0], "nothing to make the second time")
+    }
+
     @Test("without originals there is nothing to stock from")
     func noOriginals() throws {
         let (index, shelf) = try fixture()
@@ -415,5 +428,16 @@ private final class ProgressLog: @unchecked Sendable {
     var asked: [Int] {
         lock.lock(); defer { lock.unlock() }
         return reports.filter { $0.toFetch > 0 }.map(\.asked)
+    }
+
+    /// While making: how many had been tried at each report, and of how many.
+    var tried: [Int] {
+        lock.lock(); defer { lock.unlock() }
+        return reports.map(\.tried)
+    }
+
+    var toMake: Set<Int> {
+        lock.lock(); defer { lock.unlock() }
+        return Set(reports.map(\.toMake))
     }
 }

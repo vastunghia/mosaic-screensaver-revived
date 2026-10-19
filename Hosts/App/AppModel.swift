@@ -44,10 +44,10 @@ final class AppModel: ObservableObject {
     @Published private(set) var albums = AlbumTree(roots: [])
     @Published private(set) var isIndexing = false
     @Published private(set) var progress: IndexProgress?
-    /// While close-ups are fetched from iCloud after a build: how many have
-    /// been asked for, of how many. The index is whole by then, and its
-    /// progress says nothing of it.
-    @Published private(set) var fetchingCloseUps: (asked: Int, of: Int)?
+    /// While close-ups are made after a build, then fetched from iCloud: how
+    /// far either has got. The index is whole by then, and its progress says
+    /// nothing of them.
+    @Published private(set) var closeUps: CloseUpProgress?
     @Published private(set) var problem: Problem?
     @Published private(set) var loginItem = SMAppService.mainApp.status
     @Published private(set) var saver = SaverInstaller.State.unavailable
@@ -580,8 +580,8 @@ final class AppModel: ObservableObject {
             Task { @MainActor in self?.closeUpsStocked(report, metered: metered) }
         }
         let fetching: @Sendable (CloseUpShelf.StockReport) -> Void = { [weak self] report in
-            guard report.toFetch > 0 else { return }
-            Task { @MainActor in self?.fetchingCloseUps = (report.asked, report.toFetch) }
+            guard let progress = CloseUpProgress(report) else { return }
+            Task { @MainActor in self?.closeUps = progress }
         }
         Self.indexQueue.async(qos: DispatchQoS(qosClass: qos, relativePriority: 0)) {
             let started = ProcessInfo.processInfo.systemUptime
@@ -669,7 +669,7 @@ final class AppModel: ObservableObject {
 
     private func finished(error: Error?, seconds: Double) {
         isIndexing = false
-        fetchingCloseUps = nil
+        closeUps = nil
         Self.log.notice("""
             indexing finished in \(seconds, format: .fixed(precision: 1), privacy: .public) s\
             \(error.map { ": \($0)" } ?? "", privacy: .public)

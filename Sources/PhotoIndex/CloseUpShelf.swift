@@ -114,6 +114,10 @@ public struct CloseUpShelf: Sendable {
         /// Tiles only, left out: they never fill the screen (SPEC § 5), and
         /// this Mac has nothing of them this large anyway.
         public var tilesOnly = 0
+        /// How many this run makes from what this Mac has, and how many of
+        /// those it has tried so far: the window's progress before it fetches.
+        public var toMake = 0
+        public var tried = 0
         /// Of `made`, fetched from iCloud (`Fetching`).
         public var fetched = 0
         /// Of `unavailable`, not fetched because the ledger's caps were reached.
@@ -224,6 +228,7 @@ public struct CloseUpShelf: Sendable {
         let spares = index.entries.filter { !$0.canFillScreen && !subjects.contains($0.id) && $0.pixelWidth >= narrowest }
         let spareIDs = Set(spares.map(\.id))
         let attempted = missing + spares.filter { !has($0) }
+        report.toMake = attempted.count
         progress?(report)
 
         let tally = Tally()
@@ -255,6 +260,7 @@ public struct CloseUpShelf: Sendable {
             report.made = counts.made
             report.failed = counts.failed
             report.unavailable = counts.unavailable
+            report.tried = batch + slice.count
             progress?(report)
         }
 

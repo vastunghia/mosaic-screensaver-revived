@@ -52,9 +52,13 @@ struct StatusSection: View {
             LabeledContent("Photographs") { FolderRow(model: model) }
         } else if model.needsAccess {
             PhotosAccessRow(model: model)
-        } else if let fetching = model.fetchingCloseUps, model.isIndexing {
-            progress(Double(fetching.asked), of: Double(fetching.of),
-                     "Downloading sharp close-ups from iCloud: \(fetching.asked) of \(fetching.of)")
+        } else if let closeUps = model.closeUps, model.isIndexing {
+            switch closeUps {
+            case .making(let tried, let of):
+                progress(Double(tried), of: Double(of), "Making sharp close-ups: \(tried) of \(of)")
+            case .downloading(let asked, let of):
+                progress(Double(asked), of: Double(of), "Downloading sharp close-ups from iCloud: \(asked) of \(of)")
+            }
         } else if let progress = model.progress, model.isIndexing {
             self.progress(Double(progress.completed), of: Double(progress.total), "Preparing · \(progress.summary)")
         } else {
