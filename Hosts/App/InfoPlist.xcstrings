@@ -10,6 +10,12 @@
             "state" : "translated",
             "value" : "Mosaic Companion reads your photo library to prepare the photographs for the Mosaic screen saver."
           }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mosaic Companion legge la tua libreria di Foto per preparare le foto del salvaschermo Mosaic."
+          }
         }
       }
     }

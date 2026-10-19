@@ -9,11 +9,25 @@
             "state" : "new",
             "value" : "%1$@ and %2$@"
           }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%@ e %@"
+          }
         }
       }
     },
     "%@ still to download: Mosaic Companion tries again later." : {
-      "comment" : "What is still to download, with no particular reason"
+      "comment" : "What is still to download, with no particular reason",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Ancora da scaricare: %@. Mosaic Companion riprova più tardi."
+          }
+        }
+      }
     },
     "%@ still to download: iCloud stopped answering. Mosaic Companion tries again at %@." : {
       "comment" : "What is still to download, then why and when it is tried again",
@@ -23,14 +37,36 @@
             "state" : "new",
             "value" : "%1$@ still to download: iCloud stopped answering. Mosaic Companion tries again at %2$@."
           }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Ancora da scaricare: %1$@. iCloud ha smesso di rispondere: Mosaic Companion riprova alle %2$@."
+          }
         }
       }
     },
     "%@ still to download: iCloud stopped answering. Mosaic Companion tries again later." : {
-      "comment" : "What is still to download, then why"
+      "comment" : "What is still to download, then why",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Ancora da scaricare: %@. iCloud ha smesso di rispondere: Mosaic Companion riprova più tardi."
+          }
+        }
+      }
     },
     "%@ still to download: iCloud was too slow to send them. Mosaic Companion asks again later." : {
-      "comment" : "What is still to download, then why"
+      "comment" : "What is still to download, then why",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Ancora da scaricare: %@. iCloud è stato troppo lento a inviarli: Mosaic Companion li richiede più tardi."
+          }
+        }
+      }
     },
     "%@ still to download: the limit of %lld a day or %lld a week is reached. Mosaic Companion goes on as soon as it allows." : {
       "comment" : "What is still to download, then the daily and weekly download limits that hold it back",
@@ -40,11 +76,25 @@
             "state" : "new",
             "value" : "%1$@ still to download: the limit of %2$lld a day or %3$lld a week is reached. Mosaic Companion goes on as soon as it allows."
           }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Ancora da scaricare: %1$@. È stato raggiunto il limite di %2$lld al giorno o %3$lld alla settimana: Mosaic Companion riprende appena possibile."
+          }
         }
       }
     },
     "%@ still to download: the network is metered (a hotspot, or Low Data Mode)." : {
-      "comment" : "What is still to download, then why"
+      "comment" : "What is still to download, then why",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Ancora da scaricare: %@. La rete è a consumo (un hotspot, o Consumo limitato di dati)."
+          }
+        }
+      }
     },
     "%lld albums" : {
       "comment" : "A number of albums, in a summary of those chosen",
@@ -66,14 +116,72 @@
               }
             }
           }
+        },
+        "it" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld album"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld album"
+                }
+              }
+            }
+          }
         }
       }
     },
     "%lld already indexed" : {
-      "comment" : "Index progress: photographs prepared in an earlier run"
+      "comment" : "Index progress: photographs prepared in an earlier run",
+      "localizations" : {
+        "it" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld già indicizzata"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld già indicizzate"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "%lld downloaded in the last 7 days." : {
-      "comment" : "Settings, Download from iCloud: sharp copies downloaded this week"
+      "comment" : "Settings, Download from iCloud: sharp copies downloaded this week",
+      "localizations" : {
+        "it" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld scaricata negli ultimi 7 giorni."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld scaricate negli ultimi 7 giorni."
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "%lld folders" : {
       "comment" : "A number of folders of albums, in a summary of those chosen",
@@ -95,11 +203,49 @@
               }
             }
           }
+        },
+        "it" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld cartella"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld cartelle"
+                }
+              }
+            }
+          }
         }
       }
     },
     "%lld left out as documents or weak" : {
-      "comment" : "Index progress: screenshots, documents and the lowest-rated photographs, not used"
+      "comment" : "Index progress: screenshots, documents and the lowest-rated photographs, not used",
+      "localizations" : {
+        "it" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld esclusa come documento o poco riuscita"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld escluse come documenti o poco riuscite"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "%lld of %lld" : {
       "comment" : "Index progress: photographs prepared so far, of all those to prepare",
@@ -109,14 +255,48 @@
             "state" : "new",
             "value" : "%1$lld of %2$lld"
           }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%lld di %lld"
+          }
         }
       }
     },
     "%lld only as tiles" : {
-      "comment" : "Index progress: photographs too small to fill the screen, used only as tiles"
+      "comment" : "Index progress: photographs too small to fill the screen, used only as tiles",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%lld solo come tessere"
+          }
+        }
+      }
     },
     "%lld only in iCloud, left out" : {
-      "comment" : "Index progress: photographs whose originals are only in iCloud and are not used"
+      "comment" : "Index progress: photographs whose originals are only in iCloud and are not used",
+      "localizations" : {
+        "it" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld solo su iCloud, esclusa"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld solo su iCloud, escluse"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "%lld photographs shown full screen have blurry close-ups: their originals are in iCloud." : {
       "comment" : "Advice to allow downloads from iCloud",
@@ -138,11 +318,49 @@
               }
             }
           }
+        },
+        "it" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld foto mostrata a tutto schermo ha un primo piano sfocato: l’originale è su iCloud."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld foto mostrate a tutto schermo hanno primi piani sfocati: gli originali sono su iCloud."
+                }
+              }
+            }
+          }
         }
       }
     },
     "%lld ready" : {
-      "comment" : "Photographs ready for the screen saver"
+      "comment" : "Photographs ready for the screen saver",
+      "localizations" : {
+        "it" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld pronta"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld pronte"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "%lld ready, at least %lld needed" : {
       "comment" : "Photographs ready for the screen saver, fewer than it needs",
@@ -152,11 +370,47 @@
             "state" : "new",
             "value" : "%1$lld ready, at least %2$lld needed"
           }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%#@ready@, ne servono almeno %2$lld"
+          },
+          "substitutions" : {
+            "ready" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "needs_review",
+                      "value" : "%arg pronta"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "needs_review",
+                      "value" : "%arg pronte"
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
     "%lld s" : {
-      "comment" : "Zoom duration in seconds, beside its slider"
+      "comment" : "Zoom duration in seconds, beside its slider",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%lld s"
+          }
+        }
+      }
     },
     "%lld sharp close-ups" : {
       "comment" : "Close-ups still to download from iCloud; begins a sentence",
@@ -174,6 +428,24 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld sharp close-ups"
+                }
+              }
+            }
+          }
+        },
+        "it" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld primo piano nitido"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld primi piani nitidi"
                 }
               }
             }
@@ -201,128 +473,471 @@
               }
             }
           }
+        },
+        "it" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld tessera più nitida"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld tessere più nitide"
+                }
+              }
+            }
+          }
         }
       }
     },
     "%lld unreadable" : {
-      "comment" : "Index progress: photographs that could not be read; followed by the iCloud figure"
+      "comment" : "Index progress: photographs that could not be read; followed by the iCloud figure",
+      "localizations" : {
+        "it" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld illeggibile"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld illeggibili"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "%lld unreadable, left out" : {
-      "comment" : "Index progress: photographs that could not be read and are not used"
+      "comment" : "Index progress: photographs that could not be read and are not used",
+      "localizations" : {
+        "it" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld illeggibile, esclusa"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld illeggibili, escluse"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "A folder" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Una cartella"
+          }
+        }
+      }
     },
     "About Mosaic Companion" : {
-      "comment" : "Mosaic Companion menu"
+      "comment" : "Mosaic Companion menu",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Informazioni su Mosaic Companion"
+          }
+        }
+      }
     },
     "Access is restricted on this Mac." : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "L’accesso è soggetto a restrizioni su questo Mac."
+          }
+        }
+      }
     },
     "Access was refused." : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "L’accesso è stato negato."
+          }
+        }
+      }
     },
     "Albums" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Album"
+          }
+        }
+      }
     },
     "All photographs" : {
-      "comment" : "Albums in use: none chosen, so the whole library"
+      "comment" : "Albums in use: none chosen, so the whole library",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Tutte le foto"
+          }
+        }
+      }
     },
     "Allow Access…" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Consenti l’accesso…"
+          }
+        }
+      }
     },
     "Allow Notifications…" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Consenti le notifiche…"
+          }
+        }
+      }
     },
     "Almost Done" : {
-      "comment" : "Setup: last page's title, when some page asked for something not done"
+      "comment" : "Setup: last page's title, when some page asked for something not done",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Quasi fatto"
+          }
+        }
+      }
     },
     "Applications" : {
-      "comment" : "Setup page title: moving the app to the Applications folder"
+      "comment" : "Setup page title: moving the app to the Applications folder",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Applicazioni"
+          }
+        }
+      }
     },
     "Available once Mosaic Companion is in Applications." : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Disponibile quando Mosaic Companion è in Applicazioni."
+          }
+        }
+      }
     },
     "Back" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Indietro"
+          }
+        }
+      }
     },
     "Bring All to Front" : {
-      "comment" : "Window menu"
+      "comment" : "Window menu",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Porta tutto in primo piano"
+          }
+        }
+      }
     },
     "Cancel" : {
-      "comment" : "Alert button"
+      "comment" : "Alert button",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Annulla"
+          }
+        }
+      }
     },
     "Change Now" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Cambia ora"
+          }
+        }
+      }
     },
     "Change photographs" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Cambia le foto"
+          }
+        }
+      }
     },
     "Change…" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Modifica…"
+          }
+        }
+      }
     },
     "Check for Updates…" : {
-      "comment" : "Mosaic Companion menu"
+      "comment" : "Mosaic Companion menu",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Controlla aggiornamenti…"
+          }
+        }
+      }
     },
     "Choose" : {
-      "comment" : "Default button of the panel that picks the folder of photographs"
+      "comment" : "Default button of the panel that picks the folder of photographs",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Scegli"
+          }
+        }
+      }
     },
     "Choose Mosaic in System Settings, under %@." : {
-      "comment" : "Where the screen saver is chosen; the path is the System Settings sections, as in “Screen Saver › Other”"
+      "comment" : "Where the screen saver is chosen; the path is the System Settings sections, as in “Screen Saver › Other”",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Scegli Mosaic in Impostazioni di Sistema, in %@."
+          }
+        }
+      }
     },
     "Choose Mosaic under %@." : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Scegli Mosaic in %@."
+          }
+        }
+      }
     },
     "Choose a folder of photographs for the mosaics." : {
-      "comment" : "Message of the panel that picks the folder of photographs"
+      "comment" : "Message of the panel that picks the folder of photographs",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Scegli una cartella di foto per i mosaici."
+          }
+        }
+      }
     },
     "Choose…" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Scegli…"
+          }
+        }
+      }
     },
     "Choosing new photographs · %@" : {
-      "comment" : "Progress, followed by the index figures"
+      "comment" : "Progress, followed by the index figures",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Scelta di nuove foto · %@"
+          }
+        }
+      }
     },
     "Choosing new photographs. The screen saver shows the current ones until they are ready." : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Scelta di nuove foto in corso. Il salvaschermo mostra quelle attuali finché le nuove non sono pronte."
+          }
+        }
+      }
     },
     "Clear" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Azzera"
+          }
+        }
+      }
     },
     "Click to see what’s new and install it." : {
-      "comment" : "Notification text"
+      "comment" : "Notification text",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Fai clic per vedere le novità e installarla."
+          }
+        }
+      }
     },
     "Close" : {
-      "comment" : "File menu"
+      "comment" : "File menu",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Chiudi"
+          }
+        }
+      }
     },
     "Close Window" : {
-      "comment" : "Quit alert button: closes the window and keeps running"
+      "comment" : "Quit alert button: closes the window and keeps running",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Chiudi finestra"
+          }
+        }
+      }
     },
     "Continue" : {
-      "comment" : "Setup: the button to the next page"
+      "comment" : "Setup: the button to the next page",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Continua"
+          }
+        }
+      }
     },
     "Controls" : {
-      "comment" : "Menu bar"
+      "comment" : "Menu bar",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Controlli"
+          }
+        }
+      }
     },
     "Copy" : {
-      "comment" : "Edit menu"
+      "comment" : "Edit menu",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Copia"
+          }
+        }
+      }
     },
     "Cut" : {
-      "comment" : "Edit menu"
+      "comment" : "Edit menu",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Taglia"
+          }
+        }
+      }
     },
     "Daily or weekly limit reached" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Limite giornaliero o settimanale raggiunto"
+          }
+        }
+      }
     },
     "Done" : {
-      "comment" : "Setup summary, VoiceOver: this page's step is done"
+      "comment" : "Setup summary, VoiceOver: this page's step is done",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Fine"
+          }
+        }
+      }
     },
     "Download Settings…" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Impostazioni download…"
+          }
+        }
+      }
     },
     "Download from iCloud" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Scarica da iCloud"
+          }
+        }
+      }
     },
     "Downloading Mosaic %@…" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Download di Mosaic %@…"
+          }
+        }
+      }
     },
     "Downloading sharp close-ups from iCloud: %lld of %lld" : {
       "comment" : "Progress",
@@ -332,50 +947,161 @@
             "state" : "new",
             "value" : "Downloading sharp close-ups from iCloud: %1$lld of %2$lld"
           }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Download dei primi piani nitidi da iCloud: %lld di %lld"
+          }
         }
       }
     },
     "Edit" : {
-      "comment" : "Menu bar"
+      "comment" : "Menu bar",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Modifica"
+          }
+        }
+      }
     },
     "Enter Full Screen" : {
-      "comment" : "Controls menu"
+      "comment" : "Controls menu",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Attiva modalità a tutto schermo"
+          }
+        }
+      }
     },
     "Every Day" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Ogni giorno"
+          }
+        }
+      }
     },
     "Every Month" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Ogni mese"
+          }
+        }
+      }
     },
     "Every Week" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Ogni settimana"
+          }
+        }
+      }
     },
     "Everything needed" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Tutto il necessario"
+          }
+        }
+      }
     },
     "File" : {
-      "comment" : "Menu bar"
+      "comment" : "Menu bar",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "File"
+          }
+        }
+      }
     },
     "Full Screen" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Tutto schermo"
+          }
+        }
+      }
     },
     "Full screen. Any key or click ends it." : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "A tutto schermo. Un tasto o un clic qualsiasi lo chiude."
+          }
+        }
+      }
     },
     "Get Started" : {
-      "comment" : "Setup: the first page's button"
+      "comment" : "Setup: the first page's button",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Inizia"
+          }
+        }
+      }
     },
     "Help" : {
-      "comment" : "Menu bar"
+      "comment" : "Menu bar",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Aiuto"
+          }
+        }
+      }
     },
     "Hide Mosaic Companion" : {
-      "comment" : "Mosaic Companion menu"
+      "comment" : "Mosaic Companion menu",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Nascondi Mosaic Companion"
+          }
+        }
+      }
     },
     "Hide Others" : {
-      "comment" : "Mosaic Companion menu"
+      "comment" : "Mosaic Companion menu",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Nascondi altre"
+          }
+        }
+      }
     },
     "How many" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Quante"
+          }
+        }
+      }
     },
     "If you reset the limits, Mosaic counts from zero and right away downloads %lld of the %lld still missing, about %lld MB, and the others as the limits allow. On a plan that charges for data, they count toward it. Photos keeps them in your library until it needs the space." : {
       "comment" : "Reset the download limits: what a reset downloads at once, of all that is missing",
@@ -384,6 +1110,12 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "If you reset the limits, Mosaic counts from zero and right away downloads %1$lld of the %2$lld still missing, about %3$lld MB, and the others as the limits allow. On a plan that charges for data, they count toward it. Photos keeps them in your library until it needs the space."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Se azzeri i limiti, Mosaic riparte da zero e scarica subito %1$lld delle %2$lld copie che mancano ancora, circa %3$lld MB, e le altre man mano che i limiti lo consentono. Su un piano dati a consumo, il download viene conteggiato. Foto conserva le copie nella libreria finché non le serve lo spazio."
           }
         }
       }
@@ -418,20 +1150,78 @@
               }
             }
           }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Se azzeri i limiti, Mosaic riparte da zero e scarica subito %#@missing@, circa %2$lld MB. Su un piano dati a consumo, il download viene conteggiato. Foto conserva le copie nella libreria finché non le serve lo spazio."
+          },
+          "substitutions" : {
+            "missing" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "needs_review",
+                      "value" : "l’unica copia che manca ancora"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "needs_review",
+                      "value" : "le %arg copie che mancano ancora"
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
     "In the Background" : {
-      "comment" : "Setup page title: opening at login"
+      "comment" : "Setup page title: opening at login",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "In background"
+          }
+        }
+      }
     },
     "Install and Relaunch" : {
-      "comment" : "Update alert button"
+      "comment" : "Update alert button",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Installa e riapri"
+          }
+        }
+      }
     },
     "Install…" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Installa…"
+          }
+        }
+      }
     },
     "It opens again from there. The screen saver and the login item need it to stay in one place; the downloaded copy can then go in the Bin." : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Si riapre da lì. Il salvaschermo e l’elemento login hanno bisogno che resti in un posto solo; la copia scaricata può poi andare nel Cestino."
+          }
+        }
+      }
     },
     "Last changed on %@, next on %@. The screen saver shows the current photographs until the new ones are ready." : {
       "localizations" : {
@@ -440,17 +1230,44 @@
             "state" : "new",
             "value" : "Last changed on %1$@, next on %2$@. The screen saver shows the current photographs until the new ones are ready."
           }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Ultimo cambio il %@, prossimo il %@. Il salvaschermo mostra le foto attuali finché le nuove non sono pronte."
+          }
         }
       }
     },
     "Last changed on %@." : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Ultimo cambio il %@."
+          }
+        }
+      }
     },
     "Leave out screenshots, documents and weak photos" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Escludi screenshot, documenti e foto poco riuscite"
+          }
+        }
+      }
     },
     "Limited to the photographs you picked" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Limitato alle foto che hai scelto"
+          }
+        }
+      }
     },
     "Making sharp close-ups of the new photographs: %lld of %lld" : {
       "comment" : "Progress, while new photographs are being chosen",
@@ -459,6 +1276,12 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "Making sharp close-ups of the new photographs: %1$lld of %2$lld"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Preparazione dei primi piani nitidi delle nuove foto: %lld di %lld"
           }
         }
       }
@@ -471,77 +1294,258 @@
             "state" : "new",
             "value" : "Making sharp close-ups: %1$lld of %2$lld"
           }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Preparazione dei primi piani nitidi: %lld di %lld"
+          }
         }
       }
     },
     "Minimize" : {
-      "comment" : "Window menu"
+      "comment" : "Window menu",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Contrai"
+          }
+        }
+      }
     },
     "Mosaic" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mosaic"
+          }
+        }
+      }
     },
     "Mosaic %@ could not be installed." : {
-      "comment" : "Alert title; the version that failed to install"
+      "comment" : "Alert title; the version that failed to install",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Impossibile installare Mosaic %@."
+          }
+        }
+      }
     },
     "Mosaic %@ is available" : {
-      "comment" : "A new version; the version, as in “Mosaic 0.6 is available”"
+      "comment" : "A new version; the version, as in “Mosaic 0.6 is available”",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mosaic %@ è disponibile"
+          }
+        }
+      }
     },
     "Mosaic %@ is the newest version." : {
-      "comment" : "Check for Updates alert; the version installed"
+      "comment" : "Check for Updates alert; the version installed",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mosaic %@ è la versione più recente."
+          }
+        }
+      }
     },
     "Mosaic Companion Help" : {
-      "comment" : "Help menu"
+      "comment" : "Help menu",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Aiuto di Mosaic Companion"
+          }
+        }
+      }
     },
     "Mosaic Companion Settings" : {
-      "comment" : "Title of the Settings window"
+      "comment" : "Title of the Settings window",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Impostazioni di Mosaic Companion"
+          }
+        }
+      }
     },
     "Mosaic Companion carries the screen saver and installs it for you. At the end of the setup you choose it in System Settings." : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mosaic Companion contiene il salvaschermo e lo installa per te. Alla fine della configurazione lo scegli in Impostazioni di Sistema."
+          }
+        }
+      }
     },
     "Mosaic Companion checks for a new version once a day. Allow notifications so that it can tell you when one is ready, even if you never open its window: they are used for nothing else. You can change this in Settings." : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mosaic Companion cerca una nuova versione una volta al giorno. Consenti le notifiche perché possa avvisarti quando è pronta, anche se non apri mai la sua finestra: non servono a nient’altro. Puoi cambiare questa scelta in Impostazioni."
+          }
+        }
+      }
     },
     "Mosaic Companion checks for a new version once a day. Notifications tell you only that one is ready, even if you never open its window." : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mosaic Companion cerca una nuova versione una volta al giorno. Le notifiche ti dicono solo che è pronta, anche se non apri mai la sua finestra."
+          }
+        }
+      }
     },
     "Mosaic Companion could not be added to the login items: %@" : {
-      "comment" : "Followed by the reason, as macOS words it"
+      "comment" : "Followed by the reason, as macOS words it",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Impossibile aggiungere Mosaic Companion agli elementi login: %@"
+          }
+        }
+      }
     },
     "Mosaic Companion could not be removed from the login items: %@" : {
-      "comment" : "Followed by the reason, as macOS words it"
+      "comment" : "Followed by the reason, as macOS words it",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Impossibile rimuovere Mosaic Companion dagli elementi login: %@"
+          }
+        }
+      }
     },
     "Mosaic Companion could not reset the download limits: %@" : {
-      "comment" : "Followed by the reason, as macOS words it"
+      "comment" : "Followed by the reason, as macOS words it",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Impossibile azzerare i limiti di download: %@"
+          }
+        }
+      }
     },
     "Mosaic Companion downloads whatever it needs to prepare your photographs, originals included. It can take a long time and a lot of space on disk: choose it only if too few photographs are ready otherwise." : {
-      "comment" : "Settings, Download from iCloud: what Everything needed means"
+      "comment" : "Settings, Download from iCloud: what Everything needed means",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mosaic Companion scarica tutto ciò che serve per preparare le tue foto, originali compresi. Può richiedere molto tempo e molto spazio su disco: sceglilo solo se altrimenti le foto pronte sono troppo poche."
+          }
+        }
+      }
     },
     "Mosaic Companion is running from where it was downloaded." : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mosaic Companion è aperto dalla posizione in cui è stato scaricato."
+          }
+        }
+      }
     },
     "Mosaic Companion keeps the screen saver’s photographs up to date only while it is open." : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mosaic Companion tiene aggiornate le foto del salvaschermo solo mentre è aperto."
+          }
+        }
+      }
     },
     "Mosaic Companion keeps the screen saver’s photographs up to date only while it runs. At login it opens without a window and stays in the background, so new photographs reach the screen saver without your opening it. You can change this in its window." : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mosaic Companion tiene aggiornate le foto del salvaschermo solo mentre è aperto. Al login si apre senza finestra e resta in background, così le nuove foto arrivano al salvaschermo senza che tu debba aprirlo. Puoi cambiare questa scelta nella sua finestra."
+          }
+        }
+      }
     },
     "Mosaic Companion needs to read your photo library." : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mosaic Companion deve leggere la tua libreria di Foto."
+          }
+        }
+      }
     },
     "Mosaic Companion opens at login without a window and keeps the screen saver’s photographs up to date." : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mosaic Companion si apre al login senza finestra e tiene aggiornate le foto del salvaschermo."
+          }
+        }
+      }
     },
     "Mosaic Companion uses only what Photos keeps on this Mac. If your library keeps originals in iCloud, only the photographs this Mac keeps large are shown full screen, often from a few years only, and some close-ups are blurry." : {
-      "comment" : "Settings, Download from iCloud: what Nothing means"
+      "comment" : "Settings, Download from iCloud: what Nothing means",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mosaic Companion usa solo ciò che Foto conserva su questo Mac. Se la tua libreria tiene gli originali su iCloud, a tutto schermo compaiono solo le foto che questo Mac conserva in grande, spesso di pochi anni, e alcuni primi piani sono sfocati."
+          }
+        }
+      }
     },
     "Mosaic Is Set Up" : {
-      "comment" : "Setup page title, last page"
+      "comment" : "Setup page title, last page",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mosaic è configurato"
+          }
+        }
+      }
     },
     "Mosaic could not be moved to Applications (%@). Drag it there in the Finder, then open it again." : {
-      "comment" : "The move to Applications failed; the reason in parentheses"
+      "comment" : "The move to Applications failed; the reason in parentheses",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Impossibile spostare Mosaic in Applicazioni (%@). Trascinalo lì nel Finder, poi riaprilo."
+          }
+        }
+      }
     },
     "Mosaic couldn’t check for updates." : {
-      "comment" : "Alert title"
+      "comment" : "Alert title",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Impossibile cercare aggiornamenti di Mosaic."
+          }
+        }
+      }
     },
     "Mosaic downloads at most %lld copies a day and %lld a week, to protect the space on this Mac and your network data." : {
       "comment" : "Reset the download limits: the first paragraph, what the limits are for",
@@ -551,65 +1555,208 @@
             "state" : "new",
             "value" : "Mosaic downloads at most %1$lld copies a day and %2$lld a week, to protect the space on this Mac and your network data."
           }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mosaic scarica al massimo %lld copie al giorno e %lld alla settimana, per proteggere lo spazio su questo Mac e il tuo traffico dati."
+          }
         }
       }
     },
     "Mosaic is a screen saver. Mosaic Companion, this app, prepares your photographs for it and keeps its settings. These pages set it up; you can come back to them at any time from the Mosaic Companion menu, with Set Up Mosaic." : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mosaic è un salvaschermo. Mosaic Companion, questa app, prepara le tue foto e ne tiene le impostazioni. Queste pagine lo configurano; puoi tornarci quando vuoi dal menu Mosaic Companion, con Configura Mosaic."
+          }
+        }
+      }
     },
     "Mosaic is up to date" : {
-      "comment" : "Check for Updates alert title"
+      "comment" : "Check for Updates alert title",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mosaic è aggiornato"
+          }
+        }
+      }
     },
     "Mosaic turns your photographs into an endless zoom: every photograph turns out to be one tile of a mosaic, which makes up another photograph, which is one tile of the next mosaic." : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mosaic trasforma le tue foto in uno zoom senza fine: ogni foto si rivela una tessera di un mosaico, che compone un’altra foto, che è una tessera del mosaico successivo."
+          }
+        }
+      }
     },
     "Most recent" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Le più recenti"
+          }
+        }
+      }
     },
     "Move to Applications" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Sposta in Applicazioni"
+          }
+        }
+      }
     },
     "Never" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mai"
+          }
+        }
+      }
     },
     "No album chosen is the whole library; several are combined." : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Nessun album scelto vuol dire tutta la libreria; più album si sommano."
+          }
+        }
+      }
     },
     "None chosen" : {
-      "comment" : "No folder of photographs chosen yet"
+      "comment" : "No folder of photographs chosen yet",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Nessuna"
+          }
+        }
+      }
     },
     "Not Now" : {
-      "comment" : "Update alert button"
+      "comment" : "Update alert button",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Non ora"
+          }
+        }
+      }
     },
     "Not done" : {
-      "comment" : "Setup summary, VoiceOver: this page's step is not done"
+      "comment" : "Setup summary, VoiceOver: this page's step is not done",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Da fare"
+          }
+        }
+      }
     },
     "Nothing" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Niente"
+          }
+        }
+      }
     },
     "Notifications allowed, for new versions only" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Notifiche consentite, solo per le nuove versioni"
+          }
+        }
+      }
     },
     "Notifications are off: new versions show only in this window" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Notifiche disattivate: le nuove versioni compaiono solo in questa finestra"
+          }
+        }
+      }
     },
     "Notifications for new versions" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Notifiche per le nuove versioni"
+          }
+        }
+      }
     },
     "Open Login Items…" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Apri Elementi login…"
+          }
+        }
+      }
     },
     "Open Notification Settings…" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Apri impostazioni Notifiche…"
+          }
+        }
+      }
     },
     "Open Privacy Settings…" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Apri impostazioni Privacy…"
+          }
+        }
+      }
     },
     "Open Screen Saver Settings…" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Apri impostazioni Salvaschermo…"
+          }
+        }
+      }
     },
     "Open at login" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Apri al login"
+          }
+        }
+      }
     },
     "Page %lld of %lld" : {
       "localizations" : {
@@ -618,143 +1765,486 @@
             "state" : "new",
             "value" : "Page %1$lld of %2$lld"
           }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Pagina %lld di %lld"
+          }
         }
       }
     },
     "Paste" : {
-      "comment" : "Edit menu"
+      "comment" : "Edit menu",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Incolla"
+          }
+        }
+      }
     },
     "Photographs" : {
-      "comment" : "Setup page title"
+      "comment" : "Setup page title",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Foto"
+          }
+        }
+      }
     },
     "Photographs from" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Foto da"
+          }
+        }
+      }
     },
     "Photographs only. A folder's count adds up its albums, so a photograph in more than one counts more than once." : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Solo foto. Il numero di una cartella somma quelli dei suoi album, quindi una foto presente in più album viene contata più volte."
+          }
+        }
+      }
     },
     "Photographs to Use" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Foto da usare"
+          }
+        }
+      }
     },
     "Photos in iCloud" : {
-      "comment" : "Setup page title"
+      "comment" : "Setup page title",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Foto su iCloud"
+          }
+        }
+      }
     },
     "Photos library" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Libreria di Foto"
+          }
+        }
+      }
     },
     "Preparing the photographs stopped: %@" : {
-      "comment" : "Followed by the reason, as macOS or the index words it"
+      "comment" : "Followed by the reason, as macOS or the index words it",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "La preparazione delle foto si è interrotta: %@"
+          }
+        }
+      }
     },
     "Preparing · %@" : {
-      "comment" : "Progress, followed by the index figures"
+      "comment" : "Progress, followed by the index figures",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Preparazione · %@"
+          }
+        }
+      }
     },
     "Preview of the mosaic" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Anteprima del mosaico"
+          }
+        }
+      }
     },
     "Quit" : {
-      "comment" : "Quit alert button"
+      "comment" : "Quit alert button",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Esci"
+          }
+        }
+      }
     },
     "Quit Mosaic Companion" : {
-      "comment" : "Mosaic Companion menu"
+      "comment" : "Mosaic Companion menu",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Esci da Mosaic Companion"
+          }
+        }
+      }
     },
     "Quit Mosaic Companion?" : {
-      "comment" : "Alert title, when the app opens at login"
+      "comment" : "Alert title, when the app opens at login",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Uscire da Mosaic Companion?"
+          }
+        }
+      }
     },
     "Random" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "A caso"
+          }
+        }
+      }
     },
     "Ready" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Pronto"
+          }
+        }
+      }
     },
     "Receipts, notes and the like, and in each month the tenth of the photographs that Photos rates lowest. Others take their place." : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Ricevute, appunti e simili, e ogni mese il decimo delle foto con il punteggio più basso in Foto. Altre ne prendono il posto."
+          }
+        }
+      }
     },
     "Receipts, notes and the like, and the tenth of the photographs that Photos rates lowest. Others take their place." : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Ricevute, appunti e simili, e il decimo delle foto con il punteggio più basso in Foto. Altre ne prendono il posto."
+          }
+        }
+      }
     },
     "Redo" : {
-      "comment" : "Edit menu"
+      "comment" : "Edit menu",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Ripristina"
+          }
+        }
+      }
     },
     "Reopen Mosaic Companion" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Riapri Mosaic Companion"
+          }
+        }
+      }
     },
     "Reset Limits" : {
-      "comment" : "Alert button: resets the download limits"
+      "comment" : "Alert button: resets the download limits",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Azzera limiti"
+          }
+        }
+      }
     },
     "Reset Limits…" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Azzera limiti…"
+          }
+        }
+      }
     },
     "Reset the download limits?" : {
-      "comment" : "Alert title"
+      "comment" : "Alert title",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Azzerare i limiti di download?"
+          }
+        }
+      }
     },
     "Rows" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Righe"
+          }
+        }
+      }
     },
     "Rows, zoom duration, the photographs to use and updates (⌘,)" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Righe, durata dello zoom, foto da usare e aggiornamenti (⌘,)"
+          }
+        }
+      }
     },
     "Screen Saver" : {
-      "comment" : "Setup page title"
+      "comment" : "Setup page title",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Salvaschermo"
+          }
+        }
+      }
     },
     "Screen Saver › Other" : {
-      "comment" : "Path in System Settings on macOS 15: the exact names macOS uses for the Screen Saver pane and its Other section"
+      "comment" : "Path in System Settings on macOS 15: the exact names macOS uses for the Screen Saver pane and its Other section",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Salvaschermo › Altro"
+          }
+        }
+      }
     },
     "Screen saver installed" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Salvaschermo installato"
+          }
+        }
+      }
     },
     "Search Albums" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Cerca album"
+          }
+        }
+      }
     },
     "Select All" : {
-      "comment" : "Edit menu"
+      "comment" : "Edit menu",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Seleziona tutto"
+          }
+        }
+      }
     },
     "Set Up Mosaic" : {
-      "comment" : "Title of the setup window"
+      "comment" : "Title of the setup window",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Configura Mosaic"
+          }
+        }
+      }
     },
     "Set Up Mosaic…" : {
-      "comment" : "Mosaic Companion menu"
+      "comment" : "Mosaic Companion menu",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Configura Mosaic…"
+          }
+        }
+      }
     },
     "Settings…" : {
-      "comment" : "Mosaic Companion menu"
+      "comment" : "Mosaic Companion menu",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Impostazioni…"
+          }
+        }
+      }
     },
     "Sharp close-ups only" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Solo primi piani nitidi"
+          }
+        }
+      }
     },
     "Show All" : {
-      "comment" : "Mosaic Companion menu"
+      "comment" : "Mosaic Companion menu",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mostra tutte"
+          }
+        }
+      }
     },
     "Skip This Version" : {
-      "comment" : "Update alert button"
+      "comment" : "Update alert button",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Salta questa versione"
+          }
+        }
+      }
     },
     "Source" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Origine"
+          }
+        }
+      }
     },
     "Spread over time" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Distribuite nel tempo"
+          }
+        }
+      }
     },
     "Status" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Stato"
+          }
+        }
+      }
     },
     "Stop" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Interrompi"
+          }
+        }
+      }
     },
     "That is every photograph this Mac can use: the others are only in iCloud or unreadable." : {
-      "comment" : "Under the count of photographs, when there are fewer than the number chosen"
+      "comment" : "Under the count of photographs, when there are fewer than the number chosen",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Sono tutte le foto che questo Mac può usare: le altre sono solo su iCloud o illeggibili."
+          }
+        }
+      }
     },
     "The installed screen saver is not this version." : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Il salvaschermo installato non è di questa versione."
+          }
+        }
+      }
     },
     "The limits apply again from now on." : {
-      "comment" : "Reset the download limits: the last paragraph"
+      "comment" : "Reset the download limits: the last paragraph",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Da ora in poi i limiti tornano a valere."
+          }
+        }
+      }
     },
     "The mosaic appears here once %lld photographs are ready." : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Il mosaico compare qui quando sono pronte %lld foto."
+          }
+        }
+      }
     },
     "The mosaic could not start." : {
-      "comment" : "Alert title when full screen fails"
+      "comment" : "Alert title when full screen fails",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Impossibile avviare il mosaico."
+          }
+        }
+      }
     },
     "The most recent photographs stay the same: a change picks other photographs only when they are random or spread over time." : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Le foto più recenti restano le stesse: un cambio sceglie altre foto solo se sono a caso o distribuite nel tempo."
+          }
+        }
+      }
     },
     "The photographs shown full screen, one in sixteen, are chosen from your whole library, and Mosaic Companion downloads a sharp copy of each that this Mac lacks, about 1.3 MB each, never the original: at most %lld a day and %lld a week, and none on a hotspot or in Low Data Mode. Photos keeps them in your library until it needs the space." : {
       "comment" : "Settings, Download from iCloud: what Sharp close-ups only means",
@@ -763,6 +2253,12 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "The photographs shown full screen, one in sixteen, are chosen from your whole library, and Mosaic Companion downloads a sharp copy of each that this Mac lacks, about 1.3 MB each, never the original: at most %1$lld a day and %2$lld a week, and none on a hotspot or in Low Data Mode. Photos keeps them in your library until it needs the space."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Le foto mostrate a tutto schermo, una su sedici, sono scelte da tutta la libreria, e Mosaic Companion scarica una copia nitida di ognuna che manca su questo Mac, di circa 1,3 MB, mai l’originale: al massimo %lld al giorno e %lld alla settimana, e nessuna su un hotspot o con Consumo limitato di dati. Foto conserva le copie nella libreria finché non le serve lo spazio."
           }
         }
       }
@@ -775,29 +2271,88 @@
             "state" : "new",
             "value" : "The photographs shown full screen, one in sixteen, are chosen from your whole library, and Mosaic Companion downloads a sharp copy of each that this Mac lacks, and of up to %1$lld of the photographs shown large around them, about 1.3 MB each, never the original: at most %2$lld a day and %3$lld a week, and none on a hotspot or in Low Data Mode. Photos keeps them in your library until it needs the space."
           }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Le foto mostrate a tutto schermo, una su sedici, sono scelte da tutta la libreria, e Mosaic Companion scarica una copia nitida di ognuna che manca su questo Mac, e di fino a %1$lld delle foto mostrate in grande intorno a loro, di circa 1,3 MB, mai l’originale: al massimo %2$lld al giorno e %3$lld alla settimana, e nessuna su un hotspot o con Consumo limitato di dati. Foto conserva le copie nella libreria finché non le serve lo spazio."
+          }
         }
       }
     },
     "The screen saver asked for photographs (%@)." : {
-      "comment" : "The reason in parentheses is a code the screen saver sends, such as no-index"
+      "comment" : "The reason in parentheses is a code the screen saver sends, such as no-index",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Il salvaschermo ha chiesto le foto (%@)."
+          }
+        }
+      }
     },
     "The screen saver could not be installed: %@" : {
-      "comment" : "Followed by the reason, as macOS words it"
+      "comment" : "Followed by the reason, as macOS words it",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Impossibile installare il salvaschermo: %@"
+          }
+        }
+      }
     },
     "The screen saver could not be updated: %@" : {
-      "comment" : "Followed by the reason, as macOS words it"
+      "comment" : "Followed by the reason, as macOS words it",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Impossibile aggiornare il salvaschermo: %@"
+          }
+        }
+      }
     },
     "The screen saver is not installed." : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Il salvaschermo non è installato."
+          }
+        }
+      }
     },
     "The screen saver won't pick up new photographs until you next log in." : {
-      "comment" : "Quit alert"
+      "comment" : "Quit alert",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Il salvaschermo non riceverà nuove foto fino al prossimo login."
+          }
+        }
+      }
     },
     "They never leave this Mac: Mosaic Companion keeps a small copy of each, to build the mosaics from. Which albums, and how many photographs, are in Settings." : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Non lasciano mai questo Mac: Mosaic Companion ne tiene una piccola copia, con cui comporre i mosaici. Quali album e quante foto si scelgono in Impostazioni."
+          }
+        }
+      }
     },
     "This build carries no screen saver." : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Questa build non contiene il salvaschermo."
+          }
+        }
+      }
     },
     "This matters only if your Photos library keeps its originals in iCloud. Then Mosaic Companion can download a sharp copy of the photographs it shows full screen, about 1.3 MB each, never the original: at most %lld a day and %lld a week, and none on a hotspot or in Low Data Mode. With Nothing, Mosaic Companion tells you in its window if some close-ups turn out blurry. You can change this in Settings." : {
       "localizations" : {
@@ -806,95 +2361,326 @@
             "state" : "new",
             "value" : "This matters only if your Photos library keeps its originals in iCloud. Then Mosaic Companion can download a sharp copy of the photographs it shows full screen, about 1.3 MB each, never the original: at most %1$lld a day and %2$lld a week, and none on a hotspot or in Low Data Mode. With Nothing, Mosaic Companion tells you in its window if some close-ups turn out blurry. You can change this in Settings."
           }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Conta solo se la tua libreria di Foto tiene gli originali su iCloud. In quel caso Mosaic Companion può scaricare una copia nitida delle foto che mostra a tutto schermo, di circa 1,3 MB, mai l’originale: al massimo %lld al giorno e %lld alla settimana, e nessuna su un hotspot o con Consumo limitato di dati. Con Niente, Mosaic Companion ti avvisa nella sua finestra se alcuni primi piani risultano sfocati. Puoi cambiare questa scelta in Impostazioni."
+          }
         }
       }
     },
     "Turn Mosaic Companion on under Photos, then reopen it: the access starts with the next launch. A folder of photographs works too." : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Attiva Mosaic Companion in Foto, poi riaprilo: l’accesso vale dall’avvio successivo. Va bene anche una cartella di foto."
+          }
+        }
+      }
     },
     "Undo" : {
-      "comment" : "Edit menu"
+      "comment" : "Edit menu",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Annulla"
+          }
+        }
+      }
     },
     "Update" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Aggiorna"
+          }
+        }
+      }
     },
     "Update Photographs" : {
-      "comment" : "Controls menu"
+      "comment" : "Controls menu",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Aggiorna le foto"
+          }
+        }
+      }
     },
     "Updates" : {
-      "comment" : "Setup page title"
+      "comment" : "Setup page title",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Aggiornamenti"
+          }
+        }
+      }
     },
     "Using" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "In uso"
+          }
+        }
+      }
     },
     "Waiting for approval in System Settings" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "In attesa di approvazione in Impostazioni di Sistema"
+          }
+        }
+      }
     },
     "Wallpaper › Screen Saver › Other" : {
-      "comment" : "Path in System Settings on macOS 26: the exact names macOS uses for the Wallpaper pane, its Screen Saver button and the Other section"
+      "comment" : "Path in System Settings on macOS 26: the exact names macOS uses for the Wallpaper pane, its Screen Saver button and the Other section",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Sfondo › Salvaschermo › Altro"
+          }
+        }
+      }
     },
     "Welcome to Mosaic" : {
-      "comment" : "Setup page title"
+      "comment" : "Setup page title",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Benvenuto in Mosaic"
+          }
+        }
+      }
     },
     "What is left undone stays in the Mosaic Companion window, with what to do about it." : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Quello che resta da fare rimane nella finestra di Mosaic Companion, con le indicazioni su come farlo."
+          }
+        }
+      }
     },
     "Which photographs" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Quali foto"
+          }
+        }
+      }
     },
     "Window" : {
-      "comment" : "Menu bar"
+      "comment" : "Menu bar",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Finestra"
+          }
+        }
+      }
     },
     "You have %@. Mosaic Companion will relaunch in the new version and update the screen saver too." : {
-      "comment" : "Update alert; the version installed now"
+      "comment" : "Update alert; the version installed now",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Hai la versione %@. Mosaic Companion si riaprirà nella nuova versione e aggiornerà anche il salvaschermo."
+          }
+        }
+      }
     },
     "You have %@. Mosaic Companion will relaunch in the new version and update the screen saver too. Replacing it in Applications needs an administrator’s name and password." : {
-      "comment" : "Update alert; the version installed now, for a user who is not an administrator"
+      "comment" : "Update alert; the version installed now, for a user who is not an administrator",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Hai la versione %@. Mosaic Companion si riaprirà nella nuova versione e aggiornerà anche il salvaschermo. Per sostituirlo in Applicazioni servono il nome e la password di un amministratore."
+          }
+        }
+      }
     },
     "Zoom" : {
-      "comment" : "Window menu"
+      "comment" : "Window menu",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Ridimensiona"
+          }
+        }
+      }
     },
     "Zoom duration" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Durata dello zoom"
+          }
+        }
+      }
     },
     "an update is already under way" : {
-      "comment" : "Why an update check failed; lowercase, follows a colon"
+      "comment" : "Why an update check failed; lowercase, follows a colon",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "un aggiornamento è già in corso"
+          }
+        }
+      }
     },
     "no administrator password was given" : {
-      "comment" : "Why the move to Applications failed; in parentheses, lowercase"
+      "comment" : "Why the move to Applications failed; in parentheses, lowercase",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "non è stata inserita la password di un amministratore"
+          }
+        }
+      }
     },
     "no release was found" : {
-      "comment" : "Update error; lowercase, follows a colon"
+      "comment" : "Update error; lowercase, follows a colon",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "nessuna release trovata"
+          }
+        }
+      }
     },
     "release %@ is a draft or a pre-release" : {
-      "comment" : "Update error, with a release tag such as v0.6; lowercase, follows a colon"
+      "comment" : "Update error, with a release tag such as v0.6; lowercase, follows a colon",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "la release %@ è una bozza o una pre-release"
+          }
+        }
+      }
     },
     "the administrator request could not be prepared" : {
-      "comment" : "Why the move to Applications failed; in parentheses, lowercase"
+      "comment" : "Why the move to Applications failed; in parentheses, lowercase",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "impossibile preparare la richiesta all’amministratore"
+          }
+        }
+      }
     },
     "the checksum file does not name the disk image" : {
-      "comment" : "Update error; lowercase, follows a colon"
+      "comment" : "Update error; lowercase, follows a colon",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "il file di checksum non indica l’immagine disco"
+          }
+        }
+      }
     },
     "the disk image could not be opened" : {
-      "comment" : "Update error; lowercase, follows a colon"
+      "comment" : "Update error; lowercase, follows a colon",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "impossibile aprire l’immagine disco"
+          }
+        }
+      }
     },
     "the disk image does not hold this version of Mosaic" : {
-      "comment" : "Update error; lowercase, follows a colon"
+      "comment" : "Update error; lowercase, follows a colon",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "l’immagine disco non contiene questa versione di Mosaic"
+          }
+        }
+      }
     },
     "the download does not match its checksum" : {
-      "comment" : "Update error; lowercase, follows a colon"
+      "comment" : "Update error; lowercase, follows a colon",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "il download non corrisponde al suo checksum"
+          }
+        }
+      }
     },
     "the new version is not signed as this one is (%d)" : {
-      "comment" : "Update error, with a code-signing status code; lowercase, follows a colon"
+      "comment" : "Update error, with a code-signing status code; lowercase, follows a colon",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "la nuova versione non è firmata come questa (%d)"
+          }
+        }
+      }
     },
     "the release could not be read: %@" : {
-      "comment" : "Update error, followed by the reason; lowercase, follows a colon"
+      "comment" : "Update error, followed by the reason; lowercase, follows a colon",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "impossibile leggere la release: %@"
+          }
+        }
+      }
     },
     "the release has no %@" : {
-      "comment" : "Update error, with the name of a missing .dmg file; lowercase, follows a colon"
+      "comment" : "Update error, with the name of a missing .dmg file; lowercase, follows a colon",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "la release non contiene %@"
+          }
+        }
+      }
     },
     "the release tag %@ is not a version" : {
-      "comment" : "Update error, with a release tag; lowercase, follows a colon"
+      "comment" : "Update error, with a release tag; lowercase, follows a colon",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "il tag %@ della release non è una versione"
+          }
+        }
+      }
     },
     "the server answered %lld for %@" : {
       "comment" : "Update error: an HTTP status code and a file name; lowercase, follows a colon",
@@ -904,14 +2690,36 @@
             "state" : "new",
             "value" : "the server answered %1$lld for %2$@"
           }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "il server ha risposto %lld per %@"
+          }
         }
       }
     },
     "the signature could not be read" : {
-      "comment" : "Update error; lowercase, follows a colon"
+      "comment" : "Update error; lowercase, follows a colon",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "impossibile leggere la firma"
+          }
+        }
+      }
     },
     "this build has no version" : {
-      "comment" : "Why an update check failed; lowercase, follows a colon"
+      "comment" : "Why an update check failed; lowercase, follows a colon",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "questa build non ha una versione"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

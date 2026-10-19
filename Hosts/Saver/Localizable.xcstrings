@@ -31,6 +31,34 @@
               }
             }
           }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%#@photographs@ il %2$@."
+          },
+          "substitutions" : {
+            "photographs" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "needs_review",
+                      "value" : "%arg foto, aggiornata"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "needs_review",
+                      "value" : "%arg foto, aggiornate"
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -64,6 +92,34 @@
               }
             }
           }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%#@photographs@ il %2$@: a Mosaic ne servono almeno %3$lld."
+          },
+          "substitutions" : {
+            "photographs" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "needs_review",
+                      "value" : "%arg foto, aggiornata"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "needs_review",
+                      "value" : "%arg foto, aggiornate"
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -86,6 +142,12 @@
                 }
               }
             }
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%lld foto."
           }
         }
       }
@@ -120,6 +182,12 @@
               }
             }
           }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%1$lld foto: a Mosaic ne servono almeno %2$lld."
+          }
         }
       }
     },
@@ -131,14 +199,36 @@
             "state" : "new",
             "value" : "%1$lld rows, %2$lld seconds a photograph."
           }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%1$lld righe, %2$lld secondi per foto."
+          }
         }
       }
     },
     "Done" : {
-      "comment" : "Screen saver options: button that closes them"
+      "comment" : "Screen saver options: button that closes them",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Fine"
+          }
+        }
+      }
     },
     "Mosaic could not start. Open Mosaic Companion to check its photographs." : {
-      "comment" : "Shown on the screen saver, when it fails"
+      "comment" : "Shown on the screen saver, when it fails",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Impossibile avviare Mosaic. Apri Mosaic Companion per controllarne le foto."
+          }
+        }
+      }
     },
     "Mosaic has %lld photographs so far. Open Mosaic Companion to add more." : {
       "comment" : "Shown on the screen saver, with too few photographs to start",
@@ -160,20 +250,58 @@
               }
             }
           }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Per ora Mosaic ha %lld foto. Apri Mosaic Companion per aggiungerne altre."
+          }
         }
       }
     },
     "No photographs yet. Open Mosaic Companion to choose them." : {
-      "comment" : "Screen saver options: the status, before there is an index"
+      "comment" : "Screen saver options: the status, before there is an index",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Ancora nessuna foto. Apri Mosaic Companion per sceglierle."
+          }
+        }
+      }
     },
     "Open Mosaic Companion to choose the photographs for the screen saver." : {
-      "comment" : "Shown on the screen saver, when there is no index"
+      "comment" : "Shown on the screen saver, when there is no index",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Apri Mosaic Companion per scegliere le foto del salvaschermo."
+          }
+        }
+      }
     },
     "Open Mosaic Companion…" : {
-      "comment" : "Screen saver options: button"
+      "comment" : "Screen saver options: button",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Apri Mosaic Companion…"
+          }
+        }
+      }
     },
     "The photographs and the settings are chosen in Mosaic Companion." : {
-      "comment" : "Screen saver options"
+      "comment" : "Screen saver options",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Le foto e le impostazioni si scelgono in Mosaic Companion."
+          }
+        }
+      }
     }
   },
   "version" : "1.0"
