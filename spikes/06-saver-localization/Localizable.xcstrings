@@ -1,0 +1,36 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "%lld photographs" : {
+      "comment" : "How many photographs the subset holds",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld photograph" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld photographs" } }
+            }
+          }
+        },
+        "it" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld fotografia" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld fotografie" } }
+            }
+          }
+        }
+      }
+    },
+    "Only in English" : {
+      "comment" : "A key left untranslated on purpose"
+    },
+    "Options…" : {
+      "comment" : "Button that opens the options sheet",
+      "localizations" : {
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Opzioni…" } }
+      }
+    }
+  },
+  "version" : "1.0"
+}
