@@ -1,7 +1,918 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@ and %@" : {
+      "comment" : "Close-ups and tiles still to download, as in “3 sharp close-ups and 5 sharper tiles”",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ and %2$@"
+          }
+        }
+      }
+    },
+    "%@ still to download: Mosaic Companion tries again later." : {
+      "comment" : "What is still to download, with no particular reason"
+    },
+    "%@ still to download: iCloud stopped answering. Mosaic Companion tries again at %@." : {
+      "comment" : "What is still to download, then why and when it is tried again",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ still to download: iCloud stopped answering. Mosaic Companion tries again at %2$@."
+          }
+        }
+      }
+    },
+    "%@ still to download: iCloud stopped answering. Mosaic Companion tries again later." : {
+      "comment" : "What is still to download, then why"
+    },
+    "%@ still to download: iCloud was too slow to send them. Mosaic Companion asks again later." : {
+      "comment" : "What is still to download, then why"
+    },
+    "%@ still to download: the limit of %lld a day or %lld a week is reached. Mosaic Companion goes on as soon as it allows." : {
+      "comment" : "What is still to download, then the daily and weekly download limits that hold it back",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ still to download: the limit of %2$lld a day or %3$lld a week is reached. Mosaic Companion goes on as soon as it allows."
+          }
+        }
+      }
+    },
+    "%@ still to download: the network is metered (a hotspot, or Low Data Mode)." : {
+      "comment" : "What is still to download, then why"
+    },
+    "%lld albums" : {
+      "comment" : "A number of albums, in a summary of those chosen",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld album"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld albums"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld already indexed" : {
+      "comment" : "Index progress: photographs prepared in an earlier run"
+    },
+    "%lld downloaded in the last 7 days." : {
+      "comment" : "Settings, Download from iCloud: sharp copies downloaded this week"
+    },
+    "%lld folders" : {
+      "comment" : "A number of folders of albums, in a summary of those chosen",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld folder"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld folders"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld left out as documents or weak" : {
+      "comment" : "Index progress: screenshots, documents and the lowest-rated photographs, not used"
+    },
+    "%lld of %lld" : {
+      "comment" : "Index progress: photographs prepared so far, of all those to prepare",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld of %2$lld"
+          }
+        }
+      }
+    },
+    "%lld only as tiles" : {
+      "comment" : "Index progress: photographs too small to fill the screen, used only as tiles"
+    },
+    "%lld only in iCloud, left out" : {
+      "comment" : "Index progress: photographs whose originals are only in iCloud and are not used"
+    },
+    "%lld photographs shown full screen have blurry close-ups: their originals are in iCloud." : {
+      "comment" : "Advice to allow downloads from iCloud",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld photograph shown full screen has a blurry close-up: its original is in iCloud."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld photographs shown full screen have blurry close-ups: their originals are in iCloud."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld ready" : {
+      "comment" : "Photographs ready for the screen saver"
+    },
+    "%lld ready, at least %lld needed" : {
+      "comment" : "Photographs ready for the screen saver, fewer than it needs",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld ready, at least %2$lld needed"
+          }
+        }
+      }
+    },
+    "%lld s" : {
+      "comment" : "Zoom duration in seconds, beside its slider"
+    },
+    "%lld sharp close-ups" : {
+      "comment" : "Close-ups still to download from iCloud; begins a sentence",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld sharp close-up"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld sharp close-ups"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld sharper tiles" : {
+      "comment" : "Sharper copies of tiles still to download from iCloud; begins a sentence",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld sharper tile"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld sharper tiles"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld unreadable" : {
+      "comment" : "Index progress: photographs that could not be read; followed by the iCloud figure"
+    },
+    "%lld unreadable, left out" : {
+      "comment" : "Index progress: photographs that could not be read and are not used"
+    },
+    "A folder" : {
 
+    },
+    "About Mosaic Companion" : {
+      "comment" : "Mosaic Companion menu"
+    },
+    "Access is restricted on this Mac." : {
+
+    },
+    "Access was refused." : {
+
+    },
+    "Albums" : {
+
+    },
+    "All photographs" : {
+      "comment" : "Albums in use: none chosen, so the whole library"
+    },
+    "Allow Access…" : {
+
+    },
+    "Allow Notifications…" : {
+
+    },
+    "Almost Done" : {
+      "comment" : "Setup: last page's title, when some page asked for something not done"
+    },
+    "Applications" : {
+      "comment" : "Setup page title: moving the app to the Applications folder"
+    },
+    "Available once Mosaic Companion is in Applications." : {
+
+    },
+    "Back" : {
+
+    },
+    "Bring All to Front" : {
+      "comment" : "Window menu"
+    },
+    "Cancel" : {
+      "comment" : "Alert button"
+    },
+    "Change Now" : {
+
+    },
+    "Change photographs" : {
+
+    },
+    "Change…" : {
+
+    },
+    "Check for Updates…" : {
+      "comment" : "Mosaic Companion menu"
+    },
+    "Choose" : {
+      "comment" : "Default button of the panel that picks the folder of photographs"
+    },
+    "Choose Mosaic in System Settings, under %@." : {
+      "comment" : "Where the screen saver is chosen; the path is the System Settings sections, as in “Screen Saver › Other”"
+    },
+    "Choose Mosaic under %@." : {
+
+    },
+    "Choose a folder of photographs for the mosaics." : {
+      "comment" : "Message of the panel that picks the folder of photographs"
+    },
+    "Choose…" : {
+
+    },
+    "Choosing new photographs · %@" : {
+      "comment" : "Progress, followed by the index figures"
+    },
+    "Choosing new photographs. The screen saver shows the current ones until they are ready." : {
+
+    },
+    "Clear" : {
+
+    },
+    "Click to see what’s new and install it." : {
+      "comment" : "Notification text"
+    },
+    "Close" : {
+      "comment" : "File menu"
+    },
+    "Close Window" : {
+      "comment" : "Quit alert button: closes the window and keeps running"
+    },
+    "Continue" : {
+      "comment" : "Setup: the button to the next page"
+    },
+    "Controls" : {
+      "comment" : "Menu bar"
+    },
+    "Copy" : {
+      "comment" : "Edit menu"
+    },
+    "Cut" : {
+      "comment" : "Edit menu"
+    },
+    "Daily or weekly limit reached" : {
+
+    },
+    "Done" : {
+      "comment" : "Setup summary, VoiceOver: this page's step is done"
+    },
+    "Download Settings…" : {
+
+    },
+    "Download from iCloud" : {
+
+    },
+    "Downloading Mosaic %@…" : {
+
+    },
+    "Downloading sharp close-ups from iCloud: %lld of %lld" : {
+      "comment" : "Progress",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Downloading sharp close-ups from iCloud: %1$lld of %2$lld"
+          }
+        }
+      }
+    },
+    "Edit" : {
+      "comment" : "Menu bar"
+    },
+    "Enter Full Screen" : {
+      "comment" : "Controls menu"
+    },
+    "Every Day" : {
+
+    },
+    "Every Month" : {
+
+    },
+    "Every Week" : {
+
+    },
+    "Everything needed" : {
+
+    },
+    "File" : {
+      "comment" : "Menu bar"
+    },
+    "Full Screen" : {
+
+    },
+    "Full screen. Any key or click ends it." : {
+
+    },
+    "Get Started" : {
+      "comment" : "Setup: the first page's button"
+    },
+    "Help" : {
+      "comment" : "Menu bar"
+    },
+    "Hide Mosaic Companion" : {
+      "comment" : "Mosaic Companion menu"
+    },
+    "Hide Others" : {
+      "comment" : "Mosaic Companion menu"
+    },
+    "How many" : {
+
+    },
+    "If you reset the limits, Mosaic counts from zero and right away downloads %lld of the %lld still missing, about %lld MB, and the others as the limits allow. On a plan that charges for data, they count toward it. Photos keeps them in your library until it needs the space." : {
+      "comment" : "Reset the download limits: what a reset downloads at once, of all that is missing",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "If you reset the limits, Mosaic counts from zero and right away downloads %1$lld of the %2$lld still missing, about %3$lld MB, and the others as the limits allow. On a plan that charges for data, they count toward it. Photos keeps them in your library until it needs the space."
+          }
+        }
+      }
+    },
+    "If you reset the limits, Mosaic counts from zero and right away downloads the %lld still missing, about %lld MB. On a plan that charges for data, they count toward it. Photos keeps them in your library until it needs the space." : {
+      "comment" : "Reset the download limits: what a reset downloads, when it is all that is missing",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "If you reset the limits, Mosaic counts from zero and right away downloads %#@missing@, about %2$lld MB. On a plan that charges for data, they count toward it. Photos keeps them in your library until it needs the space."
+          },
+          "substitutions" : {
+            "missing" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "the one still missing"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "the %arg still missing"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "In the Background" : {
+      "comment" : "Setup page title: opening at login"
+    },
+    "Install and Relaunch" : {
+      "comment" : "Update alert button"
+    },
+    "Install…" : {
+
+    },
+    "It opens again from there. The screen saver and the login item need it to stay in one place; the downloaded copy can then go in the Bin." : {
+
+    },
+    "Last changed on %@, next on %@. The screen saver shows the current photographs until the new ones are ready." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Last changed on %1$@, next on %2$@. The screen saver shows the current photographs until the new ones are ready."
+          }
+        }
+      }
+    },
+    "Last changed on %@." : {
+
+    },
+    "Leave out screenshots, documents and weak photos" : {
+
+    },
+    "Limited to the photographs you picked" : {
+
+    },
+    "Making sharp close-ups of the new photographs: %lld of %lld" : {
+      "comment" : "Progress, while new photographs are being chosen",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Making sharp close-ups of the new photographs: %1$lld of %2$lld"
+          }
+        }
+      }
+    },
+    "Making sharp close-ups: %lld of %lld" : {
+      "comment" : "Progress",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Making sharp close-ups: %1$lld of %2$lld"
+          }
+        }
+      }
+    },
+    "Minimize" : {
+      "comment" : "Window menu"
+    },
+    "Mosaic" : {
+
+    },
+    "Mosaic %@ could not be installed." : {
+      "comment" : "Alert title; the version that failed to install"
+    },
+    "Mosaic %@ is available" : {
+      "comment" : "A new version; the version, as in “Mosaic 0.6 is available”"
+    },
+    "Mosaic %@ is the newest version." : {
+      "comment" : "Check for Updates alert; the version installed"
+    },
+    "Mosaic Companion Help" : {
+      "comment" : "Help menu"
+    },
+    "Mosaic Companion Settings" : {
+      "comment" : "Title of the Settings window"
+    },
+    "Mosaic Companion carries the screen saver and installs it for you. At the end of the setup you choose it in System Settings." : {
+
+    },
+    "Mosaic Companion checks for a new version once a day. Allow notifications so that it can tell you when one is ready, even if you never open its window: they are used for nothing else. You can change this in Settings." : {
+
+    },
+    "Mosaic Companion checks for a new version once a day. Notifications tell you only that one is ready, even if you never open its window." : {
+
+    },
+    "Mosaic Companion could not be added to the login items: %@" : {
+      "comment" : "Followed by the reason, as macOS words it"
+    },
+    "Mosaic Companion could not be removed from the login items: %@" : {
+      "comment" : "Followed by the reason, as macOS words it"
+    },
+    "Mosaic Companion could not reset the download limits: %@" : {
+      "comment" : "Followed by the reason, as macOS words it"
+    },
+    "Mosaic Companion downloads whatever it needs to prepare your photographs, originals included. It can take a long time and a lot of space on disk: choose it only if too few photographs are ready otherwise." : {
+      "comment" : "Settings, Download from iCloud: what Everything needed means"
+    },
+    "Mosaic Companion is running from where it was downloaded." : {
+
+    },
+    "Mosaic Companion keeps the screen saver’s photographs up to date only while it is open." : {
+
+    },
+    "Mosaic Companion keeps the screen saver’s photographs up to date only while it runs. At login it opens without a window and stays in the background, so new photographs reach the screen saver without your opening it. You can change this in its window." : {
+
+    },
+    "Mosaic Companion needs to read your photo library." : {
+
+    },
+    "Mosaic Companion opens at login without a window and keeps the screen saver’s photographs up to date." : {
+
+    },
+    "Mosaic Companion uses only what Photos keeps on this Mac. If your library keeps originals in iCloud, only the photographs this Mac keeps large are shown full screen, often from a few years only, and some close-ups are blurry." : {
+      "comment" : "Settings, Download from iCloud: what Nothing means"
+    },
+    "Mosaic Is Set Up" : {
+      "comment" : "Setup page title, last page"
+    },
+    "Mosaic could not be moved to Applications (%@). Drag it there in the Finder, then open it again." : {
+      "comment" : "The move to Applications failed; the reason in parentheses"
+    },
+    "Mosaic couldn’t check for updates." : {
+      "comment" : "Alert title"
+    },
+    "Mosaic downloads at most %lld copies a day and %lld a week, to protect the space on this Mac and your network data." : {
+      "comment" : "Reset the download limits: the first paragraph, what the limits are for",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Mosaic downloads at most %1$lld copies a day and %2$lld a week, to protect the space on this Mac and your network data."
+          }
+        }
+      }
+    },
+    "Mosaic is a screen saver. Mosaic Companion, this app, prepares your photographs for it and keeps its settings. These pages set it up; you can come back to them at any time from the Mosaic Companion menu, with Set Up Mosaic." : {
+
+    },
+    "Mosaic is up to date" : {
+      "comment" : "Check for Updates alert title"
+    },
+    "Mosaic turns your photographs into an endless zoom: every photograph turns out to be one tile of a mosaic, which makes up another photograph, which is one tile of the next mosaic." : {
+
+    },
+    "Most recent" : {
+
+    },
+    "Move to Applications" : {
+
+    },
+    "Never" : {
+
+    },
+    "No album chosen is the whole library; several are combined." : {
+
+    },
+    "None chosen" : {
+      "comment" : "No folder of photographs chosen yet"
+    },
+    "Not Now" : {
+      "comment" : "Update alert button"
+    },
+    "Not done" : {
+      "comment" : "Setup summary, VoiceOver: this page's step is not done"
+    },
+    "Nothing" : {
+
+    },
+    "Notifications allowed, for new versions only" : {
+
+    },
+    "Notifications are off: new versions show only in this window" : {
+
+    },
+    "Notifications for new versions" : {
+
+    },
+    "Open Login Items…" : {
+
+    },
+    "Open Notification Settings…" : {
+
+    },
+    "Open Privacy Settings…" : {
+
+    },
+    "Open Screen Saver Settings…" : {
+
+    },
+    "Open at login" : {
+
+    },
+    "Page %lld of %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Page %1$lld of %2$lld"
+          }
+        }
+      }
+    },
+    "Paste" : {
+      "comment" : "Edit menu"
+    },
+    "Photographs" : {
+      "comment" : "Setup page title"
+    },
+    "Photographs from" : {
+
+    },
+    "Photographs only. A folder's count adds up its albums, so a photograph in more than one counts more than once." : {
+
+    },
+    "Photographs to Use" : {
+
+    },
+    "Photos in iCloud" : {
+      "comment" : "Setup page title"
+    },
+    "Photos library" : {
+
+    },
+    "Preparing the photographs stopped: %@" : {
+      "comment" : "Followed by the reason, as macOS or the index words it"
+    },
+    "Preparing · %@" : {
+      "comment" : "Progress, followed by the index figures"
+    },
+    "Preview of the mosaic" : {
+
+    },
+    "Quit" : {
+      "comment" : "Quit alert button"
+    },
+    "Quit Mosaic Companion" : {
+      "comment" : "Mosaic Companion menu"
+    },
+    "Quit Mosaic Companion?" : {
+      "comment" : "Alert title, when the app opens at login"
+    },
+    "Random" : {
+
+    },
+    "Ready" : {
+
+    },
+    "Receipts, notes and the like, and in each month the tenth of the photographs that Photos rates lowest. Others take their place." : {
+
+    },
+    "Receipts, notes and the like, and the tenth of the photographs that Photos rates lowest. Others take their place." : {
+
+    },
+    "Redo" : {
+      "comment" : "Edit menu"
+    },
+    "Reopen Mosaic Companion" : {
+
+    },
+    "Reset Limits" : {
+      "comment" : "Alert button: resets the download limits"
+    },
+    "Reset Limits…" : {
+
+    },
+    "Reset the download limits?" : {
+      "comment" : "Alert title"
+    },
+    "Rows" : {
+
+    },
+    "Rows, zoom duration, the photographs to use and updates (⌘,)" : {
+
+    },
+    "Screen Saver" : {
+      "comment" : "Setup page title"
+    },
+    "Screen Saver › Other" : {
+      "comment" : "Path in System Settings on macOS 15: the exact names macOS uses for the Screen Saver pane and its Other section"
+    },
+    "Screen saver installed" : {
+
+    },
+    "Search Albums" : {
+
+    },
+    "Select All" : {
+      "comment" : "Edit menu"
+    },
+    "Set Up Mosaic" : {
+      "comment" : "Title of the setup window"
+    },
+    "Set Up Mosaic…" : {
+      "comment" : "Mosaic Companion menu"
+    },
+    "Settings…" : {
+      "comment" : "Mosaic Companion menu"
+    },
+    "Sharp close-ups only" : {
+
+    },
+    "Show All" : {
+      "comment" : "Mosaic Companion menu"
+    },
+    "Skip This Version" : {
+      "comment" : "Update alert button"
+    },
+    "Source" : {
+
+    },
+    "Spread over time" : {
+
+    },
+    "Status" : {
+
+    },
+    "Stop" : {
+
+    },
+    "That is every photograph this Mac can use: the others are only in iCloud or unreadable." : {
+      "comment" : "Under the count of photographs, when there are fewer than the number chosen"
+    },
+    "The installed screen saver is not this version." : {
+
+    },
+    "The limits apply again from now on." : {
+      "comment" : "Reset the download limits: the last paragraph"
+    },
+    "The mosaic appears here once %lld photographs are ready." : {
+
+    },
+    "The mosaic could not start." : {
+      "comment" : "Alert title when full screen fails"
+    },
+    "The most recent photographs stay the same: a change picks other photographs only when they are random or spread over time." : {
+
+    },
+    "The photographs shown full screen, one in sixteen, are chosen from your whole library, and Mosaic Companion downloads a sharp copy of each that this Mac lacks, about 1.3 MB each, never the original: at most %lld a day and %lld a week, and none on a hotspot or in Low Data Mode. Photos keeps them in your library until it needs the space." : {
+      "comment" : "Settings, Download from iCloud: what Sharp close-ups only means",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "The photographs shown full screen, one in sixteen, are chosen from your whole library, and Mosaic Companion downloads a sharp copy of each that this Mac lacks, about 1.3 MB each, never the original: at most %1$lld a day and %2$lld a week, and none on a hotspot or in Low Data Mode. Photos keeps them in your library until it needs the space."
+          }
+        }
+      }
+    },
+    "The photographs shown full screen, one in sixteen, are chosen from your whole library, and Mosaic Companion downloads a sharp copy of each that this Mac lacks, and of up to %lld of the photographs shown large around them, about 1.3 MB each, never the original: at most %lld a day and %lld a week, and none on a hotspot or in Low Data Mode. Photos keeps them in your library until it needs the space." : {
+      "comment" : "Settings, Download from iCloud: what Sharp close-ups only means, when tiles around them are downloaded too",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "The photographs shown full screen, one in sixteen, are chosen from your whole library, and Mosaic Companion downloads a sharp copy of each that this Mac lacks, and of up to %1$lld of the photographs shown large around them, about 1.3 MB each, never the original: at most %2$lld a day and %3$lld a week, and none on a hotspot or in Low Data Mode. Photos keeps them in your library until it needs the space."
+          }
+        }
+      }
+    },
+    "The screen saver asked for photographs (%@)." : {
+      "comment" : "The reason in parentheses is a code the screen saver sends, such as no-index"
+    },
+    "The screen saver could not be installed: %@" : {
+      "comment" : "Followed by the reason, as macOS words it"
+    },
+    "The screen saver could not be updated: %@" : {
+      "comment" : "Followed by the reason, as macOS words it"
+    },
+    "The screen saver is not installed." : {
+
+    },
+    "The screen saver won't pick up new photographs until you next log in." : {
+      "comment" : "Quit alert"
+    },
+    "They never leave this Mac: Mosaic Companion keeps a small copy of each, to build the mosaics from. Which albums, and how many photographs, are in Settings." : {
+
+    },
+    "This build carries no screen saver." : {
+
+    },
+    "This matters only if your Photos library keeps its originals in iCloud. Then Mosaic Companion can download a sharp copy of the photographs it shows full screen, about 1.3 MB each, never the original: at most %lld a day and %lld a week, and none on a hotspot or in Low Data Mode. With Nothing, Mosaic Companion tells you in its window if some close-ups turn out blurry. You can change this in Settings." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "This matters only if your Photos library keeps its originals in iCloud. Then Mosaic Companion can download a sharp copy of the photographs it shows full screen, about 1.3 MB each, never the original: at most %1$lld a day and %2$lld a week, and none on a hotspot or in Low Data Mode. With Nothing, Mosaic Companion tells you in its window if some close-ups turn out blurry. You can change this in Settings."
+          }
+        }
+      }
+    },
+    "Turn Mosaic Companion on under Photos, then reopen it: the access starts with the next launch. A folder of photographs works too." : {
+
+    },
+    "Undo" : {
+      "comment" : "Edit menu"
+    },
+    "Update" : {
+
+    },
+    "Update Photographs" : {
+      "comment" : "Controls menu"
+    },
+    "Updates" : {
+      "comment" : "Setup page title"
+    },
+    "Using" : {
+
+    },
+    "Waiting for approval in System Settings" : {
+
+    },
+    "Wallpaper › Screen Saver › Other" : {
+      "comment" : "Path in System Settings on macOS 26: the exact names macOS uses for the Wallpaper pane, its Screen Saver button and the Other section"
+    },
+    "Welcome to Mosaic" : {
+      "comment" : "Setup page title"
+    },
+    "What is left undone stays in the Mosaic Companion window, with what to do about it." : {
+
+    },
+    "Which photographs" : {
+
+    },
+    "Window" : {
+      "comment" : "Menu bar"
+    },
+    "You have %@. Mosaic Companion will relaunch in the new version and update the screen saver too." : {
+      "comment" : "Update alert; the version installed now"
+    },
+    "You have %@. Mosaic Companion will relaunch in the new version and update the screen saver too. Replacing it in Applications needs an administrator’s name and password." : {
+      "comment" : "Update alert; the version installed now, for a user who is not an administrator"
+    },
+    "Zoom" : {
+      "comment" : "Window menu"
+    },
+    "Zoom duration" : {
+
+    },
+    "an update is already under way" : {
+      "comment" : "Why an update check failed; lowercase, follows a colon"
+    },
+    "no administrator password was given" : {
+      "comment" : "Why the move to Applications failed; in parentheses, lowercase"
+    },
+    "no release was found" : {
+      "comment" : "Update error; lowercase, follows a colon"
+    },
+    "release %@ is a draft or a pre-release" : {
+      "comment" : "Update error, with a release tag such as v0.6; lowercase, follows a colon"
+    },
+    "the administrator request could not be prepared" : {
+      "comment" : "Why the move to Applications failed; in parentheses, lowercase"
+    },
+    "the checksum file does not name the disk image" : {
+      "comment" : "Update error; lowercase, follows a colon"
+    },
+    "the disk image could not be opened" : {
+      "comment" : "Update error; lowercase, follows a colon"
+    },
+    "the disk image does not hold this version of Mosaic" : {
+      "comment" : "Update error; lowercase, follows a colon"
+    },
+    "the download does not match its checksum" : {
+      "comment" : "Update error; lowercase, follows a colon"
+    },
+    "the new version is not signed as this one is (%d)" : {
+      "comment" : "Update error, with a code-signing status code; lowercase, follows a colon"
+    },
+    "the release could not be read: %@" : {
+      "comment" : "Update error, followed by the reason; lowercase, follows a colon"
+    },
+    "the release has no %@" : {
+      "comment" : "Update error, with the name of a missing .dmg file; lowercase, follows a colon"
+    },
+    "the release tag %@ is not a version" : {
+      "comment" : "Update error, with a release tag; lowercase, follows a colon"
+    },
+    "the server answered %lld for %@" : {
+      "comment" : "Update error: an HTTP status code and a file name; lowercase, follows a colon",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "the server answered %1$lld for %2$@"
+          }
+        }
+      }
+    },
+    "the signature could not be read" : {
+      "comment" : "Update error; lowercase, follows a colon"
+    },
+    "this build has no version" : {
+      "comment" : "Why an update check failed; lowercase, follows a colon"
+    }
   },
   "version" : "1.0"
 }

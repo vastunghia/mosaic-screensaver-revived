@@ -42,27 +42,35 @@ struct CloseUpsWaiting: Equatable {
     }
 
     var summary: String {
-        let closeUps = count == 1 ? "1 sharp close-up" : "\(count) sharp close-ups"
-        let tiles = ring == 1 ? "1 sharper tile" : "\(ring) sharper tiles"
+        let closeUps = String(localized: "\(count) sharp close-ups",
+                              comment: "Close-ups still to download from iCloud; begins a sentence")
+        let tiles = String(localized: "\(ring) sharper tiles",
+                           comment: "Sharper copies of tiles still to download from iCloud; begins a sentence")
         let missing = switch (count > 0, ring > 0) {
-        case (true, true): "\(closeUps) and \(tiles)"
+        case (true, true): String(localized: "\(closeUps) and \(tiles)",
+                                  comment: "Close-ups and tiles still to download, as in “3 sharp close-ups and 5 sharper tiles”")
         case (false, true): tiles
         default: closeUps
         }
-        let why = switch reason {
+        return switch reason {
         case .stalled(let retry?):
-            "iCloud stopped answering. Mosaic Companion tries again at \(retry.formatted(date: .omitted, time: .shortened))."
+            String(localized: "\(missing) still to download: iCloud stopped answering. Mosaic Companion tries again at \(retry.formatted(date: .omitted, time: .shortened)).",
+                   comment: "What is still to download, then why and when it is tried again")
         case .stalled(nil):
-            "iCloud stopped answering. Mosaic Companion tries again later."
+            String(localized: "\(missing) still to download: iCloud stopped answering. Mosaic Companion tries again later.",
+                   comment: "What is still to download, then why")
         case .limits:
-            "the limit of \(DownloadLedger.standardDailyLimit) a day or \(DownloadLedger.standardWeeklyLimit) a week is reached. Mosaic Companion goes on as soon as it allows."
+            String(localized: "\(missing) still to download: the limit of \(DownloadLedger.standardDailyLimit) a day or \(DownloadLedger.standardWeeklyLimit) a week is reached. Mosaic Companion goes on as soon as it allows.",
+                   comment: "What is still to download, then the daily and weekly download limits that hold it back")
         case .metered:
-            "the network is metered (a hotspot, or Low Data Mode)."
+            String(localized: "\(missing) still to download: the network is metered (a hotspot, or Low Data Mode).",
+                   comment: "What is still to download, then why")
         case .slow:
-            "iCloud was too slow to send them. Mosaic Companion asks again later."
+            String(localized: "\(missing) still to download: iCloud was too slow to send them. Mosaic Companion asks again later.",
+                   comment: "What is still to download, then why")
         case nil:
-            "Mosaic Companion tries again later."
+            String(localized: "\(missing) still to download: Mosaic Companion tries again later.",
+                   comment: "What is still to download, with no particular reason")
         }
-        return "\(missing) still to download: \(why)"
     }
 }

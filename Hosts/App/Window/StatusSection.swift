@@ -43,7 +43,8 @@ struct StatusSection: View {
                 Text("Status")
             }
         } footer: {
-            Footnote("Choose Mosaic in System Settings, under \(SaverInstaller.whereToChoose).")
+            Footnote(Text("Choose Mosaic in System Settings, under \(SaverInstaller.whereToChoose).",
+                          comment: "Where the screen saver is chosen; the path is the System Settings sections, as in “Screen Saver › Other”"))
         }
     }
 
@@ -56,15 +57,19 @@ struct StatusSection: View {
             switch closeUps {
             case .making(let tried, let of):
                 progress(Double(tried), of: Double(of), model.isRenewing
-                         ? "Making sharp close-ups of the new photographs: \(tried) of \(of)"
-                         : "Making sharp close-ups: \(tried) of \(of)")
+                         ? String(localized: "Making sharp close-ups of the new photographs: \(tried) of \(of)",
+                                  comment: "Progress, while new photographs are being chosen")
+                         : String(localized: "Making sharp close-ups: \(tried) of \(of)", comment: "Progress"))
             case .downloading(let asked, let of):
-                progress(Double(asked), of: Double(of), "Downloading sharp close-ups from iCloud: \(asked) of \(of)")
+                progress(Double(asked), of: Double(of),
+                         String(localized: "Downloading sharp close-ups from iCloud: \(asked) of \(of)", comment: "Progress"))
             }
         } else if let progress = model.progress, model.isIndexing {
             self.progress(Double(progress.completed), of: Double(progress.total), model.isRenewing
-                          ? "Choosing new photographs · \(progress.summary)"
-                          : "Preparing · \(progress.summary)")
+                          ? String(localized: "Choosing new photographs · \(progress.summary)",
+                                   comment: "Progress, followed by the index figures")
+                          : String(localized: "Preparing · \(progress.summary)",
+                                   comment: "Progress, followed by the index figures"))
         } else {
             LabeledContent("Photographs") {
                 Text(ready).monospacedDigit()
@@ -75,7 +80,8 @@ struct StatusSection: View {
             // Filling to the number chosen ran out of photographs: say why
             // there are fewer, or it looks like the setting was ignored.
             if let progress = model.progress, progress.fellShort {
-                note("That is every photograph this Mac can use: the others are only in iCloud or unreadable.")
+                note(String(localized: "That is every photograph this Mac can use: the others are only in iCloud or unreadable.",
+                            comment: "Under the count of photographs, when there are fewer than the number chosen"))
             }
         }
         if let waiting = model.closeUpsWaiting, !model.isIndexing {
@@ -89,9 +95,8 @@ struct StatusSection: View {
         }
         if model.advisesDownloads, !model.isIndexing {
             HStack {
-                note(model.closeUpsNotHere == 1
-                     ? "1 photograph shown full screen has a blurry close-up: its original is in iCloud."
-                     : "\(model.closeUpsNotHere.formatted()) photographs shown full screen have blurry close-ups: their originals are in iCloud.")
+                note(String(localized: "\(model.closeUpsNotHere) photographs shown full screen have blurry close-ups: their originals are in iCloud.",
+                            comment: "Advice to allow downloads from iCloud"))
                 Spacer()
                 Button("Download Settings…", action: MosaicApplication.showSettings)
             }
@@ -101,9 +106,12 @@ struct StatusSection: View {
     }
 
     private var ready: String {
-        let count = model.indexedCount.formatted()
-        if model.hasIndex { return "\(count) ready" }
-        return "\(count) ready, at least \(AppModel.minimumPhotographs) needed"
+        let count = model.indexedCount
+        if model.hasIndex {
+            return String(localized: "\(count) ready", comment: "Photographs ready for the screen saver")
+        }
+        return String(localized: "\(count) ready, at least \(AppModel.minimumPhotographs) needed",
+                      comment: "Photographs ready for the screen saver, fewer than it needs")
     }
 
     private func progress(_ value: Double, of total: Double, _ text: String) -> some View {

@@ -7,7 +7,12 @@ struct PhotosAccessRow: View {
 
     var body: some View {
         if let reason = model.pendingSaverRequest, !model.access.isGranted {
-            Label("The screen saver asked for photographs (\(reason)).", systemImage: "info.circle")
+            Label {
+                Text("The screen saver asked for photographs (\(reason)).",
+                     comment: "The reason in parentheses is a code the screen saver sends, such as no-index")
+            } icon: {
+                Image(systemName: "info.circle")
+            }
                 .foregroundStyle(.secondary)
         }
         switch model.access {
@@ -28,8 +33,11 @@ struct PhotosAccessRow: View {
         case .denied, .restricted:
             VStack(alignment: .leading) {
                 HStack {
-                    Label(model.access == .denied ? "Access was refused." : "Access is restricted on this Mac.",
-                          systemImage: "xmark.circle")
+                    if model.access == .denied {
+                        Label("Access was refused.", systemImage: "xmark.circle")
+                    } else {
+                        Label("Access is restricted on this Mac.", systemImage: "xmark.circle")
+                    }
                     Spacer()
                     Button("Open Privacy Settings…", action: model.openPrivacySettings)
                 }

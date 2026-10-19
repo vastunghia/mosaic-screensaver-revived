@@ -23,8 +23,9 @@ enum UpdateNotice {
                 return
             }
             let content = UNMutableNotificationContent()
-            content.title = "Mosaic \(version) is available"
-            content.body = "Click to see what’s new and install it."
+            content.title = String(localized: "Mosaic \(version) is available",
+                                   comment: "A new version; the version, as in “Mosaic 0.6 is available”")
+            content.body = String(localized: "Click to see what’s new and install it.", comment: "Notification text")
             let request = UNNotificationRequest(identifier: identifier, content: content, trigger: nil)
             do {
                 try await center.add(request)

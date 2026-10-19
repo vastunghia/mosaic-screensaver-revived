@@ -40,14 +40,14 @@ enum SetupPage: CaseIterable {
 
     var title: String {
         switch self {
-        case .welcome: "Welcome to Mosaic"
-        case .location: "Applications"
-        case .photographs: "Photographs"
-        case .screenSaver: "Screen Saver"
-        case .background: "In the Background"
-        case .downloads: "Photos in iCloud"
-        case .updates: "Updates"
-        case .done: "Mosaic Is Set Up"
+        case .welcome: String(localized: "Welcome to Mosaic", comment: "Setup page title")
+        case .location: String(localized: "Applications", comment: "Setup page title: moving the app to the Applications folder")
+        case .photographs: String(localized: "Photographs", comment: "Setup page title")
+        case .screenSaver: String(localized: "Screen Saver", comment: "Setup page title")
+        case .background: String(localized: "In the Background", comment: "Setup page title: opening at login")
+        case .downloads: String(localized: "Photos in iCloud", comment: "Setup page title")
+        case .updates: String(localized: "Updates", comment: "Setup page title")
+        case .done: String(localized: "Mosaic Is Set Up", comment: "Setup page title, last page")
         }
     }
 

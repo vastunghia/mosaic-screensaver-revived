@@ -17,11 +17,11 @@ struct DownloadLimitsReset: View {
     private func confirm() {
         guard let waiting = model.closeUpsWaiting else { return }
         let alert = NSAlert()
-        alert.messageText = "Reset the download limits?"
+        alert.messageText = String(localized: "Reset the download limits?", comment: "Alert title")
         alert.informativeText = Self.cost(waiting: waiting.count + waiting.ring)
         alert.alertStyle = .warning
-        alert.addButton(withTitle: "Reset Limits")
-        alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: String(localized: "Reset Limits", comment: "Alert button: resets the download limits"))
+        alert.addButton(withTitle: String(localized: "Cancel", comment: "Alert button"))
         alert.buttons[0].hasDestructiveAction = true
         alert.buttons[0].keyEquivalent = ""
         alert.buttons[1].keyEquivalent = "\r"
@@ -44,19 +44,23 @@ struct DownloadLimitsReset: View {
         let weekly = DownloadLedger.standardWeeklyLimit
         let now = min(waiting, daily)
         let megabytes = Int((Double(now) * 1.3).rounded())
-        let which = now == waiting
-            ? (now == 1 ? "the one still missing" : "the \(now) still missing")
-            : "\(now) of the \(waiting) still missing"
-        let rest = now == waiting ? "" : ", and the others as the limits allow"
-        return """
+        let why = String(localized: """
             Mosaic downloads at most \(daily) copies a day and \(weekly) a week, to \
             protect the space on this Mac and your network data.
-
-            If you reset the limits, Mosaic counts from zero and right away downloads \(which), \
-            about \(megabytes) MB\(rest). On a plan that charges for data, they count toward it. \
-            Photos keeps them in your library until it needs the space.
-
-            The limits apply again from now on.
-            """
+            """, comment: "Reset the download limits: the first paragraph, what the limits are for")
+        let what = now == waiting
+            ? String(localized: """
+                If you reset the limits, Mosaic counts from zero and right away downloads the \(now) still missing, \
+                about \(megabytes) MB. On a plan that charges for data, they count toward it. \
+                Photos keeps them in your library until it needs the space.
+                """, comment: "Reset the download limits: what a reset downloads, when it is all that is missing")
+            : String(localized: """
+                If you reset the limits, Mosaic counts from zero and right away downloads \(now) of the \(waiting) still missing, \
+                about \(megabytes) MB, and the others as the limits allow. On a plan that charges for data, they count toward it. \
+                Photos keeps them in your library until it needs the space.
+                """, comment: "Reset the download limits: what a reset downloads at once, of all that is missing")
+        let after = String(localized: "The limits apply again from now on.",
+                           comment: "Reset the download limits: the last paragraph")
+        return [why, what, after].joined(separator: "\n\n")
     }
 }

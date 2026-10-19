@@ -4,12 +4,12 @@ import SwiftUI
 /// The system's search field — magnifying glass, clear button, Escape to
 /// empty it — where `.searchable` has no toolbar to sit in, as in a sheet.
 struct SearchField: NSViewRepresentable {
-    let prompt: String
+    let prompt: LocalizedStringResource
     @Binding var text: String
 
     func makeNSView(context: Context) -> NSSearchField {
         let field = NSSearchField()
-        field.placeholderString = prompt
+        field.placeholderString = String(localized: prompt)
         field.delegate = context.coordinator
         return field
     }

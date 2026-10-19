@@ -1,7 +1,180 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-
+    "%lld photographs, updated %@." : {
+      "comment" : "Screen saver options: the status, with when the photographs last changed",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@photographs@, updated %2$@."
+          },
+          "substitutions" : {
+            "photographs" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg photograph"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg photographs"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld photographs, updated %@: Mosaic needs at least %lld." : {
+      "comment" : "Screen saver options: the status, with when the photographs last changed, and too few of them",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@photographs@, updated %2$@: Mosaic needs at least %3$lld."
+          },
+          "substitutions" : {
+            "photographs" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg photograph"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg photographs"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld photographs." : {
+      "comment" : "Screen saver options: the status",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld photograph."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld photographs."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld photographs: Mosaic needs at least %lld." : {
+      "comment" : "Screen saver options: the status, with too few photographs",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@photographs@: Mosaic needs at least %2$lld."
+          },
+          "substitutions" : {
+            "photographs" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg photograph"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg photographs"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld rows, %lld seconds a photograph." : {
+      "comment" : "Screen saver options: the two settings of the effect",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld rows, %2$lld seconds a photograph."
+          }
+        }
+      }
+    },
+    "Done" : {
+      "comment" : "Screen saver options: button that closes them"
+    },
+    "Mosaic could not start. Open Mosaic Companion to check its photographs." : {
+      "comment" : "Shown on the screen saver, when it fails"
+    },
+    "Mosaic has %lld photographs so far. Open Mosaic Companion to add more." : {
+      "comment" : "Shown on the screen saver, with too few photographs to start",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Mosaic has %lld photograph so far. Open Mosaic Companion to add more."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Mosaic has %lld photographs so far. Open Mosaic Companion to add more."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "No photographs yet. Open Mosaic Companion to choose them." : {
+      "comment" : "Screen saver options: the status, before there is an index"
+    },
+    "Open Mosaic Companion to choose the photographs for the screen saver." : {
+      "comment" : "Shown on the screen saver, when there is no index"
+    },
+    "Open Mosaic Companion…" : {
+      "comment" : "Screen saver options: button"
+    },
+    "The photographs and the settings are chosen in Mosaic Companion." : {
+      "comment" : "Screen saver options"
+    }
   },
   "version" : "1.0"
 }

@@ -64,50 +64,68 @@ enum MosaicApplication {
         let menu = NSMenu()
 
         let app = submenu(of: menu, titled: "Mosaic Companion")
-        app.addItem(withTitle: "About Mosaic Companion",
+        app.addItem(withTitle: String(localized: "About Mosaic Companion", comment: "Mosaic Companion menu"),
                     action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
-        app.addItem(withTitle: "Check for Updates…", action: #selector(AppDelegate.checkForUpdates(_:)), keyEquivalent: "")
-        app.addItem(withTitle: "Set Up Mosaic…", action: #selector(AppDelegate.showSetup(_:)), keyEquivalent: "")
+        app.addItem(withTitle: String(localized: "Check for Updates…", comment: "Mosaic Companion menu"),
+                    action: #selector(AppDelegate.checkForUpdates(_:)), keyEquivalent: "")
+        app.addItem(withTitle: String(localized: "Set Up Mosaic…", comment: "Mosaic Companion menu"),
+                    action: #selector(AppDelegate.showSetup(_:)), keyEquivalent: "")
         app.addItem(.separator())
-        app.addItem(withTitle: "Settings…", action: #selector(AppDelegate.showSettings(_:)), keyEquivalent: ",")
+        app.addItem(withTitle: String(localized: "Settings…", comment: "Mosaic Companion menu"),
+                    action: #selector(AppDelegate.showSettings(_:)), keyEquivalent: ",")
         app.addItem(.separator())
-        app.addItem(withTitle: "Hide Mosaic Companion", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
-        let hideOthers = app.addItem(withTitle: "Hide Others",
+        app.addItem(withTitle: String(localized: "Hide Mosaic Companion", comment: "Mosaic Companion menu"),
+                    action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
+        let hideOthers = app.addItem(withTitle: String(localized: "Hide Others", comment: "Mosaic Companion menu"),
                                      action: #selector(NSApplication.hideOtherApplications(_:)), keyEquivalent: "h")
         hideOthers.keyEquivalentModifierMask = [.command, .option]
-        app.addItem(withTitle: "Show All", action: #selector(NSApplication.unhideAllApplications(_:)), keyEquivalent: "")
+        app.addItem(withTitle: String(localized: "Show All", comment: "Mosaic Companion menu"),
+                    action: #selector(NSApplication.unhideAllApplications(_:)), keyEquivalent: "")
         app.addItem(.separator())
-        app.addItem(withTitle: "Quit Mosaic Companion", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        app.addItem(withTitle: String(localized: "Quit Mosaic Companion", comment: "Mosaic Companion menu"),
+                    action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
 
-        let file = submenu(of: menu, titled: "File")
-        file.addItem(withTitle: "Close", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+        let file = submenu(of: menu, titled: String(localized: "File", comment: "Menu bar"))
+        file.addItem(withTitle: String(localized: "Close", comment: "File menu"),
+                     action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
 
         // The album search field needs it to paste.
-        let edit = submenu(of: menu, titled: "Edit")
-        edit.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
-        edit.addItem(withTitle: "Redo", action: Selector(("redo:")), keyEquivalent: "Z")
+        let edit = submenu(of: menu, titled: String(localized: "Edit", comment: "Menu bar"))
+        edit.addItem(withTitle: String(localized: "Undo", comment: "Edit menu"),
+                     action: Selector(("undo:")), keyEquivalent: "z")
+        edit.addItem(withTitle: String(localized: "Redo", comment: "Edit menu"),
+                     action: Selector(("redo:")), keyEquivalent: "Z")
         edit.addItem(.separator())
-        edit.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
-        edit.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
-        edit.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
-        edit.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        edit.addItem(withTitle: String(localized: "Cut", comment: "Edit menu"),
+                     action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        edit.addItem(withTitle: String(localized: "Copy", comment: "Edit menu"),
+                     action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        edit.addItem(withTitle: String(localized: "Paste", comment: "Edit menu"),
+                     action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        edit.addItem(withTitle: String(localized: "Select All", comment: "Edit menu"),
+                     action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
 
         // Controls, as in Music; "Enter Full Screen", as everywhere, since
         // the mosaic already runs in the window.
-        let controls = submenu(of: menu, titled: "Controls")
-        controls.addItem(withTitle: "Enter Full Screen", action: #selector(AppDelegate.play(_:)), keyEquivalent: "\r")
-        controls.addItem(withTitle: "Update Photographs",
+        let controls = submenu(of: menu, titled: String(localized: "Controls", comment: "Menu bar"))
+        controls.addItem(withTitle: String(localized: "Enter Full Screen", comment: "Controls menu"),
+                         action: #selector(AppDelegate.play(_:)), keyEquivalent: "\r")
+        controls.addItem(withTitle: String(localized: "Update Photographs", comment: "Controls menu"),
                          action: #selector(AppDelegate.updatePhotographs(_:)), keyEquivalent: "r")
 
-        let window = submenu(of: menu, titled: "Window")
-        window.addItem(withTitle: "Minimize", action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
-        window.addItem(withTitle: "Zoom", action: #selector(NSWindow.performZoom(_:)), keyEquivalent: "")
+        let window = submenu(of: menu, titled: String(localized: "Window", comment: "Menu bar"))
+        window.addItem(withTitle: String(localized: "Minimize", comment: "Window menu"),
+                       action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
+        window.addItem(withTitle: String(localized: "Zoom", comment: "Window menu"),
+                       action: #selector(NSWindow.performZoom(_:)), keyEquivalent: "")
         window.addItem(.separator())
-        window.addItem(withTitle: "Bring All to Front", action: #selector(NSApplication.arrangeInFront(_:)), keyEquivalent: "")
+        window.addItem(withTitle: String(localized: "Bring All to Front", comment: "Window menu"),
+                       action: #selector(NSApplication.arrangeInFront(_:)), keyEquivalent: "")
         NSApp.windowsMenu = window
 
-        let help = submenu(of: menu, titled: "Help")
-        help.addItem(withTitle: "Mosaic Companion Help", action: #selector(NSApplication.showHelp(_:)), keyEquivalent: "?")
+        let help = submenu(of: menu, titled: String(localized: "Help", comment: "Menu bar"))
+        help.addItem(withTitle: String(localized: "Mosaic Companion Help", comment: "Help menu"),
+                     action: #selector(NSApplication.showHelp(_:)), keyEquivalent: "?")
         NSApp.helpMenu = help
         return menu
     }
@@ -313,7 +331,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
             })
             let window = NSWindow(contentViewController: controller)
             window.styleMask = [.titled, .closable]
-            window.title = "Set Up Mosaic"
+            window.title = String(localized: "Set Up Mosaic", comment: "Title of the setup window")
             window.isReleasedWhenClosed = false
             window.delegate = self
             // Its size before centring it: the view sets it only once laid out.
@@ -347,16 +365,17 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
         UpdateNotice.withdraw()
 
         let alert = NSAlert()
-        alert.messageText = "Mosaic \(release.version) is available"
-        var text = "You have \(current). Mosaic Companion will relaunch in the new version and update the screen saver too."
-        if updater.needsAdministrator {
-            text += " Replacing it in Applications needs an administrator’s name and password."
-        }
-        alert.informativeText = text
+        alert.messageText = String(localized: "Mosaic \(release.version.description) is available",
+                                   comment: "A new version; the version, as in “Mosaic 0.6 is available”")
+        alert.informativeText = updater.needsAdministrator
+            ? String(localized: "You have \(current.description). Mosaic Companion will relaunch in the new version and update the screen saver too. Replacing it in Applications needs an administrator’s name and password.",
+                     comment: "Update alert; the version installed now, for a user who is not an administrator")
+            : String(localized: "You have \(current.description). Mosaic Companion will relaunch in the new version and update the screen saver too.",
+                     comment: "Update alert; the version installed now")
         if let notes = Self.notesView(release.notes) { alert.accessoryView = notes }
-        alert.addButton(withTitle: "Install and Relaunch")
-        alert.addButton(withTitle: "Not Now")
-        alert.addButton(withTitle: "Skip This Version")
+        alert.addButton(withTitle: String(localized: "Install and Relaunch", comment: "Update alert button"))
+        alert.addButton(withTitle: String(localized: "Not Now", comment: "Update alert button"))
+        alert.addButton(withTitle: String(localized: "Skip This Version", comment: "Update alert button"))
         alert.beginSheetModal(for: window) { [weak self] answer in
             guard let self else { return }
             switch answer {
@@ -365,7 +384,8 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
                     do {
                         try await self.updater.install()
                     } catch {
-                        self.show(error: error, about: "Mosaic \(release.version) could not be installed.")
+                        self.show(error: error, about: String(localized: "Mosaic \(release.version.description) could not be installed.",
+                                                              comment: "Alert title; the version that failed to install"))
                     }
                 }
             case .alertThirdButtonReturn:
@@ -432,11 +452,13 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
                 offerUpdate()
             case .upToDate(let version):
                 let alert = NSAlert()
-                alert.messageText = "Mosaic is up to date"
-                alert.informativeText = "Mosaic \(version) is the newest version."
+                alert.messageText = String(localized: "Mosaic is up to date", comment: "Check for Updates alert title")
+                alert.informativeText = String(localized: "Mosaic \(version.description) is the newest version.",
+                                               comment: "Check for Updates alert; the version installed")
                 if let window { alert.beginSheetModal(for: window) { _ in } } else { alert.runModal() }
             case .failed(let reason):
-                show(error: UpdateCheckFailure(reason: reason), about: "Mosaic couldn’t check for updates.")
+                show(error: UpdateCheckFailure(reason: reason),
+                     about: String(localized: "Mosaic couldn’t check for updates.", comment: "Alert title"))
             }
         }
     }
@@ -449,7 +471,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
             try Player.play(preferences: model.preferences, on: window?.screen)
         } catch {
             let alert = NSAlert()
-            alert.messageText = "The mosaic could not start."
+            alert.messageText = String(localized: "The mosaic could not start.", comment: "Alert title when full screen fails")
             alert.informativeText = "\(error)"
             alert.runModal()
         }
@@ -468,7 +490,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
             controller.sizingOptions = [.preferredContentSize]
             let window = NSWindow(contentViewController: controller)
             window.styleMask = [.titled, .closable]
-            window.title = "Mosaic Companion Settings"
+            window.title = String(localized: "Mosaic Companion Settings", comment: "Title of the Settings window")
             window.isReleasedWhenClosed = false
             window.setFrameAutosaveName("Mosaic Settings")
             window.center()
@@ -509,11 +531,13 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
         let windows = [window, settingsWindow, setupWindow].compactMap { $0 }.filter(\.isVisible)
         NSApp.activate(ignoringOtherApps: true)
         let alert = NSAlert()
-        alert.messageText = "Quit Mosaic Companion?"
-        alert.informativeText = "The screen saver won't pick up new photographs until you next log in."
-        let close = windows.isEmpty ? nil : alert.addButton(withTitle: "Close Window")
-        let quit = alert.addButton(withTitle: "Quit")
-        alert.addButton(withTitle: "Cancel")
+        alert.messageText = String(localized: "Quit Mosaic Companion?", comment: "Alert title, when the app opens at login")
+        alert.informativeText = String(localized: "The screen saver won't pick up new photographs until you next log in.",
+                                       comment: "Quit alert")
+        let close = windows.isEmpty ? nil
+            : alert.addButton(withTitle: String(localized: "Close Window", comment: "Quit alert button: closes the window and keeps running"))
+        let quit = alert.addButton(withTitle: String(localized: "Quit", comment: "Quit alert button"))
+        alert.addButton(withTitle: String(localized: "Cancel", comment: "Alert button"))
         alert.showsSuppressionButton = true
         let answer = alert.runModal()
 

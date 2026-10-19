@@ -200,9 +200,14 @@ final class AppModel: ObservableObject {
     /// seconds.
     var albumSummary: String {
         let chosen = preferences.collectionIdentifiers
-        if chosen.isEmpty { return "All photographs" }
+        if chosen.isEmpty {
+            return String(localized: "All photographs", comment: "Albums in use: none chosen, so the whole library")
+        }
         let titles = albums.titles(of: chosen)
-        if titles.isEmpty { return chosen.count == 1 ? "1 album" : "\(chosen.count) albums" }
+        if titles.isEmpty {
+            return String(localized: "\(chosen.count) albums",
+                          comment: "A number of albums, in a summary of those chosen")
+        }
         return titles.joined(separator: ", ")
     }
 
@@ -213,10 +218,10 @@ final class AppModel: ObservableObject {
                 try await AppLocation.moveToApplications()
                 MosaicApplication.quitWithoutAsking()
             } catch {
-                report(.location, """
+                report(.location, String(localized: """
                     Mosaic could not be moved to Applications (\(error.localizedDescription)). \
                     Drag it there in the Finder, then open it again.
-                    """)
+                    """, comment: "The move to Applications failed; the reason in parentheses"))
             }
         }
     }
@@ -304,7 +309,8 @@ final class AppModel: ObservableObject {
             try SaverInstaller.install { if showingSettings { SaverInstaller.openSettings() } }
             clearProblem(at: .screenSaver)
         } catch {
-            report(.screenSaver, "The screen saver could not be installed: \(error.localizedDescription)")
+            report(.screenSaver, String(localized: "The screen saver could not be installed: \(error.localizedDescription)",
+                                        comment: "Followed by the reason, as macOS words it"))
         }
         refreshSaver()
     }
@@ -325,7 +331,8 @@ final class AppModel: ObservableObject {
             try SaverInstaller.install {}
             clearProblem(at: .screenSaver)
         } catch {
-            report(.screenSaver, "The screen saver could not be updated: \(error.localizedDescription)")
+            report(.screenSaver, String(localized: "The screen saver could not be updated: \(error.localizedDescription)",
+                                        comment: "Followed by the reason, as macOS words it"))
         }
         refreshSaver()
     }
@@ -347,7 +354,11 @@ final class AppModel: ObservableObject {
             }
             clearProblem(at: place)
         } catch {
-            report(place, "Mosaic Companion could not \(on ? "be added to" : "be removed from") the login items: \(error.localizedDescription)")
+            report(place, on
+                ? String(localized: "Mosaic Companion could not be added to the login items: \(error.localizedDescription)",
+                         comment: "Followed by the reason, as macOS words it")
+                : String(localized: "Mosaic Companion could not be removed from the login items: \(error.localizedDescription)",
+                         comment: "Followed by the reason, as macOS words it"))
         }
         refreshLoginItem()
         Self.log.notice("login item \(on ? "registered" : "unregistered", privacy: .public), status \(self.loginItem.rawValue, privacy: .public)")
@@ -413,7 +424,8 @@ final class AppModel: ObservableObject {
         do {
             try ledger.save(to: SharedLocations.closeUpFetchLedger)
         } catch {
-            report(.settings, "Mosaic Companion could not reset the download limits: \(error.localizedDescription)")
+            report(.settings, String(localized: "Mosaic Companion could not reset the download limits: \(error.localizedDescription)",
+                                     comment: "Followed by the reason, as macOS words it"))
             return
         }
         Self.log.notice("download limits reset by the user, \(forgotten, privacy: .public) requests of the last 7 days forgotten")
@@ -559,8 +571,9 @@ final class AppModel: ObservableObject {
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = false
-        panel.prompt = "Choose"
-        panel.message = "Choose a folder of photographs for the mosaics."
+        panel.prompt = String(localized: "Choose", comment: "Default button of the panel that picks the folder of photographs")
+        panel.message = String(localized: "Choose a folder of photographs for the mosaics.",
+                               comment: "Message of the panel that picks the folder of photographs")
         if panel.runModal() == .OK, let url = panel.url {
             preferences.folder = url
         }
@@ -803,7 +816,8 @@ final class AppModel: ObservableObject {
             \(error.map { ": \($0)" } ?? "", privacy: .public)
             """)
         if let error {
-            report(.preparing, "Preparing the photographs stopped: \(error.localizedDescription)")
+            report(.preparing, String(localized: "Preparing the photographs stopped: \(error.localizedDescription)",
+                                      comment: "Followed by the reason, as macOS or the index words it"))
         }
         if !renewed, error == nil, !cancel.isSet {
             housekeepingDue = true

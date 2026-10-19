@@ -87,10 +87,19 @@ public enum ReleaseError: LocalizedError, Equatable {
 
     public var errorDescription: String? {
         switch self {
-        case .unreadable(let reason): "the release could not be read: \(reason)"
-        case .notPublished(let tag): "release \(tag) is a draft or a pre-release"
-        case .badTag(let tag): "the release tag \(tag) is not a version"
-        case .noDiskImage(let name): "the release has no \(name)"
+        // Localized by the app that shows them: Bundle.main is its bundle.
+        case .unreadable(let reason):
+            String(localized: "the release could not be read: \(reason)",
+                   comment: "Update error, followed by the reason; lowercase, follows a colon")
+        case .notPublished(let tag):
+            String(localized: "release \(tag) is a draft or a pre-release",
+                   comment: "Update error, with a release tag such as v0.6; lowercase, follows a colon")
+        case .badTag(let tag):
+            String(localized: "the release tag \(tag) is not a version",
+                   comment: "Update error, with a release tag; lowercase, follows a colon")
+        case .noDiskImage(let name):
+            String(localized: "the release has no \(name)",
+                   comment: "Update error, with the name of a missing .dmg file; lowercase, follows a colon")
         }
     }
 }

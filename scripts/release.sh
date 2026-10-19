@@ -36,6 +36,9 @@ if [ -n "$(git status --porcelain)" ]; then
     fi
 fi
 
+# A string the code uses but the catalogs lack would ship untranslated.
+./scripts/strings-sync.sh --check
+
 ./Hosts/App/build.sh release --universal
 
 APP=".build/bundle/$APP_NAME.app"

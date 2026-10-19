@@ -35,6 +35,37 @@ runs when it changes.
 /usr/bin/log show --predicate 'subsystem == "com.vastunghia.Mosaic"' --last 1h --style compact
 ```
 
+## Strings and languages
+
+What the app and the screen saver say lives in String Catalogs beside their sources:
+`Hosts/App/Localizable.xcstrings`, `Hosts/App/InfoPlist.xcstrings` (the Photos permission's
+text) and `Hosts/Saver/Localizable.xcstrings`. The build scripts compile them into the
+bundles' `.lproj` folders with `xcstringstool`; there is no Xcode project.
+
+```sh
+./scripts/strings-sync.sh             # after changing what the interface says: add new keys, mark gone ones stale
+./scripts/strings-sync.sh --check     # changes nothing, fails if the catalogs are behind (release.sh runs it)
+```
+
+The script builds the package apart, in `.build/strings`, for the compiler to list the
+strings of each file: about 90 s the first time, seconds after. A string reaches the
+catalog only from `String(localized:comment:)`, `LocalizedStringResource` or SwiftUI's
+literals and `LocalizedStringKey` parameters, never from `NSLocalizedString`. In the screen
+saver every string names `bundle: SaverLanguage.bundle, locale: SaverLanguage.locale`:
+inside `legacyScreenSaver` the main bundle is the host's. Plurals are variations in the
+catalog, English ones included: one key, `"\(n) albums"`, not a test on `n`.
+
+To see what is not localized, launch the app with every localized string doubled; whatever
+shows once was missed:
+
+```sh
+open ".build/bundle/Mosaic Companion.app" --args -NSDoubleLocalizedStrings YES
+open ".build/bundle/Mosaic Companion.app" --args -AppleLanguages '(it)'   # another language
+```
+
+The screen saver follows the language of the system: a language set for
+`legacyScreenSaver` alone does not reach it.
+
 ## Running the effect on a folder
 
 ```sh

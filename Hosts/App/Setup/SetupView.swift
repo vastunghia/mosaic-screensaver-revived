@@ -33,7 +33,9 @@ struct SetupView: View {
                     Button("Done", action: finish)
                         .keyboardShortcut(.defaultAction)
                 } else {
-                    Button(page == .welcome ? "Get Started" : "Continue", action: next)
+                    Button(page == .welcome ? String(localized: "Get Started", comment: "Setup: the first page's button")
+                                            : String(localized: "Continue", comment: "Setup: the button to the next page"),
+                           action: next)
                         .keyboardShortcut(.defaultAction)
                 }
             }
@@ -65,7 +67,8 @@ struct SetupView: View {
     private var title: String {
         guard page == .done else { return page.title }
         let undone = SetupPage.pages(for: model).contains { $0.isDone(model) == false }
-        return undone ? "Almost Done" : page.title
+        guard undone else { return page.title }
+        return String(localized: "Almost Done", comment: "Setup: last page's title, when some page asked for something not done")
     }
 
     @ViewBuilder private var content: some View {
@@ -165,7 +168,8 @@ struct SetupView: View {
                             Image(systemName: done ? "checkmark.circle.fill" : "circle")
                                 .foregroundStyle(done ? AnyShapeStyle(.green) : AnyShapeStyle(.secondary))
                         }
-                        .accessibilityValue(done ? "Done" : "Not done")
+                        .accessibilityValue(done ? String(localized: "Done", comment: "Setup summary, VoiceOver: this page's step is done")
+                                                 : String(localized: "Not done", comment: "Setup summary, VoiceOver: this page's step is not done"))
                     }
                 }
             } footer: {

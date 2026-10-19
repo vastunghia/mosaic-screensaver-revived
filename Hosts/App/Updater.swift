@@ -82,9 +82,13 @@ final class Updater: ObservableObject {
     /// Asks the feed for the newest release and, if it is newer, prepares it.
     /// A version the user skipped counts only when the user asks.
     func check(byUser: Bool) async -> Outcome {
-        guard let current else { return .failed("this build has no version") }
+        guard let current else {
+            return .failed(String(localized: "this build has no version", comment: "Why an update check failed; lowercase, follows a colon"))
+        }
         if case .ready(let release, _) = state { return .available(release) }
-        guard !isBusy else { return .failed("an update is already under way") }
+        guard !isBusy else {
+            return .failed(String(localized: "an update is already under way", comment: "Why an update check failed; lowercase, follows a colon"))
+        }
         state = .checking
         let release: Release
         do {
@@ -339,14 +343,24 @@ final class Updater: ObservableObject {
 
         var errorDescription: String? {
             switch self {
-            case .server(404, _): "no release was found"
-            case .server(let status, let url): "the server answered \(status) for \(url.lastPathComponent)"
-            case .noChecksum: "the checksum file does not name the disk image"
-            case .checksumMismatch: "the download does not match its checksum"
-            case .notMounted: "the disk image could not be opened"
-            case .notThisApp: "the disk image does not hold this version of Mosaic"
-            case .unsigned: "the signature could not be read"
-            case .badSignature(let status): "the new version is not signed as this one is (\(status))"
+            case .server(404, _):
+                String(localized: "no release was found", comment: "Update error; lowercase, follows a colon")
+            case .server(let status, let url):
+                String(localized: "the server answered \(status) for \(url.lastPathComponent)",
+                       comment: "Update error: an HTTP status code and a file name; lowercase, follows a colon")
+            case .noChecksum:
+                String(localized: "the checksum file does not name the disk image", comment: "Update error; lowercase, follows a colon")
+            case .checksumMismatch:
+                String(localized: "the download does not match its checksum", comment: "Update error; lowercase, follows a colon")
+            case .notMounted:
+                String(localized: "the disk image could not be opened", comment: "Update error; lowercase, follows a colon")
+            case .notThisApp:
+                String(localized: "the disk image does not hold this version of Mosaic", comment: "Update error; lowercase, follows a colon")
+            case .unsigned:
+                String(localized: "the signature could not be read", comment: "Update error; lowercase, follows a colon")
+            case .badSignature(let status):
+                String(localized: "the new version is not signed as this one is (\(status))",
+                       comment: "Update error, with a code-signing status code; lowercase, follows a colon")
             }
         }
     }

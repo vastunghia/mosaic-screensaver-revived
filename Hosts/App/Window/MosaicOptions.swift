@@ -13,7 +13,7 @@ struct MosaicOptions: View {
                         in: Double(AppPreferences.rowRange.lowerBound)...Double(AppPreferences.rowRange.upperBound),
                         step: 1
                     )
-                    Text("\(model.preferences.rows)")
+                    Text(model.preferences.rows, format: .number)
                         .monospacedDigit()
                         .frame(minWidth: 36, alignment: .trailing)
                 }
@@ -21,7 +21,7 @@ struct MosaicOptions: View {
             LabeledContent("Zoom duration") {
                 HStack {
                     Slider(value: $model.preferences.cycleDuration, in: AppPreferences.durationRange, step: 1)
-                    Text("\(Int(model.preferences.cycleDuration)) s")
+                    Text("\(Int(model.preferences.cycleDuration)) s", comment: "Zoom duration in seconds, beside its slider")
                         .monospacedDigit()
                         .frame(minWidth: 36, alignment: .trailing)
                 }

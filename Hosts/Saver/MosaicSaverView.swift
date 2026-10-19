@@ -470,13 +470,20 @@ final class MosaicSaverView: ScreenSaverView {
         title.font = .boldSystemFont(ofSize: NSFont.systemFontSize + 2)
         let status = NSTextField(wrappingLabelWithString: Self.indexStatus())
         let settings = SharedSettings.read() ?? .standard
-        let effect = NSTextField(labelWithString: "\(settings.rows) rows, \(Int(settings.cycleDuration)) seconds a photograph.")
-        let note = NSTextField(wrappingLabelWithString: "The photographs and the settings are chosen in Mosaic Companion.")
+        let effect = NSTextField(labelWithString: String(
+            localized: "\(settings.rows) rows, \(Int(settings.cycleDuration)) seconds a photograph.", bundle: SaverLanguage.bundle, locale: SaverLanguage.locale,
+            comment: "Screen saver options: the two settings of the effect"))
+        let note = NSTextField(wrappingLabelWithString: String(
+            localized: "The photographs and the settings are chosen in Mosaic Companion.", bundle: SaverLanguage.bundle, locale: SaverLanguage.locale,
+            comment: "Screen saver options"))
         note.textColor = .secondaryLabelColor
         note.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
 
-        let open = NSButton(title: "Open Mosaic Companion…", target: self, action: #selector(openApp(_:)))
-        let done = NSButton(title: "Done", target: self, action: #selector(closeOptions(_:)))
+        let open = NSButton(title: String(localized: "Open Mosaic Companion…", bundle: SaverLanguage.bundle, locale: SaverLanguage.locale,
+                                          comment: "Screen saver options: button"),
+                            target: self, action: #selector(openApp(_:)))
+        let done = NSButton(title: String(localized: "Done", bundle: SaverLanguage.bundle, locale: SaverLanguage.locale, comment: "Screen saver options: button that closes them"),
+                            target: self, action: #selector(closeOptions(_:)))
         done.keyEquivalent = "\r"
         let buttons = NSStackView(views: [open, NSView(), done])
         buttons.distribution = .fill
@@ -509,17 +516,24 @@ final class MosaicSaverView: ScreenSaverView {
     private static func indexStatus() -> String {
         let store = PhotoIndexStore(directory: SharedLocations.indexDirectory)
         guard let manifest = try? store.load(), !manifest.entries.isEmpty else {
-            return "No photographs yet. Open Mosaic Companion to choose them."
+            return String(localized: "No photographs yet. Open Mosaic Companion to choose them.", bundle: SaverLanguage.bundle, locale: SaverLanguage.locale,
+                          comment: "Screen saver options: the status, before there is an index")
         }
-        var text = "\(manifest.entries.count) photographs"
-        if let date = try? store.manifestURL.resourceValues(forKeys: [.contentModificationDateKey])
-            .contentModificationDate {
-            text += ", updated \(date.formatted(date: .abbreviated, time: .shortened))"
+        let count = manifest.entries.count
+        let needed = minimumPhotographs
+        guard let date = try? store.manifestURL.resourceValues(forKeys: [.contentModificationDateKey])
+            .contentModificationDate else {
+            return count < needed
+                ? String(localized: "\(count) photographs: Mosaic needs at least \(needed).", bundle: SaverLanguage.bundle, locale: SaverLanguage.locale,
+                         comment: "Screen saver options: the status, with too few photographs")
+                : String(localized: "\(count) photographs.", bundle: SaverLanguage.bundle, locale: SaverLanguage.locale, comment: "Screen saver options: the status")
         }
-        if manifest.entries.count < minimumPhotographs {
-            text += ": Mosaic needs at least \(minimumPhotographs)"
-        }
-        return text + "."
+        let updated = date.formatted(Date.FormatStyle(date: .abbreviated, time: .shortened, locale: SaverLanguage.locale))
+        return count < needed
+            ? String(localized: "\(count) photographs, updated \(updated): Mosaic needs at least \(needed).", bundle: SaverLanguage.bundle, locale: SaverLanguage.locale,
+                     comment: "Screen saver options: the status, with when the photographs last changed, and too few of them")
+            : String(localized: "\(count) photographs, updated \(updated).", bundle: SaverLanguage.bundle, locale: SaverLanguage.locale,
+                     comment: "Screen saver options: the status, with when the photographs last changed")
     }
 
     @objc private func openApp(_ sender: Any?) {
@@ -590,11 +604,14 @@ final class MosaicSaverView: ScreenSaverView {
     private static func explanation(of error: Error?) -> String {
         switch error {
         case PhotoIndexError.missing?:
-            return "Open Mosaic Companion to choose the photographs for the screen saver."
+            return String(localized: "Open Mosaic Companion to choose the photographs for the screen saver.", bundle: SaverLanguage.bundle, locale: SaverLanguage.locale,
+                          comment: "Shown on the screen saver, when there is no index")
         case SaverError.tooFewPhotographs(let count)?:
-            return "Mosaic has \(count) photographs so far. Open Mosaic Companion to add more."
+            return String(localized: "Mosaic has \(count) photographs so far. Open Mosaic Companion to add more.", bundle: SaverLanguage.bundle, locale: SaverLanguage.locale,
+                          comment: "Shown on the screen saver, with too few photographs to start")
         default:
-            return "Mosaic could not start. Open Mosaic Companion to check its photographs."
+            return String(localized: "Mosaic could not start. Open Mosaic Companion to check its photographs.", bundle: SaverLanguage.bundle, locale: SaverLanguage.locale,
+                          comment: "Shown on the screen saver, when it fails")
         }
     }
 

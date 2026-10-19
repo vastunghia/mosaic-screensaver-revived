@@ -124,8 +124,12 @@ enum AppLocation {
 
         var errorDescription: String? {
             switch self {
-            case .scriptNotCompiled: "the administrator request could not be prepared"
-            case .cancelled: "no administrator password was given"
+            case .scriptNotCompiled:
+                String(localized: "the administrator request could not be prepared",
+                       comment: "Why the move to Applications failed; in parentheses, lowercase")
+            case .cancelled:
+                String(localized: "no administrator password was given",
+                       comment: "Why the move to Applications failed; in parentheses, lowercase")
             case .failed(let message): message
             }
         }

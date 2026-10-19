@@ -75,7 +75,7 @@ struct AlbumPicker: View {
             HStack {
                 Label(node.title, systemImage: symbol(for: node.kind))
                 Spacer()
-                Text("\(node.count)").foregroundStyle(.secondary).monospacedDigit()
+                Text(node.count, format: .number).foregroundStyle(.secondary).monospacedDigit()
             }
         }
         .toggleStyle(.checkbox)
@@ -101,12 +101,14 @@ struct AlbumPicker: View {
     }
 
     private var summary: String {
-        guard !chosen.isEmpty else { return "All photographs" }
+        guard !chosen.isEmpty else {
+            return String(localized: "All photographs", comment: "Albums in use: none chosen, so the whole library")
+        }
         let folders = chosen.filter { model.albums.node($0)?.kind == .folder }.count
         let albums = chosen.count - folders
         return [
-            albums > 0 ? (albums == 1 ? "1 album" : "\(albums) albums") : nil,
-            folders > 0 ? (folders == 1 ? "1 folder" : "\(folders) folders") : nil,
+            albums > 0 ? String(localized: "\(albums) albums", comment: "A number of albums, in a summary of those chosen") : nil,
+            folders > 0 ? String(localized: "\(folders) folders", comment: "A number of folders of albums, in a summary of those chosen") : nil,
         ].compactMap { $0 }.joined(separator: ", ")
     }
 }

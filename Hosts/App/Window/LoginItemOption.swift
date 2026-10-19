@@ -28,11 +28,16 @@ struct LoginItemOption: View {
         } header: {
             Text("In the Background")
         } footer: {
-            Footnote(model.isTranslocated
-                 ? "Available once Mosaic Companion is in Applications."
-                 : model.opensAtLogin
-                    ? "Mosaic Companion opens at login without a window and keeps the screen saver’s photographs up to date."
-                    : "Mosaic Companion keeps the screen saver’s photographs up to date only while it is open.")
+            Footnote(footnote)
         }
+    }
+
+    private var footnote: LocalizedStringKey {
+        if model.isTranslocated {
+            return "Available once Mosaic Companion is in Applications."
+        }
+        return model.opensAtLogin
+            ? "Mosaic Companion opens at login without a window and keeps the screen saver’s photographs up to date."
+            : "Mosaic Companion keeps the screen saver’s photographs up to date only while it is open."
     }
 }

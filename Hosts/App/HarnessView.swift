@@ -126,21 +126,27 @@ struct HarnessView: View {
             }
 
             HStack(spacing: 8) {
-                Button(clock.isPaused ? "▶︎" : "❚❚") { clock.isPaused.toggle() }
-                Button("◀︎ 1f") { clock.step(frames: -1) }
-                Button("1f ▶︎") { clock.step(frames: 1) }
-                Button("cycle −") { clock.jumpCycles(-1) }
-                Button("cycle +") { clock.jumpCycles(1) }
+                button(clock.isPaused ? "▶︎" : "❚❚") { clock.isPaused.toggle() }
+                button("◀︎ 1f") { clock.step(frames: -1) }
+                button("1f ▶︎") { clock.step(frames: 1) }
+                button("cycle −") { clock.jumpCycles(-1) }
+                button("cycle +") { clock.jumpCycles(1) }
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
 
-            Text("space pause · ←/→ frame · ↑/↓ cycle · f full screen · h hide · r rewind")
+            Text(verbatim: "space pause · ←/→ frame · ↑/↓ cycle · f full screen · h hide · r rewind")
                 .font(.system(size: 10))
                 .foregroundStyle(.white.opacity(0.6))
         }
         .font(.system(size: 11, design: .monospaced))
         .tint(.white)
+    }
+
+    /// The harness is a developer's tool and stays in English: a `String`
+    /// title, which SwiftUI shows as it is instead of looking it up.
+    private func button(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(title, action: action)
     }
 
     private func labelled(

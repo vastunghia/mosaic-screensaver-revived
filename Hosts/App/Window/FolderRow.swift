@@ -6,10 +6,16 @@ struct FolderRow: View {
 
     var body: some View {
         HStack {
-            Text(model.preferences.folder?.path ?? "None chosen")
-                .lineLimit(1)
-                .truncationMode(.middle)
-                .foregroundStyle(model.preferences.folder == nil ? .secondary : .primary)
+            Group {
+                if let folder = model.preferences.folder {
+                    Text(verbatim: folder.path)
+                } else {
+                    Text("None chosen", comment: "No folder of photographs chosen yet")
+                }
+            }
+            .lineLimit(1)
+            .truncationMode(.middle)
+            .foregroundStyle(model.preferences.folder == nil ? .secondary : .primary)
             Spacer()
             Button("Choose…", action: model.chooseFolder)
         }
