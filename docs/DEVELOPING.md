@@ -64,7 +64,17 @@ open ".build/bundle/Mosaic Companion.app" --args -AppleLanguages '(it)'   # anot
 ```
 
 The screen saver follows the language of the system: a language set for
-`legacyScreenSaver` alone does not reach it.
+`legacyScreenSaver` alone does not reach it. Arguments do not reach it either, but its
+container's preferences do, so it doubles its strings with:
+
+```sh
+P=~/Library/Containers/com.apple.ScreenSaver.Engine.legacyScreenSaver/Data/Library/Preferences/com.apple.ScreenSaver.Engine.legacyScreenSaver
+defaults write "$P" NSDoubleLocalizedStrings -bool YES    # then killall legacyScreenSaver
+defaults delete "$P" NSDoubleLocalizedStrings             # afterwards
+```
+
+Doubled, a plural with more than one number shows its raw `%1$#@name@` in the second
+half: it reads right without the doubling.
 
 ## Running the effect on a folder
 

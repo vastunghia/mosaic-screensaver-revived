@@ -470,7 +470,7 @@ final class MosaicSaverView: ScreenSaverView {
         title.font = .boldSystemFont(ofSize: NSFont.systemFontSize + 2)
         let status = NSTextField(wrappingLabelWithString: Self.indexStatus())
         let settings = SharedSettings.read() ?? .standard
-        let effect = NSTextField(labelWithString: String(
+        let effect = NSTextField(wrappingLabelWithString: String(
             localized: "\(settings.rows) rows, \(Int(settings.cycleDuration)) seconds a photograph.", bundle: SaverLanguage.bundle, locale: SaverLanguage.locale,
             comment: "Screen saver options: the two settings of the effect"))
         let note = NSTextField(wrappingLabelWithString: String(
