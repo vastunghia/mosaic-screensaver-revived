@@ -41,7 +41,7 @@ struct SetupView: View {
             }
             .padding()
         }
-        .frame(width: 560, height: 480)
+        .frame(width: 560, height: 380)
     }
 
     // MARK: Pages
@@ -157,7 +157,12 @@ struct SetupView: View {
                 }
                 .pickerStyle(.radioGroup)
             } footer: {
-                Footnote("This matters only if your Photos library keeps its originals in iCloud. Then Mosaic Companion can download a sharp copy of the photographs it shows full screen, about 1.3 MB each, never the original: at most \(DownloadLedger.standardDailyLimit) a day and \(DownloadLedger.standardWeeklyLimit) a week, and none on a hotspot or in Low Data Mode. With Nothing, Mosaic Companion tells you in its window if some close-ups turn out blurry. You can change this in Settings.")
+                // Three paragraphs: as one block of six lines it went unread.
+                VStack(alignment: .leading, spacing: 8) {
+                    Footnote("This matters only if your Photos library keeps its originals in iCloud.")
+                    Footnote("Then Mosaic Companion can download a sharp copy of the photographs it shows full screen, about 1.3 MB each, never the original: at most \(DownloadLedger.standardDailyLimit) a day and \(DownloadLedger.standardWeeklyLimit) a week, and none on a hotspot or in Low Data Mode.")
+                    Footnote("With Nothing, Mosaic Companion tells you in its window if some close-ups turn out blurry. You can change this in Settings.")
+                }
             }
         case .updates:
             Section {
@@ -167,18 +172,7 @@ struct SetupView: View {
             }
         case .done:
             Section {
-                ForEach(SetupPage.pages(for: model), id: \.self) { page in
-                    if let done = page.isDone(model) {
-                        Label {
-                            Text(page.title)
-                        } icon: {
-                            Image(systemName: done ? "checkmark.circle.fill" : "circle")
-                                .foregroundStyle(done ? AnyShapeStyle(.green) : AnyShapeStyle(.secondary))
-                        }
-                        .accessibilityValue(done ? Self.stepDone
-                                                 : String(localized: "Not done", comment: "Setup summary, VoiceOver: this page's step is not done"))
-                    }
-                }
+                summary
             } footer: {
                 Footnote("What is left undone stays in the Mosaic Companion window, with what to do about it.")
             }
@@ -192,6 +186,33 @@ struct SetupView: View {
                 }
             }
         }
+    }
+
+    /// Every step and whether it is done, in two columns: the window keeps
+    /// one height for every page, and as a list this page alone set it.
+    private var summary: some View {
+        let steps = SetupPage.pages(for: model).compactMap { page in page.isDone(model).map { (page, $0) } }
+        let half = (steps.count + 1) / 2
+        return HStack(alignment: .top, spacing: 0) {
+            summaryColumn(steps[..<half])
+            summaryColumn(steps[half...])
+        }
+    }
+
+    private func summaryColumn(_ steps: ArraySlice<(SetupPage, Bool)>) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            ForEach(steps, id: \.0) { page, done in
+                Label {
+                    Text(page.title)
+                } icon: {
+                    Image(systemName: done ? "checkmark.circle.fill" : "circle")
+                        .foregroundStyle(done ? AnyShapeStyle(.green) : AnyShapeStyle(.secondary))
+                }
+                .accessibilityValue(done ? Self.stepDone
+                                         : String(localized: "Not done", comment: "Setup summary, VoiceOver: this page's step is not done"))
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     // The pages are worked out when a button acts, not when it is drawn:

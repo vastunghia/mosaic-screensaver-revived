@@ -2352,6 +2352,22 @@
         }
       }
     },
+    "Then Mosaic Companion can download a sharp copy of the photographs it shows full screen, about 1.3 MB each, never the original: at most %lld a day and %lld a week, and none on a hotspot or in Low Data Mode." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Then Mosaic Companion can download a sharp copy of the photographs it shows full screen, about 1.3 MB each, never the original: at most %1$lld a day and %2$lld a week, and none on a hotspot or in Low Data Mode."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In quel caso Mosaic Companion può scaricare una copia nitida delle foto che mostra a tutto schermo, di circa 1,3 MB, mai l’originale: al massimo %lld al giorno e %lld alla settimana, e nessuna su un hotspot o con Consumo limitato di dati."
+          }
+        }
+      }
+    },
     "They never leave this Mac: Mosaic Companion keeps a small copy of each, to build the mosaics from. Which albums, and how many photographs, are in Settings." : {
       "localizations" : {
         "it" : {
@@ -2372,18 +2388,12 @@
         }
       }
     },
-    "This matters only if your Photos library keeps its originals in iCloud. Then Mosaic Companion can download a sharp copy of the photographs it shows full screen, about 1.3 MB each, never the original: at most %lld a day and %lld a week, and none on a hotspot or in Low Data Mode. With Nothing, Mosaic Companion tells you in its window if some close-ups turn out blurry. You can change this in Settings." : {
+    "This matters only if your Photos library keeps its originals in iCloud." : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "This matters only if your Photos library keeps its originals in iCloud. Then Mosaic Companion can download a sharp copy of the photographs it shows full screen, about 1.3 MB each, never the original: at most %1$lld a day and %2$lld a week, and none on a hotspot or in Low Data Mode. With Nothing, Mosaic Companion tells you in its window if some close-ups turn out blurry. You can change this in Settings."
-          }
-        },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Conta solo se la tua libreria di Foto tiene gli originali su iCloud. In quel caso Mosaic Companion può scaricare una copia nitida delle foto che mostra a tutto schermo, di circa 1,3 MB, mai l’originale: al massimo %lld al giorno e %lld alla settimana, e nessuna su un hotspot o con Consumo limitato di dati. Con Niente, Mosaic Companion ti avvisa nella sua finestra se alcuni primi piani risultano sfocati. Puoi cambiare questa scelta in Impostazioni."
+            "value" : "Conta solo se la tua libreria di Foto tiene gli originali su iCloud."
           }
         }
       }
@@ -2510,6 +2520,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Finestra"
+          }
+        }
+      }
+    },
+    "With Nothing, Mosaic Companion tells you in its window if some close-ups turn out blurry. You can change this in Settings." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Con Niente, Mosaic Companion ti avvisa nella sua finestra se alcuni primi piani risultano sfocati. Puoi cambiare questa scelta in Impostazioni."
           }
         }
       }
