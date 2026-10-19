@@ -219,6 +219,27 @@ The app category of the log says `renewing the subset started`, `renewal: … re
 `housekeeping: …`. A cycle the saver had to plan without the index shows as `a cycle fell
 back to the stand-in mosaic` in its category; there should never be one.
 
+## Starting from nothing
+
+`scripts/uninstall.sh` takes Mosaic off the Mac for the profile that runs it: the app, the
+screen saver, `~/Library/Application Support/Mosaic` and every other file the app, the
+updater, the tests and the probes leave, the preferences, the login item, the Photos
+permission (`tccutil reset All`), the notification settings and the help cache. It lists
+what it found and asks first; `--dry-run` only lists. It stands alone, so it can be copied
+to another Mac.
+
+- Only the app can take back its login item, so the script calls it with
+  `--unregister-login-item` before deleting it. A build from before that flag gets System
+  Settings opened on Login Items instead.
+- `tccutil` finds the bundle identifier through Launch Services, so the permissions are
+  reset while the app is still there.
+- Launch Services remembers every copy it has seen, those on the disk images of past
+  releases included, and `lsregister -u` forgets one record at a time: the script repeats
+  it until no record of the app or the saver points at a path that is gone. The copies
+  still on disk, a build folder say, are named and left alone.
+- Another profile keeps its own files and permissions: run the script there too.
+- The unified log keeps Mosaic's messages until macOS rotates them away.
+
 ## The README's video
 
 The loop in the README is an export of four cycles whose subjects come round again, so

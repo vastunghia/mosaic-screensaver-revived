@@ -3,6 +3,7 @@ import Metal
 import MosaicEngine
 import MosaicPhotos
 import PhotoIndex
+import ServiceManagement
 import SwiftUI
 
 // M9, in its milestone-2 form: a window for judging the effect, an offscreen
@@ -12,6 +13,23 @@ import SwiftUI
 // Everything of substance is behind MosaicEngine. If this file ever grows a
 // shortcut the .saver could not take, that is an architecture bug, not a
 // convenience.
+
+// For scripts/uninstall.sh: the login item outlives the app it opens, and only
+// the app can take its own registration back.
+if CommandLine.arguments.dropFirst().first == "--unregister-login-item" {
+    let before = SMAppService.mainApp.status
+    do {
+        try SMAppService.mainApp.unregister()
+        print("mosaic: login item unregistered")
+        exit(0)
+    } catch where before != .enabled && before != .requiresApproval {
+        print("mosaic: no login item to unregister")
+        exit(0)
+    } catch {
+        FileHandle.standardError.write(Data("mosaic: login item not unregistered: \(error)\n".utf8))
+        exit(1)
+    }
+}
 
 if !MosaicApplication.wantsHarness(CommandLine.arguments) {
     MosaicApplication.run()
