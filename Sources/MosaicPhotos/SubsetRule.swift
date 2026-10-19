@@ -34,6 +34,10 @@ public enum SubsetRule: String, CaseIterable, Sendable {
     /// the first year with photographs in it.
     case uniformInTime
 
+    /// What a subset of `count` chosen with `seed` is known by
+    /// (`FillablePhotoSource.choice`, `IndexManifest.choice`).
+    public func choice(count: Int, seed: UInt64) -> String { "\(rawValue) \(count) \(seed)" }
+
     /// `count` of `photos`, sorted by identifier. All of them when there are
     /// not more than `count`.
     public func choose(from photos: [PhotoDescriptor], count: Int, seed: UInt64) -> [PhotoDescriptor] {
@@ -218,7 +222,7 @@ public struct SubsetPhotoSource<Base: PhotoSource>: FillablePhotoSource {
     /// Not changed by `quality`: the subjects a build remembers are kept
     /// under the same choice, and on an optimised library each cost a
     /// download (`IndexManifest.subjects`).
-    public var choice: String { "\(rule.rawValue) \(count) \(seed)" }
+    public var choice: String { rule.choice(count: count, seed: seed) }
 
     public func photos() throws -> [PhotoDescriptor] {
         let library = try library()

@@ -90,6 +90,12 @@ public struct PhotoIndexBuilder: Sendable {
     /// saving it after every batch wrote 2.1 GB in ten minutes (2026-10-12).
     public var checkpointInterval: TimeInterval = 30
 
+    /// Whether a finished build deletes the thumbnails its manifest no longer
+    /// names. A host whose saver may be reading them, or which prepares a
+    /// second generation beside the live one, says no and collects them
+    /// itself when no one reads them (`IndexHousekeeping`).
+    public var collectsOrphans = true
+
     public init(
         thumbnailWidth: Int = PhotoIndexBuilder.defaultThumbnailWidth,
         signatureSide: Int = PhotoIndexBuilder.defaultSignatureSide,
@@ -188,6 +194,16 @@ public struct PhotoIndexBuilder: Sendable {
     /// `availability` names what made a photograph unavailable — whether
     /// downloads were allowed — and `now` dates the check; both, and
     /// `closeUps`, are for a filled source only.
+    ///
+    /// `other` is another generation of the index in the same directory, the
+    /// live one while a renewed subset is built beside it (evolution 2). Its
+    /// thumbnails are taken as they are for the photographs this build
+    /// chooses, but it has no say in the choice: a close-up the shelf holds
+    /// for it does not make a photograph preferred, or a seed renewed to
+    /// change the subjects would choose them among the old ones again. A
+    /// store with no manifest yet starts from what it knows of the whole
+    /// library — the photographs found elsewhere, short or unreadable, and
+    /// Vision's assessments — and not from its subjects or its ring.
     @discardableResult
     public func build(
         from source: some PhotoSource,
@@ -196,6 +212,7 @@ public struct PhotoIndexBuilder: Sendable {
         availability: String = "",
         now: Date = Date(),
         preferring closeUps: CloseUpPreference? = nil,
+        reusing other: IndexManifest? = nil,
         progress: (@Sendable (IndexProgress) -> Void)? = nil,
         isCancelled: (@Sendable () -> Bool)? = nil
     ) throws -> IndexManifest {
@@ -222,11 +239,31 @@ public struct PhotoIndexBuilder: Sendable {
                 skipped: []
             )
         }
+        let reusable = other.flatMap { other in
+            other.matches(root: root, thumbnailWidth: thumbnailWidth, signatureSide: signatureSide, cropRule: cropRule)
+                ? other : nil
+        }
+        if manifest.entries.isEmpty, manifest.skipped.isEmpty, let reusable {
+            manifest.skipped = reusable.skipped
+            manifest.unavailable = reusable.unavailable
+            manifest.unavailableCheckedAt = reusable.unavailableCheckedAt
+            manifest.unavailableContext = reusable.unavailableContext
+            manifest.belowFullScreen = reusable.belowFullScreen
+            manifest.belowCloseUp = reusable.belowCloseUp
+            manifest.assessments = reusable.assessments
+            alreadySkipped = Set(reusable.skipped)
+        }
+        // Pixels to take, never a reason to choose.
+        let pixels = Dictionary((reusable?.entries ?? []).map { ($0.id, $0) }) { first, _ in first }
+        func readable(_ known: [String: IndexEntry]) -> [String: IndexEntry] {
+            pixels.isEmpty ? known : pixels.merging(known) { _, own in own }
+        }
 
         guard let fillable = source as? any FillablePhotoSource else {
+            manifest.choice = nil
             let round = try self.round(
                 over: try source.photos(), tier: .plain, from: source, into: store, manifest: &manifest,
-                known: known, alreadySkipped: alreadySkipped, carry: [:], leftOut: LeftOut(), judge: nil,
+                known: readable(known), alreadySkipped: alreadySkipped, carry: [:], leftOut: LeftOut(), judge: nil,
                 checkpoints: checkpoints,
                 report: { kept, _, skipped, unavailable, short, total, reused in
                     progress?(IndexProgress(
@@ -258,6 +295,7 @@ public struct PhotoIndexBuilder: Sendable {
         manifest.unavailableCheckedAt = carried ? manifest.unavailableCheckedAt : now
         manifest.unavailableContext = availability
 
+        manifest.choice = fillable.choice
         let target = fillable.target
         let fullScreenTarget = min(target, max(1, target / Self.fullScreenShare))
         // What is culled before anything is chosen (`Culling`); with an
@@ -308,7 +346,8 @@ public struct PhotoIndexBuilder: Sendable {
         let preferred = closeUps.flatMap { closeUps in fetches ? nil : closeUps }.map {
             self.preferred(
                 count: fullScreenTarget, closeUps: $0, fillable: fillable, library: library, from: source,
-                known: known, keeping: previousSubjects, narrow: narrowOriginals, leftOut: &leftOut, budget: target
+                known: known, pixels: pixels, keeping: previousSubjects, narrow: narrowOriginals, leftOut: &leftOut,
+                budget: target
             )
         } ?? []
 
@@ -324,8 +363,9 @@ public struct PhotoIndexBuilder: Sendable {
                 count: fullScreenTarget
             )
             // A tile whose close-up came in is read again, to fill the screen.
+            let reading = readable(known)
             let promoting = Set(chosen.compactMap { descriptor -> String? in
-                guard let entry = known[descriptor.id.rawValue], !entry.canFillScreen,
+                guard let entry = reading[descriptor.id.rawValue], !entry.canFillScreen,
                       entry.versionToken == descriptor.versionToken, closeUps?.isStocked(entry) == true else {
                     return nil
                 }
@@ -333,7 +373,7 @@ public struct PhotoIndexBuilder: Sendable {
             })
             let round = try self.round(
                 over: chosen, tier: .any(belowFullScreen: leftOut.belowFullScreen, promoting: promoting),
-                from: source, into: store, manifest: &manifest, known: known, alreadySkipped: alreadySkipped,
+                from: source, into: store, manifest: &manifest, known: readable(known), alreadySkipped: alreadySkipped,
                 carry: previous, leftOut: leftOut, judge: judge, indexedBefore: indexedBefore, checkpoints: checkpoints,
                 report: { ready, readyFullScreen, skipped, unavailable, _, _, reusedHere in
                     progress?(IndexProgress(
@@ -372,7 +412,7 @@ public struct PhotoIndexBuilder: Sendable {
             let before = first
             let round = try self.round(
                 over: chosen, tier: .fullScreen, from: source, into: store, manifest: &manifest,
-                known: known, alreadySkipped: alreadySkipped, carry: previous.merging(before) { _, new in new },
+                known: readable(known), alreadySkipped: alreadySkipped, carry: previous.merging(before) { _, new in new },
                 leftOut: leftOut, judge: judge, indexedBefore: indexedBefore, checkpoints: checkpoints,
                 report: { ready, _, skipped, unavailable, _, _, reusedHere in
                     progress?(IndexProgress(
@@ -426,7 +466,8 @@ public struct PhotoIndexBuilder: Sendable {
             let carry = previous.merging(screen) { _, new in new }
             let round = try self.round(
                 over: chosen, tier: .any(belowFullScreen: leftOut.belowFullScreen.union(resting), fillsScreen: tileFillsScreen),
-                from: source, into: store, manifest: &manifest, known: known, alreadySkipped: alreadySkipped, carry: carry, leftOut: leftOut,
+                from: source, into: store, manifest: &manifest, known: readable(known), alreadySkipped: alreadySkipped,
+                carry: carry, leftOut: leftOut,
                 judge: judge, indexedBefore: indexedBefore, checkpoints: checkpoints,
                 report: { ready, readyFullScreen, skipped, unavailable, _, _, reusedHere in
                     progress?(IndexProgress(
@@ -549,13 +590,14 @@ public struct PhotoIndexBuilder: Sendable {
     /// close-up here, then be found short and replaced by the plain rule.
     private func preferred(
         count: Int, closeUps: CloseUpPreference, fillable: any FillablePhotoSource, library: [PhotoDescriptor],
-        from source: some PhotoSource, known: [String: IndexEntry], keeping previous: Set<String>,
-        narrow: Set<String>, leftOut: inout LeftOut, budget: Int
+        from source: some PhotoSource, known: [String: IndexEntry], pixels: [String: IndexEntry],
+        keeping previous: Set<String>, narrow: Set<String>, leftOut: inout LeftOut, budget: Int
     ) -> [PhotoDescriptor] {
-        func isStocked(_ descriptor: PhotoDescriptor) -> Bool {
-            guard let entry = known[descriptor.id.rawValue] else { return false }
+        func isStocked(_ descriptor: PhotoDescriptor, in entries: [String: IndexEntry]) -> Bool {
+            guard let entry = entries[descriptor.id.rawValue] else { return false }
             return entry.versionToken == descriptor.versionToken && entry.canFillScreen && closeUps.isStocked(entry)
         }
+        func isStocked(_ descriptor: PhotoDescriptor) -> Bool { isStocked(descriptor, in: known) }
         // A close-up found missing and fetched since is here now, though the
         // day's list still says otherwise.
         let stocked = library.filter(isStocked)
@@ -589,7 +631,9 @@ public struct PhotoIndexBuilder: Sendable {
             var here: Set<String> = []
             var unknown: [PhotoDescriptor] = []
             for descriptor in chosen {
-                if isStocked(descriptor) || confirmed.contains(descriptor.id.rawValue) {
+                // Another generation's close-up saves asking, once chosen.
+                if isStocked(descriptor) || isStocked(descriptor, in: pixels)
+                    || confirmed.contains(descriptor.id.rawValue) {
                     here.insert(descriptor.id.rawValue)
                 } else {
                     unknown.append(descriptor)
@@ -889,7 +933,9 @@ public struct PhotoIndexBuilder: Sendable {
         try store.save(manifest)
 
         // Only once the manifest is the truth on disk.
-        _ = try? store.collectOrphans(keeping: Set(manifest.entries.map(\.thumbnail)))
+        if collectsOrphans {
+            _ = try? store.collectOrphans(keeping: Set(manifest.entries.map(\.thumbnail)))
+        }
 
         return manifest
     }

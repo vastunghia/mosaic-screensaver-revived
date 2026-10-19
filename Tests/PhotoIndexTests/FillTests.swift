@@ -963,3 +963,228 @@ struct FillTests {
         #expect(second.subjects != first.subjects)
     }
 }
+
+@Suite("Renewing a subset beside the live one")
+struct RenewalTests {
+    private func temporaryDirectory() -> URL {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("mosaic-renewal-\(UUID().uuidString)", isDirectory: true)
+        try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        return url
+    }
+
+    private func builder(collectsOrphans: Bool = false) -> PhotoIndexBuilder {
+        var builder = PhotoIndexBuilder(
+            thumbnailWidth: 64, signatureSide: 4, cropRule: .centre, tileWidths: [32, 16], checkpointEvery: 8
+        )
+        builder.collectsOrphans = collectsOrphans
+        return builder
+    }
+
+    private func sharpOnly(_ count: Int, sharp: Set<String>) -> PatchyLibrary {
+        let library = PatchyLibrary(count: count)
+        library.localWidths = Dictionary(uniqueKeysWithValues: library.ids.filter { !sharp.contains($0) }.map { ($0, 100) })
+        return library
+    }
+
+    private func preference(stocked: Set<String> = []) -> PhotoIndexBuilder.CloseUpPreference {
+        PhotoIndexBuilder.CloseUpPreference(width: 128, isStocked: { stocked.contains($0.id) })
+    }
+
+    private let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
+
+    @Test("the manifest says which subset it holds")
+    func choiceWritten() throws {
+        let index = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: index) }
+        let source = SubsetPhotoSource(PatchyLibrary(count: 100), rule: .random, count: 40, seed: 9)
+        let manifest = try builder().build(from: source, into: PhotoIndexStore(directory: index), root: "library")
+        #expect(manifest.choice == source.choice)
+        #expect(try PhotoIndexStore(directory: index).load()?.choice == source.choice)
+    }
+
+    @Test("a renewed seed chooses its subjects as from scratch, whatever close-ups the shelf holds for the old ones")
+    func subjectsAfresh() throws {
+        for rule in SubsetRule.allCases {
+            let probe = PatchyLibrary(count: 400)
+            let sharp = Set(SubsetRule.random.choose(from: probe.descriptors, count: 80, seed: 3).map(\.id.rawValue))
+            let library = sharpOnly(400, sharp: sharp)
+            let index = temporaryDirectory()
+            defer { try? FileManager.default.removeItem(at: index) }
+            let store = PhotoIndexStore(directory: index)
+
+            let live = try builder().build(
+                from: SubsetPhotoSource(library, rule: rule, count: 160, seed: 9), into: store, root: "library",
+                now: now, preferring: preference()
+            )
+            // The shelf, once stocked, holds a close-up for every one that
+            // fills the screen and is here large enough to make it.
+            let shelved = Set(live.entries.filter(\.canFillScreen).map(\.id)).intersection(sharp)
+            let renewed = SubsetPhotoSource(library, rule: rule, count: 160, seed: 10)
+            // Days later, when what the live build found missing is asked
+            // again: within the day it would also spend the same day's
+            // budget for the search (`preferred`).
+            let later = now.addingTimeInterval(2 * 86_400)
+
+            let next = try builder().build(
+                from: renewed, into: store.next, root: "library", now: later,
+                preferring: preference(stocked: shelved), reusing: live
+            )
+            let fresh = try builder().build(
+                from: renewed, into: PhotoIndexStore(directory: temporaryDirectory()), root: "library",
+                now: now, preferring: preference()
+            )
+            #expect(Set(next.subjects) == Set(fresh.subjects), "\(rule)")
+            #expect(Set(next.entries.map(\.id)) == Set(fresh.entries.map(\.id)), "\(rule)")
+
+            // The trap it avoids: the same seed changed in place prefers the
+            // close-ups already here, all of the old subset's.
+            let inPlace = try builder().build(
+                from: renewed, into: store, root: "library", now: later,
+                preferring: preference(stocked: shelved)
+            )
+            #expect(Set(inPlace.subjects).isSubset(of: shelved), "\(rule)")
+            // The most recent are the most recent whatever the seed.
+            if rule != .recent {
+                #expect(!Set(next.subjects).isSubset(of: shelved), "\(rule)")
+            }
+        }
+    }
+
+    @Test("the other generation's thumbnails are taken as they are, and none of its own is deleted")
+    func pixelsReused() throws {
+        let library = PatchyLibrary(count: 160)
+        let index = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: index) }
+        let store = PhotoIndexStore(directory: index)
+        let live = try builder().build(
+            from: SubsetPhotoSource(library, rule: .random, count: 40, seed: 9), into: store, root: "library", now: now
+        )
+        library.asked = []
+        let next = try builder().build(
+            from: SubsetPhotoSource(library, rule: .random, count: 40, seed: 10), into: store.next,
+            root: "library", now: now, reusing: live
+        )
+        let both = Set(live.entries.map(\.id)).intersection(next.entries.map(\.id))
+        #expect(!both.isEmpty)
+        #expect(Set(library.asked).isDisjoint(with: both), "read again: \(Set(library.asked).intersection(both))")
+        #expect(library.asked.count == next.entries.count - both.count)
+        for entry in live.entries + next.entries {
+            #expect(store.hasThumbnail(named: entry.thumbnail), "\(entry.id)")
+        }
+        #expect(try store.load() == live, "the live manifest is untouched")
+        #expect(next.subjects.isEmpty && next.ringPicks.isEmpty)
+    }
+
+    @Test("what is known of the whole library carries over to the new generation")
+    func libraryFactsCarry() throws {
+        let library = PatchyLibrary(count: 160)
+        library.away = Set(library.ids.prefix(60))
+        let index = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: index) }
+        let store = PhotoIndexStore(directory: index)
+        let live = try builder().build(
+            from: SubsetPhotoSource(library, rule: .random, count: 40, seed: 9), into: store, root: "library",
+            availability: "nothing", now: now
+        )
+        #expect(!live.unavailable.isEmpty)
+        library.asked = []
+        let next = try builder().build(
+            from: SubsetPhotoSource(library, rule: .random, count: 40, seed: 10), into: store.next,
+            root: "library", availability: "nothing", now: now.addingTimeInterval(60), reusing: live
+        )
+        #expect(Set(library.asked).isDisjoint(with: live.unavailable), "asked again within the day")
+        #expect(Set(live.unavailable).isSubset(of: Set(next.unavailable)))
+        #expect(next.unavailableCheckedAt == live.unavailableCheckedAt)
+    }
+
+    @Test("an interrupted renewal picks up where it stopped, and ends as an uninterrupted one")
+    func resumes() throws {
+        let library = PatchyLibrary(count: 300)
+        let index = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: index) }
+        let store = PhotoIndexStore(directory: index)
+        let live = try builder().build(
+            from: SubsetPhotoSource(library, rule: .uniformInTime, count: 80, seed: 9), into: store, root: "library",
+            now: now
+        )
+        let renewed = SubsetPhotoSource(library, rule: .uniformInTime, count: 80, seed: 10)
+        let calls = Counter()
+        _ = try builder().build(
+            from: renewed, into: store.next, root: "library", now: now, reusing: live,
+            isCancelled: { calls.increment() > 3 }
+        )
+        let partial = try #require(try store.next.load())
+        #expect(partial.entries.count < 80)
+        let resumed = try builder().build(from: renewed, into: store.next, root: "library", now: now, reusing: live)
+        let fresh = try builder().build(
+            from: renewed, into: PhotoIndexStore(directory: temporaryDirectory()), root: "library", now: now
+        )
+        #expect(resumed.entries.map(\.id) == fresh.entries.map(\.id))
+    }
+
+    @Test("promoting puts the next manifest in place in one rename, and housekeeping then takes the old files")
+    func promoteAndCollect() throws {
+        let library = PatchyLibrary(count: 160)
+        let index = temporaryDirectory()
+        let shelfDirectory = temporaryDirectory()
+        defer {
+            try? FileManager.default.removeItem(at: index)
+            try? FileManager.default.removeItem(at: shelfDirectory)
+        }
+        let store = PhotoIndexStore(directory: index)
+        let shelf = CloseUpShelf(directory: shelfDirectory, width: 128)
+        let live = try builder().build(
+            from: SubsetPhotoSource(library, rule: .random, count: 40, seed: 9), into: store, root: "library", now: now
+        )
+        let next = try builder().build(
+            from: SubsetPhotoSource(library, rule: .random, count: 40, seed: 10), into: store.next,
+            root: "library", now: now, reusing: live
+        )
+        let image = try SyntheticPhotoSource(count: 1).canonicalImage(for: SyntheticPhotoSource.id(for: 0), maxPixelWidth: 128)
+        for entry in live.entries + next.entries { try shelf.write(image, for: entry) }
+
+        // Both generations on disk: nothing is anybody's orphan.
+        #expect(IndexHousekeeping.collect(index: store, shelf: shelf) == .init())
+
+        try store.promote(store.next)
+        #expect(try store.load() == next)
+        #expect(try store.next.load() == nil)
+
+        let old = Set(live.entries.map(\.id)).subtracting(next.entries.map(\.id))
+        let report = IndexHousekeeping.collect(index: store, shelf: shelf)
+        #expect(report == .init(thumbnails: old.count, closeUps: old.count))
+        for entry in next.entries {
+            #expect(store.hasThumbnail(named: entry.thumbnail) && shelf.has(entry), "\(entry.id)")
+        }
+        for entry in live.entries where old.contains(entry.id) {
+            #expect(!store.hasThumbnail(named: entry.thumbnail) && !shelf.has(entry), "\(entry.id)")
+        }
+    }
+
+    @Test("with no live manifest to read, housekeeping removes nothing")
+    func nothingWithoutManifest() throws {
+        let library = PatchyLibrary(count: 60)
+        let index = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: index) }
+        let store = PhotoIndexStore(directory: index)
+        let next = try builder().build(
+            from: SubsetPhotoSource(library, rule: .random, count: 20, seed: 9), into: store.next, root: "library"
+        )
+        #expect(IndexHousekeeping.collect(index: store, shelf: nil) == .init())
+        try Data("not a manifest".utf8).write(to: store.manifestURL)
+        #expect(IndexHousekeeping.collect(index: store, shelf: nil) == .init())
+        for entry in next.entries { #expect(store.hasThumbnail(named: entry.thumbnail)) }
+    }
+}
+
+private final class Counter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+
+    func increment() -> Int {
+        lock.lock(); defer { lock.unlock() }
+        count += 1
+        return count
+    }
+}

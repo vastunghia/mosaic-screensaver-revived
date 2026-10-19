@@ -269,6 +269,12 @@ public struct IndexManifest: Codable, Equatable, Sendable {
     /// at once more.
     public var assessments: [PhotoAssessment]
 
+    /// What a filled subset was chosen under (`FillablePhotoSource.choice`:
+    /// rule, target and seed), so a host can tell which subset an index on
+    /// disk holds — the live one or the one a renewal was building (evolution
+    /// 2). Nil for a folder. Added without bumping `formatVersion`.
+    public var choice: String?
+
     public init(
         formatVersion: Int = IndexManifest.currentFormatVersion,
         root: String,
@@ -286,7 +292,8 @@ public struct IndexManifest: Codable, Equatable, Sendable {
         subjects: [String] = [],
         subjectsChoice: String? = nil,
         ringPicks: [String] = [],
-        assessments: [PhotoAssessment] = []
+        assessments: [PhotoAssessment] = [],
+        choice: String? = nil
     ) {
         self.formatVersion = formatVersion
         self.root = root
@@ -305,12 +312,13 @@ public struct IndexManifest: Codable, Equatable, Sendable {
         self.subjectsChoice = subjectsChoice
         self.ringPicks = ringPicks
         self.assessments = assessments
+        self.choice = choice
     }
 
     private enum CodingKeys: String, CodingKey {
         case formatVersion, root, thumbnailWidth, thumbnailHeight, signatureSide, cropRule
         case entries, skipped, unavailable, unavailableCheckedAt, unavailableContext, belowFullScreen
-        case belowCloseUp, subjects, subjectsChoice, ringPicks, assessments
+        case belowCloseUp, subjects, subjectsChoice, ringPicks, assessments, choice
     }
 
     public init(from decoder: any Decoder) throws {
@@ -334,10 +342,12 @@ public struct IndexManifest: Codable, Equatable, Sendable {
         subjectsChoice = try container.decodeIfPresent(String.self, forKey: .subjectsChoice)
         ringPicks = try container.decodeIfPresent([String].self, forKey: .ringPicks) ?? []
         assessments = try container.decodeIfPresent([PhotoAssessment].self, forKey: .assessments) ?? []
+        choice = try container.decodeIfPresent(String.self, forKey: .choice)
     }
 
     /// As synthesised, except that an empty `belowFullScreen`,
-    /// `belowCloseUp`, `subjects`, `ringPicks` or `assessments` is left out, so
+    /// `belowCloseUp`, `subjects`, `ringPicks` or `assessments`, and a nil
+    /// `choice`, are left out, so
     /// a folder's manifest is written byte for byte as before it existed.
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
@@ -368,6 +378,7 @@ public struct IndexManifest: Codable, Equatable, Sendable {
         if !assessments.isEmpty {
             try container.encode(assessments, forKey: .assessments)
         }
+        try container.encodeIfPresent(choice, forKey: .choice)
     }
 
     /// Whether an index on disk can be continued rather than rebuilt.

@@ -30,13 +30,44 @@ public enum PhotoIndexError: Error, CustomStringConvertible {
 /// it takes a URL.
 public struct PhotoIndexStore: Sendable {
     public let directory: URL
+    /// The manifest's file name in `directory`. The thumbnails are shared by
+    /// every manifest there: a thumbnail's name is a function of its entry,
+    /// so two generations of the index can share the directory (`next`).
+    public let manifestName: String
 
-    public init(directory: URL) {
+    public static let manifestName = "manifest.json"
+    /// The generation being prepared while the live one serves (evolution 2).
+    public static let nextManifestName = "manifest-next.json"
+
+    public init(directory: URL, manifestName: String = PhotoIndexStore.manifestName) {
         self.directory = directory.standardizedFileURL
+        self.manifestName = manifestName
     }
 
     public var manifestURL: URL {
-        directory.appendingPathComponent("manifest.json")
+        directory.appendingPathComponent(manifestName)
+    }
+
+    /// The same directory, read through the manifest of the next generation:
+    /// a new subset is built there while the saver reads the live one, then
+    /// takes its place in one rename (`promote`).
+    public var next: PhotoIndexStore {
+        PhotoIndexStore(directory: directory, manifestName: Self.nextManifestName)
+    }
+
+    /// Puts `other`'s manifest in place of this one, in one `rename`: a
+    /// reader finds the old manifest or the new one, never neither. Both
+    /// must be in the same directory, whose thumbnails they share.
+    public func promote(_ other: PhotoIndexStore) throws {
+        precondition(other.directory == directory, "a manifest is promoted within its directory")
+        guard rename(other.manifestURL.path, manifestURL.path) == 0 else {
+            throw PhotoIndexError.missing(other.manifestURL)
+        }
+    }
+
+    /// Removes the manifest, leaving the thumbnails to whoever collects them.
+    public func discard() {
+        try? FileManager.default.removeItem(at: manifestURL)
     }
 
     public func url(forThumbnail name: String) -> URL {
@@ -70,6 +101,14 @@ public struct PhotoIndexStore: Sendable {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
         try encoder.encode(sorted).write(to: manifestURL, options: .atomic)
+    }
+
+    /// The live generation and the next, as far as either is on disk: those
+    /// whose files no collection may take.
+    public func generations() -> [IndexManifest] {
+        [Self.manifestName, Self.nextManifestName].compactMap {
+            try? PhotoIndexStore(directory: directory, manifestName: $0).load()
+        }
     }
 
     public func writeThumbnail(_ image: CGImage, named name: String) throws {

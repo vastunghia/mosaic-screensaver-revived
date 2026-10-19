@@ -202,11 +202,14 @@ public struct CloseUpShelf: Sendable {
     /// caps.
     ///
     /// Stopped halfway, it leaves whole files behind and picks up from there
-    /// next time.
+    /// next time. Without `collectsOrphans` it removes nothing: a saver may be
+    /// reading them, or they belong to another generation of the index, and
+    /// the host collects them later (`IndexHousekeeping`).
     @discardableResult
     public func stock(
         from index: IndexedPhotoSource,
         fetching: Fetching? = nil,
+        collectsOrphans: Bool = true,
         progress: (@Sendable (StockReport) -> Void)? = nil,
         isCancelled: (@Sendable () -> Bool)? = nil
     ) throws -> StockReport {
@@ -298,7 +301,7 @@ public struct CloseUpShelf: Sendable {
             report.toFetch += ring.toFetch
         }
 
-        if !cancelled {
+        if !cancelled, collectsOrphans {
             report.removed = collectOrphans(keeping: Set((entries + spares).map(name(for:))))
         }
         return report
