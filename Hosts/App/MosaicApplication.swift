@@ -236,7 +236,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
     private func handle(_ call: MosaicURL) {
         switch call {
         case .open: showWindow()
-        case .update(let reason): model?.updateRequested(reason: reason)
+        case .update(let reason): model?.updateRequested(reason: reason, bySaver: true)
         }
     }
 

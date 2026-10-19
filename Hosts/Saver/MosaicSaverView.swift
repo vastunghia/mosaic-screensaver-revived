@@ -233,6 +233,11 @@ final class MosaicSaverView: ScreenSaverView {
         }
         willStopObserver = nil
         let cycle = engine?.statistics.cycleIndex
+        // A cycle planned without the index, on the fallback: its files went
+        // missing under it, which the app's housekeeping must never cause.
+        if let error = engine?.statistics.lastError {
+            Self.log.error("a cycle fell back to the stand-in mosaic: \(error, privacy: .public)")
+        }
         if let closeUps {
             Self.log.notice("""
                 close-ups: \(closeUps.served, privacy: .public) from the shelf, \

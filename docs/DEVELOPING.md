@@ -150,6 +150,34 @@ feed with `defaults write com.vastunghia.Mosaic updateFeed …`, delete `lastUpd
 and launch with `open "mosaic://update?reason=test"`. Delete `updateFeed` afterwards.
 The update category of the log says what happened.
 
+## Renewing the subset
+
+**Change photographs** in Settings chooses the subset again with a new seed. The new one is
+built beside the live one, in `manifest-next.json` next to `manifest.json`. The two share
+`thumbs/` and the close-up shelf, since every file is named after its photograph. Once the
+new subset's index and its close-ups made from what this Mac has are ready, a `rename`
+puts it in place.
+The app deletes the files no manifest names only while no screen saver runs: the saver
+reads a thumbnail and a close-up at every cycle, from the subset it started with. It
+learns this from the `com.apple.screensaver.didstart` and `didstop` notifications. Behind
+the lock screen the saver keeps running, and `didstop` comes only when the Mac is
+unlocked.
+
+- **Change Now** starts one at once, from the window.
+- **Without a window**, as a login item does when the date comes: make one due, then call
+  the app as the saver would. That call counts as a saver running, so the clean-up waits
+  for a `didstop` or for a window to open.
+
+  ```sh
+  defaults write com.vastunghia.Mosaic subsetRenewedAt -date "2026-10-01 00:00:00 +0000"
+  open "mosaic://update?reason=test"
+  ```
+
+The app category of the log says `renewing the subset started`, `renewal: … ready`,
+`renewal: the new subset is in place` and, once nothing reads the old files,
+`housekeeping: …`. A cycle the saver had to plan without the index shows as `a cycle fell
+back to the stand-in mosaic` in its category; there should never be one.
+
 ## The README's video
 
 The loop in the README is an export of four cycles whose subjects come round again, so

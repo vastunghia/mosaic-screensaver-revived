@@ -37,6 +37,20 @@ struct LibraryOptions: View {
             AlbumPicker(model: model)
         }
         Section {
+            HStack {
+                Picker("Change photographs", selection: $model.preferences.subsetRenewal) {
+                    Text("Never").tag(SubsetRenewal.never)
+                    Text("Every Day").tag(SubsetRenewal.daily)
+                    Text("Every Week").tag(SubsetRenewal.weekly)
+                    Text("Every Month").tag(SubsetRenewal.monthly)
+                }
+                Button("Change Now", action: model.renewNow)
+                    .disabled(model.isIndexing || !model.canRenew)
+            }
+        } footer: {
+            Footnote(renewalNote)
+        }
+        Section {
             Toggle("Leave out screenshots, documents and weak photos", isOn: $model.preferences.leavesOutWeak)
                 // One row of a grouped form (HIG, Toggles: mini switch).
                 .controlSize(.mini)
@@ -45,6 +59,19 @@ struct LibraryOptions: View {
                 ? "Receipts, notes and the like, and in each month the tenth of the photographs that Photos rates lowest. Others take their place."
                 : "Receipts, notes and the like, and the tenth of the photographs that Photos rates lowest. Others take their place.")
         }
+    }
+
+    /// When the photographs last changed and next will, or what is under way.
+    private var renewalNote: String {
+        if model.isRenewing {
+            return "Choosing new photographs. The screen saver shows the current ones until they are ready."
+        }
+        if model.preferences.subsetRule == .recent {
+            return "The most recent photographs stay the same: a change picks other photographs only when they are random or spread over time."
+        }
+        let last = model.subsetRenewedAt.formatted(date: .abbreviated, time: .omitted)
+        guard let next = model.nextRenewal else { return "Last changed on \(last)." }
+        return "Last changed on \(last), next on \(next.formatted(date: .abbreviated, time: .omitted)). The screen saver shows the current photographs until the new ones are ready."
     }
 
     private func chooseAlbums() {

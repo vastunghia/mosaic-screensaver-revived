@@ -23,9 +23,13 @@ struct AppPreferences: Equatable {
     var downloads: Downloads?
     var subsetRule = SubsetRule.uniformInTime
     var subsetSize = 2048
-    /// Fixed once, at the first launch, and kept: the indexed subset has to
-    /// stay the same from one session to the next.
+    /// Drawn at the first launch, and kept: the indexed subset has to stay
+    /// the same from one session to the next, until it is renewed
+    /// (`subsetRenewal`), which draws another.
     var subsetSeed: UInt64 = 0
+    /// How often the subset is chosen again with a new seed (evolution 2).
+    /// The seed changes only once the new subset is ready (`AppModel`).
+    var subsetRenewal = SubsetRenewal.standard
     /// Screenshots, utility shots and the weakest tenth left out (evolution 4).
     var leavesOutWeak = true
     var rows = 90
@@ -58,6 +62,7 @@ struct AppPreferences: Equatable {
         static let rule = "subsetRule"
         static let size = "subsetSize"
         static let seed = "subsetSeed"
+        static let renewal = "subsetRenewal"
         static let leavesOutWeak = "leavesOutWeak"
         static let rows = "rows"
         static let duration = "cycleDuration"
@@ -77,6 +82,9 @@ struct AppPreferences: Equatable {
         }
         if let raw = defaults.string(forKey: Key.rule), let rule = SubsetRule(rawValue: raw) {
             preferences.subsetRule = rule
+        }
+        if let raw = defaults.string(forKey: Key.renewal), let renewal = SubsetRenewal(rawValue: raw) {
+            preferences.subsetRenewal = renewal
         }
         if defaults.object(forKey: Key.size) != nil {
             preferences.subsetSize = max(100, defaults.integer(forKey: Key.size))
@@ -111,6 +119,7 @@ struct AppPreferences: Equatable {
         defaults.set(subsetRule.rawValue, forKey: Key.rule)
         defaults.set(subsetSize, forKey: Key.size)
         defaults.set(String(subsetSeed), forKey: Key.seed)
+        defaults.set(subsetRenewal.rawValue, forKey: Key.renewal)
         defaults.set(leavesOutWeak, forKey: Key.leavesOutWeak)
         defaults.set(rows, forKey: Key.rows)
         defaults.set(cycleDuration, forKey: Key.duration)

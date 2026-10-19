@@ -10,6 +10,12 @@ import SwiftUI
 enum Player {
     private static var window: PlayerWindow?
 
+    /// Whether the effect is on screen: it reads the index's files as the
+    /// saver does, so none is removed meanwhile (`IndexHousekeeping`).
+    static var isPlaying: Bool { window != nil }
+    /// Called each time it ends.
+    static var onStop: (() -> Void)?
+
     static func play(preferences: AppPreferences, on screen: NSScreen?) throws {
         try play(options: preferences.options(), on: screen)
     }
@@ -52,6 +58,7 @@ enum Player {
             window?.orderOut(nil)
             window = nil
             onEnd?()
+            Player.onStop?()
         }
         if let screen { player.setFrame(screen.frame, display: true) }
         player.makeKeyAndOrderFront(nil)

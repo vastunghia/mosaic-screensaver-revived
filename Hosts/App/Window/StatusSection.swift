@@ -55,12 +55,16 @@ struct StatusSection: View {
         } else if let closeUps = model.closeUps, model.isIndexing {
             switch closeUps {
             case .making(let tried, let of):
-                progress(Double(tried), of: Double(of), "Making sharp close-ups: \(tried) of \(of)")
+                progress(Double(tried), of: Double(of), model.isRenewing
+                         ? "Making sharp close-ups of the new photographs: \(tried) of \(of)"
+                         : "Making sharp close-ups: \(tried) of \(of)")
             case .downloading(let asked, let of):
                 progress(Double(asked), of: Double(of), "Downloading sharp close-ups from iCloud: \(asked) of \(of)")
             }
         } else if let progress = model.progress, model.isIndexing {
-            self.progress(Double(progress.completed), of: Double(progress.total), "Preparing · \(progress.summary)")
+            self.progress(Double(progress.completed), of: Double(progress.total), model.isRenewing
+                          ? "Choosing new photographs · \(progress.summary)"
+                          : "Preparing · \(progress.summary)")
         } else {
             LabeledContent("Photographs") {
                 Text(ready).monospacedDigit()

@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import MosaicPhotoKit
+import MosaicPhotos
 import PhotoIndex
 import os
 import ServiceManagement
@@ -23,7 +24,7 @@ import UserNotifications
 @MainActor
 final class AppModel: ObservableObject {
     /// The original would not start with fewer (SPEC § 5).
-    static let minimumPhotographs = 100
+    nonisolated static let minimumPhotographs = 100
 
     @Published var preferences: AppPreferences {
         didSet {
@@ -37,6 +38,7 @@ final class AppModel: ObservableObject {
                 || preferences.leavesOutWeak != oldValue.leavesOutWeak {
                 sourceChanged()
             }
+            if preferences.subsetRenewal != oldValue.subsetRenewal { renewIfDue() }
         }
     }
 
@@ -75,6 +77,26 @@ final class AppModel: ObservableObject {
     /// Close-ups fetched from iCloud in the last seven days (`DownloadLedger`).
     @Published private(set) var closeUpsFetchedThisWeek = 0
 
+    /// Whether the build under way is a renewal (evolution 2): a subset
+    /// chosen with a new seed, made beside the live one, which the saver
+    /// keeps showing until the new one takes its place.
+    @Published private(set) var isRenewing = false
+    /// When the subset on disk was chosen: the first launch that knew of
+    /// renewals, then each renewal. Kept apart from the preferences, like
+    /// the seed in waiting, so that neither restarts the preview.
+    @Published private(set) var subsetRenewedAt: Date
+    /// The seed of a renewal not finished yet: one stopped halfway resumes
+    /// with it, on the photographs it had already chosen.
+    private var pendingSubsetSeed: UInt64?
+    /// Asked for while a build was under way: it starts when that one ends.
+    private var renewalWanted = false
+    private var renewalTimer: Timer?
+
+    /// Files no generation of the index names, waiting until no saver and
+    /// no full-screen play reads them (`IndexHousekeeping`).
+    private var housekeepingDue = false
+    private let saverActivity = SaverActivity()
+
     private var cancel = CancelFlag()
     private var changes: PhotoLibraryChanges?
     private var restartWhenDone = false
@@ -105,11 +127,24 @@ final class AppModel: ObservableObject {
         self.foreground = foreground
         preferences = AppPreferences.load()
         pendingSaverRequest = UserDefaults.standard.string(forKey: Self.pendingKey)
+        if let renewed = UserDefaults.standard.object(forKey: Self.renewedAtKey) as? Date {
+            subsetRenewedAt = renewed
+        } else {
+            // The first renewal is a period after the update that brought
+            // them, not after the first launch long ago.
+            subsetRenewedAt = Date()
+            UserDefaults.standard.set(subsetRenewedAt, forKey: Self.renewedAtKey)
+        }
+        pendingSubsetSeed = UserDefaults.standard.string(forKey: Self.pendingSeedKey).flatMap(UInt64.init)
+        reconcileRenewal()
         refreshIndexedCount()
         refreshFetchedCount()
         // Also at launch: the file may predate these settings, or be missing.
         if SharedSettings.read() != preferences.shared { shareSettings() }
+        saverActivity.onStop = { [weak self] in self?.collectIfDue() }
+        Player.onStop = { [weak self] in self?.collectIfDue() }
         if access.isGranted { accessGranted() }
+        startRenewalTimer()
     }
 
     /// `R` and `T` for the .saver, next to the index.
@@ -205,6 +240,8 @@ final class AppModel: ObservableObject {
     /// A window has opened: from now on there is someone to ask.
     func windowOpened() {
         foreground = true
+        saverActivity.windowOpened()
+        collectIfDue()
         refreshAccess()
         refreshLoginItem()
         refreshSaver()
@@ -225,8 +262,9 @@ final class AppModel: ObservableObject {
 
     /// `mosaic://update`, or a launch at login: bring the index up to date if
     /// it can be done without asking anyone.
-    func updateRequested(reason: String) {
+    func updateRequested(reason: String, bySaver: Bool = false) {
         Self.log.notice("update requested: \(reason, privacy: .public)")
+        if bySaver { saverActivity.calledBySaver() }
         if needsAccess, !foreground {
             Self.log.notice("no Photos grant, and nobody to ask: noted for the next time the window opens")
             pendingSaverRequest = reason
@@ -530,6 +568,7 @@ final class AppModel: ObservableObject {
 
 
     private func sourceChanged() {
+        abandonRenewal()
         refreshIndexedCount()
         if isIndexing {
             // The build under way is for the old source; let it stop at its
@@ -550,12 +589,25 @@ final class AppModel: ObservableObject {
     // MARK: Index
 
     func startIndexing() {
+        startIndexing(renewing: nil)
+    }
+
+    /// With `seed`, a renewal: the subset chosen with it is built beside the
+    /// live one, then takes its place.
+    private func startIndexing(renewing seed: UInt64?) {
         guard !isIndexing, preferences.hasSource, !needsAccess else { return }
-        let options = preferences.options()
+        let options = {
+            var options = preferences.options()
+            if let seed { options.subsetSeed = seed }
+            return options
+        }()
+        // A renewal given up on leaves a next generation nobody will finish.
+        let discardsNext = seed == nil && pendingSubsetSeed == nil
         let flag = CancelFlag()
         cancel = flag
         indexedBeforeBuild = indexedCount
         isIndexing = true
+        isRenewing = seed != nil
         clearProblem(at: .preparing)
         restartWhenDone = false
         stallRetry?.cancel()
@@ -566,15 +618,18 @@ final class AppModel: ObservableObject {
         // Spike 4: with nobody watching, the index waits its turn behind
         // whatever the user is doing — the screen saver included.
         let qos: DispatchQoS.QoSClass = foreground ? .utility : .background
-        Self.log.notice("indexing started, \(self.foreground ? "utility" : "background", privacy: .public) QoS")
+        Self.log.notice("""
+            \(seed == nil ? "indexing" : "renewing the subset", privacy: .public) started, \
+            \(self.foreground ? "utility" : "background", privacy: .public) QoS
+            """)
 
         // Made here, on the main actor, so the queue's block holds no
         // reference to the model of its own.
         let progressed: @Sendable (IndexProgress) -> Void = { [weak self] progress in
             Task { @MainActor in self?.progressed(progress) }
         }
-        let finished: @Sendable (Error?, Double) -> Void = { [weak self] error, seconds in
-            Task { @MainActor in self?.finished(error: error, seconds: seconds) }
+        let finished: @Sendable (Error?, Double, Bool) -> Void = { [weak self] error, seconds, promoted in
+            Task { @MainActor in self?.finished(error: error, seconds: seconds, promoted: promoted ? seed : nil) }
         }
         let stocked: @Sendable (CloseUpShelf.StockReport, Bool) -> Void = { [weak self] report, metered in
             Task { @MainActor in self?.closeUpsStocked(report, metered: metered) }
@@ -586,30 +641,36 @@ final class AppModel: ObservableObject {
         Self.indexQueue.async(qos: DispatchQoS(qosClass: qos, relativePriority: 0)) {
             let started = ProcessInfo.processInfo.systemUptime
             var failure: Error?
+            var promoted = false
             do {
-                try Self.index(
-                    options: options, flag: flag, progress: progressed, fetching: fetching, stocked: stocked
-                )
+                if seed != nil {
+                    promoted = try Self.renew(options: options, flag: flag, progress: progressed, fetching: fetching)
+                } else {
+                    try Self.index(
+                        options: options, discardsNext: discardsNext, flag: flag, progress: progressed,
+                        fetching: fetching, stocked: stocked
+                    )
+                }
             } catch {
                 failure = error
             }
-            finished(failure, ProcessInfo.processInfo.systemUptime - started)
+            finished(failure, ProcessInfo.processInfo.systemUptime - started, promoted)
         }
     }
 
     /// The index, then the .saver's close-ups once the index is whole. The
-    /// saver runs without them meanwhile, on enlarged thumbnails.
+    /// saver runs without them meanwhile, on enlarged thumbnails. Nothing is
+    /// deleted here: a saver may be reading what the index no longer names
+    /// (`collectIfDue`).
     nonisolated private static func index(
-        options: Options, flag: CancelFlag, progress: @escaping @Sendable (IndexProgress) -> Void,
+        options: Options, discardsNext: Bool, flag: CancelFlag, progress: @escaping @Sendable (IndexProgress) -> Void,
         fetching fetched: @escaping @Sendable (CloseUpShelf.StockReport) -> Void,
         stocked: @escaping @Sendable (CloseUpShelf.StockReport, _ metered: Bool) -> Void
     ) throws {
         guard let indexable = try PhotoSourceFactory.indexable(options: options) else { return }
-        let builder = PhotoIndexBuilder(
-            thumbnailWidth: options.thumbnailWidth, signatureSide: options.signatureSide,
-            cropRule: options.cropRule, assessor: options.assessor
-        )
+        let builder = builder(options: options)
         let store = PhotoIndexStore(directory: options.resolvedIndexDirectory)
+        if discardsNext { store.next.discard() }
         let manifest = try builder.build(
             from: indexable.source,
             into: store,
@@ -640,6 +701,7 @@ final class AppModel: ObservableObject {
         let report = try options.closeUpShelf.stock(
             from: IndexedPhotoSource(store: store, originals: indexable.source),
             fetching: fetching,
+            collectsOrphans: false,
             progress: fetched,
             isCancelled: { flag.isSet }
         )
@@ -657,6 +719,59 @@ final class AppModel: ObservableObject {
             """)
     }
 
+    nonisolated private static func builder(options: Options) -> PhotoIndexBuilder {
+        var builder = PhotoIndexBuilder(
+            thumbnailWidth: options.thumbnailWidth, signatureSide: options.signatureSide,
+            cropRule: options.cropRule, assessor: options.assessor
+        )
+        builder.collectsOrphans = false
+        return builder
+    }
+
+    /// A renewal: the subset `options` choose, built beside the live one
+    /// (`PhotoIndexStore.next`), taking only its pixels, then the close-ups
+    /// this Mac can make without a download, then in its place. Whether it
+    /// took it. What it would fetch, the next update fetches.
+    nonisolated private static func renew(
+        options: Options, flag: CancelFlag, progress: @escaping @Sendable (IndexProgress) -> Void,
+        fetching fetched: @escaping @Sendable (CloseUpShelf.StockReport) -> Void
+    ) throws -> Bool {
+        guard let indexable = try PhotoSourceFactory.indexable(options: options) else { return false }
+        let live = PhotoIndexStore(directory: options.resolvedIndexDirectory)
+        let next = live.next
+        let manifest = try builder(options: options).build(
+            from: indexable.source,
+            into: next,
+            root: indexable.root,
+            availability: options.availability,
+            preferring: options.closeUpPreference,
+            reusing: try live.load(),
+            progress: progress,
+            isCancelled: { flag.isSet }
+        )
+        log.notice("""
+            renewal: \(manifest.entries.count, privacy: .public) ready, \
+            \(manifest.entries.filter(\.canFillScreen).count, privacy: .public) fill the screen
+            """)
+        guard !flag.isSet else { return false }
+        guard manifest.entries.count >= minimumPhotographs else {
+            log.notice("renewal given up: too few photographs, the subset stays as it was")
+            next.discard()
+            return false
+        }
+        let report = try options.closeUpShelf.stock(
+            from: IndexedPhotoSource(store: next, originals: indexable.source),
+            collectsOrphans: false,
+            progress: fetched,
+            isCancelled: { flag.isSet }
+        )
+        log.notice("renewal: \(report.made, privacy: .public) close-ups made, \(report.kept, privacy: .public) kept")
+        guard !flag.isSet else { return false }
+        try live.promote(next)
+        log.notice("renewal: the new subset is in place")
+        return true
+    }
+
     func cancelIndexing() {
         restartWhenDone = false
         cancel.set()
@@ -664,12 +779,25 @@ final class AppModel: ObservableObject {
 
     private func progressed(_ progress: IndexProgress) {
         self.progress = progress
-        indexedCount = progress.ready
+        // A renewal's count is of a subset nobody sees yet.
+        if !isRenewing { indexedCount = progress.ready }
     }
 
-    private func finished(error: Error?, seconds: Double) {
+    private func finished(error: Error?, seconds: Double, promoted seed: UInt64?) {
+        let renewed = isRenewing
         isIndexing = false
+        isRenewing = false
         closeUps = nil
+        if let seed {
+            finishRenewal(seed)
+            // The new subset's close-ups from iCloud, and its first update.
+            restartWhenDone = true
+        } else if renewed, error == nil, !cancel.isSet {
+            // Too few photographs to make a subset of: as if renewed, so
+            // that it is not tried again every hour.
+            abandonRenewal()
+            setRenewedAt(Date())
+        }
         Self.log.notice("""
             indexing finished in \(seconds, format: .fixed(precision: 1), privacy: .public) s\
             \(error.map { ": \($0)" } ?? "", privacy: .public)
@@ -677,13 +805,18 @@ final class AppModel: ObservableObject {
         if let error {
             report(.preparing, "Preparing the photographs stopped: \(error.localizedDescription)")
         }
+        if !renewed, error == nil, !cancel.isSet {
+            housekeepingDue = true
+            collectIfDue()
+        }
         refreshIndexedCount()
         if fetchedThisRun { stallsInARow = 0 }
         if restartWhenDone || fetchedThisRun && error == nil && !cancel.isSet {
             startIndexing()
         } else {
             if stalledThisRun, error == nil, !cancel.isSet { retryAfterStall() }
-            quitIfIdle()
+            // Stopped by hand, it waits for the next hourly look.
+            if cancel.isSet || !renewIfDue() { quitIfIdle() }
         }
     }
 
@@ -705,6 +838,120 @@ final class AppModel: ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: item)
         if closeUpsWaiting?.reason == .stalled(retry: nil) { closeUpsWaiting?.reason = .stalled(retry: retry) }
         Self.log.notice("close-ups: trying again in \(Int(delay), privacy: .public) s, as iCloud stalled")
+    }
+
+    // MARK: Renewal
+
+    /// When the subset is next chosen again, if ever.
+    var nextRenewal: Date? {
+        preferences.subsetRenewal.due(after: subsetRenewedAt)
+    }
+
+    /// Whether the subset can be chosen again at all: with a folder there is
+    /// nothing to choose, the folder is the subset.
+    var canRenew: Bool {
+        preferences.source == .photos && access.isGranted
+    }
+
+    /// «Change Now».
+    func renewNow() {
+        renewalWanted = true
+        renewIfDue()
+    }
+
+    /// Starts a renewal if one is due, asked for, or stopped halfway; one
+    /// asked for during a build starts when it ends. Whether one started.
+    @discardableResult
+    private func renewIfDue() -> Bool {
+        guard canRenew else { return false }
+        let due = renewalWanted || pendingSubsetSeed != nil
+            || preferences.subsetRenewal.isDue(renewed: subsetRenewedAt, now: Date())
+        guard due else { return false }
+        guard !isIndexing else {
+            renewalWanted = true
+            return false
+        }
+        renewalWanted = false
+        let seed = pendingSubsetSeed ?? UInt64.random(in: .min ... .max)
+        setPendingSeed(seed)
+        startIndexing(renewing: seed)
+        return isIndexing
+    }
+
+    /// Hourly, to notice that the day has come; a sleeping Mac skips them.
+    private func startRenewalTimer() {
+        let timer = Timer(timeInterval: 3600, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { _ = self?.renewIfDue() }
+        }
+        timer.tolerance = 600
+        RunLoop.main.add(timer, forMode: .common)
+        renewalTimer = timer
+    }
+
+    /// The new subset is in place: its seed is the subset's from now on.
+    private func finishRenewal(_ seed: UInt64) {
+        Self.log.notice("the subset was renewed")
+        setPendingSeed(nil)
+        setRenewedAt(Date())
+        preferences.subsetSeed = seed
+    }
+
+    /// A change of source, albums, rule or size makes the next generation
+    /// another subset than the one asked for: it is thrown away by the next
+    /// update, and the renewal comes round again at its date.
+    private func abandonRenewal() {
+        guard pendingSubsetSeed != nil || renewalWanted else { return }
+        Self.log.notice("renewal given up")
+        renewalWanted = false
+        setPendingSeed(nil)
+    }
+
+    /// After a crash between the rename that put the new subset in place
+    /// and the preferences that remember its seed.
+    private func reconcileRenewal() {
+        guard let seed = pendingSubsetSeed, preferences.source == .photos else { return }
+        let store = PhotoIndexStore(directory: preferences.options().resolvedIndexDirectory)
+        guard let manifest = try? store.load(),
+              manifest.choice == preferences.subsetRule.choice(count: preferences.subsetSize, seed: seed)
+        else { return }
+        finishRenewal(seed)
+    }
+
+    private func setPendingSeed(_ seed: UInt64?) {
+        pendingSubsetSeed = seed
+        if let seed {
+            UserDefaults.standard.set(String(seed), forKey: Self.pendingSeedKey)
+        } else {
+            UserDefaults.standard.removeObject(forKey: Self.pendingSeedKey)
+        }
+    }
+
+    private func setRenewedAt(_ date: Date) {
+        subsetRenewedAt = date
+        UserDefaults.standard.set(date, forKey: Self.renewedAtKey)
+    }
+
+    private static let renewedAtKey = "subsetRenewedAt"
+    private static let pendingSeedKey = "pendingSubsetSeed"
+
+    // MARK: Housekeeping
+
+    /// Removes what no generation of the index names, once nothing may be
+    /// reading it: no screen saver, no full-screen play, no build. On the
+    /// index's queue, after whatever is on it.
+    private func collectIfDue() {
+        guard housekeepingDue, !isIndexing, !saverActivity.isRunning, !Player.isPlaying else { return }
+        housekeepingDue = false
+        let options = preferences.options()
+        Self.indexQueue.async(qos: DispatchQoS(qosClass: .background, relativePriority: 0)) {
+            let report = IndexHousekeeping.collect(
+                index: PhotoIndexStore(directory: options.resolvedIndexDirectory), shelf: options.closeUpShelf
+            )
+            Self.log.notice("""
+                housekeeping: \(report.thumbnails, privacy: .public) thumbnails and \
+                \(report.closeUps, privacy: .public) close-ups removed
+                """)
+        }
     }
 
     /// What is on disk, for the current source. Also right while a build runs,
