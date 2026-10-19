@@ -67,13 +67,19 @@ compile_strings Hosts/App/InfoPlist.xcstrings "$APP/Contents/Resources"
 PHOTOS_USAGE="$(info_plist_string Hosts/App/InfoPlist.xcstrings NSPhotoLibraryUsageDescription)"
 
 # The user guide travels in the bundle, so it always describes this build:
-# an Apple Help Book, opened from the Help menu, which searches it.
+# an Apple Help Book, opened from the Help menu, which searches it. One folder
+# of pages per language, Help/<language>/, with the style sheet they share, and
+# a search index each.
 echo "==> help book"
 HELP="$APP/Contents/Resources/$APP_NAME.help"
-mkdir -p "$HELP/Contents/Resources/en.lproj"
-cp Hosts/App/Help/*.html Hosts/App/Help/*.css "$HELP/Contents/Resources/en.lproj/"
-hiutil -I corespotlight -Caf "$HELP/Contents/Resources/en.lproj/$APP_NAME.cshelpindex" -s en \
-    "$HELP/Contents/Resources/en.lproj"
+for PAGES in Hosts/App/Help/*/; do
+    LANGUAGE="$(basename "$PAGES")"
+    LPROJ="$HELP/Contents/Resources/$LANGUAGE.lproj"
+    mkdir -p "$LPROJ"
+    cp "$PAGES"*.html Hosts/App/Help/help.css "$LPROJ/"
+    hiutil -I corespotlight -Caf "$LPROJ/$APP_NAME.cshelpindex" -s "$LANGUAGE" "$LPROJ"
+    echo "    $LANGUAGE: $(ls "$PAGES"*.html | wc -l | tr -d ' ') pages"
+done
 HELP_BOOK="$APP_BUNDLE_ID.help"
 cat > "$HELP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
