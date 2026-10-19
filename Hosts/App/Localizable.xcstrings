@@ -12,7 +12,7 @@
         },
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "%@ e %@"
           }
         }
@@ -23,7 +23,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Ancora da scaricare: %@. Mosaic Companion riprova più tardi."
           }
         }
@@ -40,7 +40,7 @@
         },
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Ancora da scaricare: %1$@. iCloud ha smesso di rispondere: Mosaic Companion riprova alle %2$@."
           }
         }
@@ -51,7 +51,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Ancora da scaricare: %@. iCloud ha smesso di rispondere: Mosaic Companion riprova più tardi."
           }
         }
@@ -62,7 +62,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Ancora da scaricare: %@. iCloud è stato troppo lento a inviarli: Mosaic Companion li richiede più tardi."
           }
         }
@@ -79,7 +79,7 @@
         },
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Ancora da scaricare: %1$@. È stato raggiunto il limite di %2$lld al giorno o %3$lld alla settimana: Mosaic Companion riprende appena possibile."
           }
         }
@@ -90,7 +90,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Ancora da scaricare: %@. La rete è a consumo (un hotspot, o Consumo limitato di dati)."
           }
         }
@@ -122,13 +122,13 @@
             "plural" : {
               "one" : {
                 "stringUnit" : {
-                  "state" : "needs_review",
+                  "state" : "translated",
                   "value" : "%lld album"
                 }
               },
               "other" : {
                 "stringUnit" : {
-                  "state" : "needs_review",
+                  "state" : "translated",
                   "value" : "%lld album"
                 }
               }
@@ -145,13 +145,13 @@
             "plural" : {
               "one" : {
                 "stringUnit" : {
-                  "state" : "needs_review",
+                  "state" : "translated",
                   "value" : "%lld già indicizzata"
                 }
               },
               "other" : {
                 "stringUnit" : {
-                  "state" : "needs_review",
+                  "state" : "translated",
                   "value" : "%lld già indicizzate"
                 }
               }
@@ -168,13 +168,13 @@
             "plural" : {
               "one" : {
                 "stringUnit" : {
-                  "state" : "needs_review",
+                  "state" : "translated",
                   "value" : "%lld scaricata negli ultimi 7 giorni."
                 }
               },
               "other" : {
                 "stringUnit" : {
-                  "state" : "needs_review",
+                  "state" : "translated",
                   "value" : "%lld scaricate negli ultimi 7 giorni."
                 }
               }
@@ -209,13 +209,13 @@
             "plural" : {
               "one" : {
                 "stringUnit" : {
-                  "state" : "needs_review",
+                  "state" : "translated",
                   "value" : "%lld cartella"
                 }
               },
               "other" : {
                 "stringUnit" : {
-                  "state" : "needs_review",
+                  "state" : "translated",
                   "value" : "%lld cartelle"
                 }
               }
@@ -232,13 +232,13 @@
             "plural" : {
               "one" : {
                 "stringUnit" : {
-                  "state" : "needs_review",
+                  "state" : "translated",
                   "value" : "%lld esclusa come documento o poco riuscita"
                 }
               },
               "other" : {
                 "stringUnit" : {
-                  "state" : "needs_review",
+                  "state" : "translated",
                   "value" : "%lld escluse come documenti o poco riuscite"
                 }
               }
@@ -258,7 +258,7 @@
         },
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "%lld di %lld"
           }
         }
@@ -269,7 +269,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "%lld solo come tessere"
           }
         }
@@ -283,13 +283,13 @@
             "plural" : {
               "one" : {
                 "stringUnit" : {
-                  "state" : "needs_review",
+                  "state" : "translated",
                   "value" : "%lld solo su iCloud, esclusa"
                 }
               },
               "other" : {
                 "stringUnit" : {
-                  "state" : "needs_review",
+                  "state" : "translated",
                   "value" : "%lld solo su iCloud, escluse"
                 }
               }
@@ -324,13 +324,13 @@
             "plural" : {
               "one" : {
                 "stringUnit" : {
-                  "state" : "needs_review",
+                  "state" : "translated",
                   "value" : "%lld foto mostrata a tutto schermo ha un primo piano sfocato: l’originale è su iCloud."
                 }
               },
               "other" : {
                 "stringUnit" : {
-                  "state" : "needs_review",
+                  "state" : "translated",
                   "value" : "%lld foto mostrate a tutto schermo hanno primi piani sfocati: gli originali sono su iCloud."
                 }
               }
@@ -347,13 +347,13 @@
             "plural" : {
               "one" : {
                 "stringUnit" : {
-                  "state" : "needs_review",
+                  "state" : "translated",
                   "value" : "%lld pronta"
                 }
               },
               "other" : {
                 "stringUnit" : {
-                  "state" : "needs_review",
+                  "state" : "translated",
                   "value" : "%lld pronte"
                 }
               }
@@ -373,7 +373,7 @@
         },
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "%#@ready@, ne servono almeno %2$lld"
           },
           "substitutions" : {
@@ -384,13 +384,13 @@
                 "plural" : {
                   "one" : {
                     "stringUnit" : {
-                      "state" : "needs_review",
+                      "state" : "translated",
                       "value" : "%arg pronta"
                     }
                   },
                   "other" : {
                     "stringUnit" : {
-                      "state" : "needs_review",
+                      "state" : "translated",
                       "value" : "%arg pronte"
                     }
                   }
@@ -406,7 +406,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "%lld s"
           }
         }
@@ -438,13 +438,13 @@
             "plural" : {
               "one" : {
                 "stringUnit" : {
-                  "state" : "needs_review",
+                  "state" : "translated",
                   "value" : "%lld primo piano nitido"
                 }
               },
               "other" : {
                 "stringUnit" : {
-                  "state" : "needs_review",
+                  "state" : "translated",
                   "value" : "%lld primi piani nitidi"
                 }
               }
@@ -479,13 +479,13 @@
             "plural" : {
               "one" : {
                 "stringUnit" : {
-                  "state" : "needs_review",
+                  "state" : "translated",
                   "value" : "%lld tessera più nitida"
                 }
               },
               "other" : {
                 "stringUnit" : {
-                  "state" : "needs_review",
+                  "state" : "translated",
                   "value" : "%lld tessere più nitide"
                 }
               }
@@ -502,13 +502,13 @@
             "plural" : {
               "one" : {
                 "stringUnit" : {
-                  "state" : "needs_review",
+                  "state" : "translated",
                   "value" : "%lld illeggibile"
                 }
               },
               "other" : {
                 "stringUnit" : {
-                  "state" : "needs_review",
+                  "state" : "translated",
                   "value" : "%lld illeggibili"
                 }
               }
@@ -525,13 +525,13 @@
             "plural" : {
               "one" : {
                 "stringUnit" : {
-                  "state" : "needs_review",
+                  "state" : "translated",
                   "value" : "%lld illeggibile, esclusa"
                 }
               },
               "other" : {
                 "stringUnit" : {
-                  "state" : "needs_review",
+                  "state" : "translated",
                   "value" : "%lld illeggibili, escluse"
                 }
               }
@@ -544,7 +544,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Una cartella"
           }
         }
@@ -555,7 +555,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Informazioni su Mosaic Companion"
           }
         }
@@ -565,7 +565,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "L’accesso è soggetto a restrizioni su questo Mac."
           }
         }
@@ -575,7 +575,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "L’accesso è stato negato."
           }
         }
@@ -585,7 +585,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Album"
           }
         }
@@ -596,7 +596,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Tutte le foto"
           }
         }
@@ -606,7 +606,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Consenti l’accesso…"
           }
         }
@@ -616,7 +616,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Consenti le notifiche…"
           }
         }
@@ -627,7 +627,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Quasi fatto"
           }
         }
@@ -638,7 +638,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Applicazioni"
           }
         }
@@ -648,7 +648,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Disponibile quando Mosaic Companion è in Applicazioni."
           }
         }
@@ -658,7 +658,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Indietro"
           }
         }
@@ -669,7 +669,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Porta tutto in primo piano"
           }
         }
@@ -680,7 +680,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Annulla"
           }
         }
@@ -690,7 +690,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Cambia ora"
           }
         }
@@ -700,7 +700,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Cambia le foto"
           }
         }
@@ -710,7 +710,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Modifica…"
           }
         }
@@ -721,7 +721,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Controlla aggiornamenti…"
           }
         }
@@ -732,7 +732,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Scegli"
           }
         }
@@ -743,7 +743,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Scegli Mosaic in Impostazioni di Sistema, in %@."
           }
         }
@@ -753,7 +753,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Scegli Mosaic in %@."
           }
         }
@@ -764,7 +764,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Scegli una cartella di foto per i mosaici."
           }
         }
@@ -774,7 +774,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Scegli…"
           }
         }
@@ -785,7 +785,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Scelta di nuove foto · %@"
           }
         }
@@ -795,7 +795,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Scelta di nuove foto in corso. Il salvaschermo mostra quelle attuali finché le nuove non sono pronte."
           }
         }
@@ -805,7 +805,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Azzera"
           }
         }
@@ -816,7 +816,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Fai clic per vedere le novità e installarla."
           }
         }
@@ -827,7 +827,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Chiudi"
           }
         }
@@ -838,7 +838,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Chiudi finestra"
           }
         }
@@ -849,7 +849,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Continua"
           }
         }
@@ -860,7 +860,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Controlli"
           }
         }
@@ -871,7 +871,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Copia"
           }
         }
@@ -882,7 +882,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Taglia"
           }
         }
@@ -892,18 +892,18 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Limite giornaliero o settimanale raggiunto"
           }
         }
       }
     },
     "Done" : {
-      "comment" : "Setup summary, VoiceOver: this page's step is done",
+      "comment" : "Button: ends the setup, or closes the album picker",
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Fine"
           }
         }
@@ -913,7 +913,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Impostazioni download…"
           }
         }
@@ -923,7 +923,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Scarica da iCloud"
           }
         }
@@ -933,7 +933,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Download di Mosaic %@…"
           }
         }
@@ -950,7 +950,7 @@
         },
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Download dei primi piani nitidi da iCloud: %lld di %lld"
           }
         }
@@ -961,7 +961,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Modifica"
           }
         }
@@ -972,7 +972,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Attiva modalità a tutto schermo"
           }
         }
@@ -982,7 +982,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Ogni giorno"
           }
         }
@@ -992,7 +992,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Ogni mese"
           }
         }
@@ -1002,7 +1002,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Ogni settimana"
           }
         }
@@ -1012,7 +1012,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Tutto il necessario"
           }
         }
@@ -1023,7 +1023,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "File"
           }
         }
@@ -1033,7 +1033,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Tutto schermo"
           }
         }
@@ -1043,7 +1043,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "A tutto schermo. Un tasto o un clic qualsiasi lo chiude."
           }
         }
@@ -1054,7 +1054,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Inizia"
           }
         }
@@ -1065,7 +1065,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Aiuto"
           }
         }
@@ -1076,7 +1076,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Nascondi Mosaic Companion"
           }
         }
@@ -1087,7 +1087,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Nascondi altre"
           }
         }
@@ -1097,7 +1097,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Quante"
           }
         }
@@ -1114,7 +1114,7 @@
         },
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Se azzeri i limiti, Mosaic riparte da zero e scarica subito %1$lld delle %2$lld copie che mancano ancora, circa %3$lld MB, e le altre man mano che i limiti lo consentono. Su un piano dati a consumo, il download viene conteggiato. Foto conserva le copie nella libreria finché non le serve lo spazio."
           }
         }
@@ -1153,7 +1153,7 @@
         },
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Se azzeri i limiti, Mosaic riparte da zero e scarica subito %#@missing@, circa %2$lld MB. Su un piano dati a consumo, il download viene conteggiato. Foto conserva le copie nella libreria finché non le serve lo spazio."
           },
           "substitutions" : {
@@ -1164,13 +1164,13 @@
                 "plural" : {
                   "one" : {
                     "stringUnit" : {
-                      "state" : "needs_review",
+                      "state" : "translated",
                       "value" : "l’unica copia che manca ancora"
                     }
                   },
                   "other" : {
                     "stringUnit" : {
-                      "state" : "needs_review",
+                      "state" : "translated",
                       "value" : "le %arg copie che mancano ancora"
                     }
                   }
@@ -1186,8 +1186,8 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "In background"
+            "state" : "translated",
+            "value" : "Sempre attivo"
           }
         }
       }
@@ -1197,7 +1197,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Installa e riapri"
           }
         }
@@ -1207,7 +1207,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Installa…"
           }
         }
@@ -1217,7 +1217,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Si riapre da lì. Il salvaschermo e l’elemento login hanno bisogno che resti in un posto solo; la copia scaricata può poi andare nel Cestino."
           }
         }
@@ -1233,7 +1233,7 @@
         },
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Ultimo cambio il %@, prossimo il %@. Il salvaschermo mostra le foto attuali finché le nuove non sono pronte."
           }
         }
@@ -1243,7 +1243,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Ultimo cambio il %@."
           }
         }
@@ -1253,7 +1253,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Escludi screenshot, documenti e foto poco riuscite"
           }
         }
@@ -1263,7 +1263,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Limitato alle foto che hai scelto"
           }
         }
@@ -1280,7 +1280,7 @@
         },
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Preparazione dei primi piani nitidi delle nuove foto: %lld di %lld"
           }
         }
@@ -1297,7 +1297,7 @@
         },
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Preparazione dei primi piani nitidi: %lld di %lld"
           }
         }
@@ -1308,7 +1308,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Contrai"
           }
         }
@@ -1318,7 +1318,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Mosaic"
           }
         }
@@ -1329,7 +1329,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Impossibile installare Mosaic %@."
           }
         }
@@ -1340,7 +1340,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Mosaic %@ è disponibile"
           }
         }
@@ -1351,7 +1351,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Mosaic %@ è la versione più recente."
           }
         }
@@ -1362,7 +1362,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Aiuto di Mosaic Companion"
           }
         }
@@ -1373,7 +1373,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Impostazioni di Mosaic Companion"
           }
         }
@@ -1383,7 +1383,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Mosaic Companion contiene il salvaschermo e lo installa per te. Alla fine della configurazione lo scegli in Impostazioni di Sistema."
           }
         }
@@ -1393,7 +1393,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Mosaic Companion cerca una nuova versione una volta al giorno. Consenti le notifiche perché possa avvisarti quando è pronta, anche se non apri mai la sua finestra: non servono a nient’altro. Puoi cambiare questa scelta in Impostazioni."
           }
         }
@@ -1403,7 +1403,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Mosaic Companion cerca una nuova versione una volta al giorno. Le notifiche ti dicono solo che è pronta, anche se non apri mai la sua finestra."
           }
         }
@@ -1414,7 +1414,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Impossibile aggiungere Mosaic Companion agli elementi login: %@"
           }
         }
@@ -1425,7 +1425,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Impossibile rimuovere Mosaic Companion dagli elementi login: %@"
           }
         }
@@ -1436,7 +1436,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Impossibile azzerare i limiti di download: %@"
           }
         }
@@ -1447,7 +1447,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Mosaic Companion scarica tutto ciò che serve per preparare le tue foto, originali compresi. Può richiedere molto tempo e molto spazio su disco: sceglilo solo se altrimenti le foto pronte sono troppo poche."
           }
         }
@@ -1457,7 +1457,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Mosaic Companion è aperto dalla posizione in cui è stato scaricato."
           }
         }
@@ -1467,7 +1467,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Mosaic Companion tiene aggiornate le foto del salvaschermo solo mentre è aperto."
           }
         }
@@ -1477,7 +1477,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Mosaic Companion tiene aggiornate le foto del salvaschermo solo mentre è aperto. Al login si apre senza finestra e resta in background, così le nuove foto arrivano al salvaschermo senza che tu debba aprirlo. Puoi cambiare questa scelta nella sua finestra."
           }
         }
@@ -1487,7 +1487,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Mosaic Companion deve leggere la tua libreria di Foto."
           }
         }
@@ -1497,7 +1497,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Mosaic Companion si apre al login senza finestra e tiene aggiornate le foto del salvaschermo."
           }
         }
@@ -1508,7 +1508,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Mosaic Companion usa solo ciò che Foto conserva su questo Mac. Se la tua libreria tiene gli originali su iCloud, a tutto schermo compaiono solo le foto che questo Mac conserva in grande, spesso di pochi anni, e alcuni primi piani sono sfocati."
           }
         }
@@ -1519,7 +1519,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Mosaic è configurato"
           }
         }
@@ -1530,7 +1530,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Impossibile spostare Mosaic in Applicazioni (%@). Trascinalo lì nel Finder, poi riaprilo."
           }
         }
@@ -1541,7 +1541,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Impossibile cercare aggiornamenti di Mosaic."
           }
         }
@@ -1558,7 +1558,7 @@
         },
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Mosaic scarica al massimo %lld copie al giorno e %lld alla settimana, per proteggere lo spazio su questo Mac e il tuo traffico dati."
           }
         }
@@ -1568,7 +1568,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Mosaic è un salvaschermo. Mosaic Companion, questa app, prepara le tue foto e ne tiene le impostazioni. Queste pagine lo configurano; puoi tornarci quando vuoi dal menu Mosaic Companion, con Configura Mosaic."
           }
         }
@@ -1579,7 +1579,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Mosaic è aggiornato"
           }
         }
@@ -1589,7 +1589,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Mosaic trasforma le tue foto in uno zoom senza fine: ogni foto si rivela una tessera di un mosaico, che compone un’altra foto, che è una tessera del mosaico successivo."
           }
         }
@@ -1599,7 +1599,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Le più recenti"
           }
         }
@@ -1609,7 +1609,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Sposta in Applicazioni"
           }
         }
@@ -1619,7 +1619,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Mai"
           }
         }
@@ -1629,7 +1629,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Nessun album scelto vuol dire tutta la libreria; più album si sommano."
           }
         }
@@ -1640,7 +1640,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Nessuna"
           }
         }
@@ -1651,7 +1651,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Non ora"
           }
         }
@@ -1662,7 +1662,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Da fare"
           }
         }
@@ -1672,7 +1672,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Niente"
           }
         }
@@ -1682,7 +1682,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Notifiche consentite, solo per le nuove versioni"
           }
         }
@@ -1692,7 +1692,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Notifiche disattivate: le nuove versioni compaiono solo in questa finestra"
           }
         }
@@ -1702,7 +1702,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Notifiche per le nuove versioni"
           }
         }
@@ -1712,7 +1712,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Apri Elementi login…"
           }
         }
@@ -1722,7 +1722,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Apri impostazioni Notifiche…"
           }
         }
@@ -1732,7 +1732,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Apri impostazioni Privacy…"
           }
         }
@@ -1742,7 +1742,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Apri impostazioni Salvaschermo…"
           }
         }
@@ -1752,7 +1752,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Apri al login"
           }
         }
@@ -1768,7 +1768,7 @@
         },
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Pagina %lld di %lld"
           }
         }
@@ -1779,7 +1779,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Incolla"
           }
         }
@@ -1790,7 +1790,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Foto"
           }
         }
@@ -1800,7 +1800,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Foto da"
           }
         }
@@ -1810,7 +1810,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Solo foto. Il numero di una cartella somma quelli dei suoi album, quindi una foto presente in più album viene contata più volte."
           }
         }
@@ -1820,7 +1820,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Foto da usare"
           }
         }
@@ -1831,7 +1831,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Foto su iCloud"
           }
         }
@@ -1841,7 +1841,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Libreria di Foto"
           }
         }
@@ -1852,7 +1852,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "La preparazione delle foto si è interrotta: %@"
           }
         }
@@ -1863,7 +1863,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Preparazione · %@"
           }
         }
@@ -1873,7 +1873,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Anteprima del mosaico"
           }
         }
@@ -1884,7 +1884,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Esci"
           }
         }
@@ -1895,7 +1895,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Esci da Mosaic Companion"
           }
         }
@@ -1906,7 +1906,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Uscire da Mosaic Companion?"
           }
         }
@@ -1916,7 +1916,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "A caso"
           }
         }
@@ -1926,7 +1926,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Pronto"
           }
         }
@@ -1936,7 +1936,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Ricevute, appunti e simili, e ogni mese il decimo delle foto con il punteggio più basso in Foto. Altre ne prendono il posto."
           }
         }
@@ -1946,7 +1946,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Ricevute, appunti e simili, e il decimo delle foto con il punteggio più basso in Foto. Altre ne prendono il posto."
           }
         }
@@ -1957,7 +1957,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Ripristina"
           }
         }
@@ -1967,7 +1967,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Riapri Mosaic Companion"
           }
         }
@@ -1978,7 +1978,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Azzera limiti"
           }
         }
@@ -1988,7 +1988,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Azzera limiti…"
           }
         }
@@ -1999,7 +1999,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Azzerare i limiti di download?"
           }
         }
@@ -2009,7 +2009,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Righe"
           }
         }
@@ -2019,7 +2019,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Righe, durata dello zoom, foto da usare e aggiornamenti (⌘,)"
           }
         }
@@ -2030,7 +2030,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Salvaschermo"
           }
         }
@@ -2041,7 +2041,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Salvaschermo › Altro"
           }
         }
@@ -2051,7 +2051,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Salvaschermo installato"
           }
         }
@@ -2061,7 +2061,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Cerca album"
           }
         }
@@ -2072,7 +2072,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Seleziona tutto"
           }
         }
@@ -2083,7 +2083,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Configura Mosaic"
           }
         }
@@ -2094,7 +2094,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Configura Mosaic…"
           }
         }
@@ -2105,7 +2105,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Impostazioni…"
           }
         }
@@ -2115,7 +2115,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Solo primi piani nitidi"
           }
         }
@@ -2126,7 +2126,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Mostra tutte"
           }
         }
@@ -2137,7 +2137,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Salta questa versione"
           }
         }
@@ -2147,8 +2147,8 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Origine"
+            "state" : "translated",
+            "value" : "Provenienza"
           }
         }
       }
@@ -2157,7 +2157,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Distribuite nel tempo"
           }
         }
@@ -2167,8 +2167,26 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Stato"
+          }
+        }
+      }
+    },
+    "Step done" : {
+      "comment" : "Setup: beside a page's title, and in the summary, when what the page asks for is in place; a state, not a button",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Done"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fatto"
           }
         }
       }
@@ -2177,7 +2195,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Interrompi"
           }
         }
@@ -2188,7 +2206,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Sono tutte le foto che questo Mac può usare: le altre sono solo su iCloud o illeggibili."
           }
         }
@@ -2198,7 +2216,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Il salvaschermo installato non è di questa versione."
           }
         }
@@ -2209,7 +2227,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Da ora in poi i limiti tornano a valere."
           }
         }
@@ -2219,7 +2237,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Il mosaico compare qui quando sono pronte %lld foto."
           }
         }
@@ -2230,7 +2248,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Impossibile avviare il mosaico."
           }
         }
@@ -2240,7 +2258,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Le foto più recenti restano le stesse: un cambio sceglie altre foto solo se sono a caso o distribuite nel tempo."
           }
         }
@@ -2257,7 +2275,7 @@
         },
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Le foto mostrate a tutto schermo, una su sedici, sono scelte da tutta la libreria, e Mosaic Companion scarica una copia nitida di ognuna che manca su questo Mac, di circa 1,3 MB, mai l’originale: al massimo %lld al giorno e %lld alla settimana, e nessuna su un hotspot o con Consumo limitato di dati. Foto conserva le copie nella libreria finché non le serve lo spazio."
           }
         }
@@ -2274,7 +2292,7 @@
         },
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Le foto mostrate a tutto schermo, una su sedici, sono scelte da tutta la libreria, e Mosaic Companion scarica una copia nitida di ognuna che manca su questo Mac, e di fino a %1$lld delle foto mostrate in grande intorno a loro, di circa 1,3 MB, mai l’originale: al massimo %2$lld al giorno e %3$lld alla settimana, e nessuna su un hotspot o con Consumo limitato di dati. Foto conserva le copie nella libreria finché non le serve lo spazio."
           }
         }
@@ -2285,7 +2303,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Il salvaschermo ha chiesto le foto (%@)."
           }
         }
@@ -2296,7 +2314,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Impossibile installare il salvaschermo: %@"
           }
         }
@@ -2307,7 +2325,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Impossibile aggiornare il salvaschermo: %@"
           }
         }
@@ -2317,7 +2335,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Il salvaschermo non è installato."
           }
         }
@@ -2328,7 +2346,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Il salvaschermo non riceverà nuove foto fino al prossimo login."
           }
         }
@@ -2338,7 +2356,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Non lasciano mai questo Mac: Mosaic Companion ne tiene una piccola copia, con cui comporre i mosaici. Quali album e quante foto si scelgono in Impostazioni."
           }
         }
@@ -2348,7 +2366,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Questa build non contiene il salvaschermo."
           }
         }
@@ -2364,7 +2382,7 @@
         },
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Conta solo se la tua libreria di Foto tiene gli originali su iCloud. In quel caso Mosaic Companion può scaricare una copia nitida delle foto che mostra a tutto schermo, di circa 1,3 MB, mai l’originale: al massimo %lld al giorno e %lld alla settimana, e nessuna su un hotspot o con Consumo limitato di dati. Con Niente, Mosaic Companion ti avvisa nella sua finestra se alcuni primi piani risultano sfocati. Puoi cambiare questa scelta in Impostazioni."
           }
         }
@@ -2374,7 +2392,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Attiva Mosaic Companion in Foto, poi riaprilo: l’accesso vale dall’avvio successivo. Va bene anche una cartella di foto."
           }
         }
@@ -2385,7 +2403,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Annulla"
           }
         }
@@ -2395,7 +2413,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Aggiorna"
           }
         }
@@ -2406,7 +2424,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Aggiorna le foto"
           }
         }
@@ -2417,7 +2435,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Aggiornamenti"
           }
         }
@@ -2427,7 +2445,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "In uso"
           }
         }
@@ -2437,7 +2455,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "In attesa di approvazione in Impostazioni di Sistema"
           }
         }
@@ -2448,7 +2466,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Sfondo › Salvaschermo › Altro"
           }
         }
@@ -2459,7 +2477,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Benvenuto in Mosaic"
           }
         }
@@ -2469,7 +2487,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Quello che resta da fare rimane nella finestra di Mosaic Companion, con le indicazioni su come farlo."
           }
         }
@@ -2479,7 +2497,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Quali foto"
           }
         }
@@ -2490,7 +2508,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Finestra"
           }
         }
@@ -2501,7 +2519,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Hai la versione %@. Mosaic Companion si riaprirà nella nuova versione e aggiornerà anche il salvaschermo."
           }
         }
@@ -2512,7 +2530,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Hai la versione %@. Mosaic Companion si riaprirà nella nuova versione e aggiornerà anche il salvaschermo. Per sostituirlo in Applicazioni servono il nome e la password di un amministratore."
           }
         }
@@ -2523,7 +2541,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Ridimensiona"
           }
         }
@@ -2533,7 +2551,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Durata dello zoom"
           }
         }
@@ -2544,7 +2562,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "un aggiornamento è già in corso"
           }
         }
@@ -2555,7 +2573,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "non è stata inserita la password di un amministratore"
           }
         }
@@ -2566,7 +2584,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "nessuna release trovata"
           }
         }
@@ -2577,7 +2595,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "la release %@ è una bozza o una pre-release"
           }
         }
@@ -2588,7 +2606,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "impossibile preparare la richiesta all’amministratore"
           }
         }
@@ -2599,7 +2617,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "il file di checksum non indica l’immagine disco"
           }
         }
@@ -2610,7 +2628,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "impossibile aprire l’immagine disco"
           }
         }
@@ -2621,7 +2639,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "l’immagine disco non contiene questa versione di Mosaic"
           }
         }
@@ -2632,7 +2650,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "il download non corrisponde al suo checksum"
           }
         }
@@ -2643,7 +2661,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "la nuova versione non è firmata come questa (%d)"
           }
         }
@@ -2654,7 +2672,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "impossibile leggere la release: %@"
           }
         }
@@ -2665,7 +2683,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "la release non contiene %@"
           }
         }
@@ -2676,7 +2694,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "il tag %@ della release non è una versione"
           }
         }
@@ -2693,7 +2711,7 @@
         },
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "il server ha risposto %lld per %@"
           }
         }
@@ -2704,7 +2722,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "impossibile leggere la firma"
           }
         }
@@ -2715,7 +2733,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "questa build non ha una versione"
           }
         }

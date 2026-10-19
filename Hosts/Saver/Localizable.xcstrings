@@ -34,7 +34,7 @@
         },
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "%#@photographs@ il %2$@."
           },
           "substitutions" : {
@@ -45,13 +45,13 @@
                 "plural" : {
                   "one" : {
                     "stringUnit" : {
-                      "state" : "needs_review",
+                      "state" : "translated",
                       "value" : "%arg foto, aggiornata"
                     }
                   },
                   "other" : {
                     "stringUnit" : {
-                      "state" : "needs_review",
+                      "state" : "translated",
                       "value" : "%arg foto, aggiornate"
                     }
                   }
@@ -95,7 +95,7 @@
         },
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "%#@photographs@ il %2$@: a Mosaic ne servono almeno %3$lld."
           },
           "substitutions" : {
@@ -106,13 +106,13 @@
                 "plural" : {
                   "one" : {
                     "stringUnit" : {
-                      "state" : "needs_review",
+                      "state" : "translated",
                       "value" : "%arg foto, aggiornata"
                     }
                   },
                   "other" : {
                     "stringUnit" : {
-                      "state" : "needs_review",
+                      "state" : "translated",
                       "value" : "%arg foto, aggiornate"
                     }
                   }
@@ -146,7 +146,7 @@
         },
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "%lld foto."
           }
         }
@@ -185,7 +185,7 @@
         },
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "%1$lld foto: a Mosaic ne servono almeno %2$lld."
           }
         }
@@ -202,7 +202,7 @@
         },
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "%1$lld righe, %2$lld secondi per foto."
           }
         }
@@ -213,7 +213,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Fine"
           }
         }
@@ -224,7 +224,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Impossibile avviare Mosaic. Apri Mosaic Companion per controllarne le foto."
           }
         }
@@ -253,7 +253,7 @@
         },
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Per ora Mosaic ha %lld foto. Apri Mosaic Companion per aggiungerne altre."
           }
         }
@@ -264,7 +264,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Ancora nessuna foto. Apri Mosaic Companion per sceglierle."
           }
         }
@@ -275,7 +275,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Apri Mosaic Companion per scegliere le foto del salvaschermo."
           }
         }
@@ -286,7 +286,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Apri Mosaic Companion…"
           }
         }
@@ -297,7 +297,7 @@
       "localizations" : {
         "it" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Le foto e le impostazioni si scelgono in Mosaic Companion."
           }
         }

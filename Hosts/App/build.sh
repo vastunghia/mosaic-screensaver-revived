@@ -77,7 +77,11 @@ for PAGES in Hosts/App/Help/*/; do
     LPROJ="$HELP/Contents/Resources/$LANGUAGE.lproj"
     mkdir -p "$LPROJ"
     cp "$PAGES"*.html Hosts/App/Help/help.css "$LPROJ/"
-    hiutil -I corespotlight -Caf "$LPROJ/$APP_NAME.cshelpindex" -s "$LANGUAGE" "$LPROJ"
+    hiutil -I corespotlight -Caf "$LPROJ/$APP_NAME.cshelpindex" -s "$LANGUAGE" -l "$LANGUAGE" "$LPROJ"
+    # The book's title in the viewer's toolbar is HPDBookTitle, one for all
+    # languages unless each says its own: the AppleTitle of its index page.
+    TITLE="$(sed -n 's/.*<meta name="AppleTitle" content="\([^"]*\)".*/\1/p' "$PAGES/index.html")"
+    printf '"HPDBookTitle" = "%s";\n' "$TITLE" > "$LPROJ/InfoPlist.strings"
     echo "    $LANGUAGE: $(ls "$PAGES"*.html | wc -l | tr -d ' ') pages"
 done
 HELP_BOOK="$APP_BUNDLE_ID.help"

@@ -56,12 +56,19 @@ struct SetupView: View {
                 .font(.title2.weight(.semibold))
             Spacer()
             if page.isDone(model) == true {
-                Label("Done", systemImage: "checkmark.circle.fill")
+                Label(Self.stepDone, systemImage: "checkmark.circle.fill")
                     .foregroundStyle(.green)
             }
         }
         .padding([.horizontal, .top], 24)
     }
+
+    /// What a page says when what it asks for is in place, beside its title
+    /// and to VoiceOver. A key of its own, though English says "Done" for both:
+    /// the button that ends the setup is an action ("Fine" in Italian), this is
+    /// a state ("Fatto").
+    private static let stepDone = String(localized: "Step done", defaultValue: "Done",
+                                         comment: "Setup: beside a page's title, and in the summary, when what the page asks for is in place; a state, not a button")
 
     /// The last page does not claim everything is done when it is not.
     private var title: String {
@@ -168,7 +175,7 @@ struct SetupView: View {
                             Image(systemName: done ? "checkmark.circle.fill" : "circle")
                                 .foregroundStyle(done ? AnyShapeStyle(.green) : AnyShapeStyle(.secondary))
                         }
-                        .accessibilityValue(done ? String(localized: "Done", comment: "Setup summary, VoiceOver: this page's step is done")
+                        .accessibilityValue(done ? Self.stepDone
                                                  : String(localized: "Not done", comment: "Setup summary, VoiceOver: this page's step is not done"))
                     }
                 }
