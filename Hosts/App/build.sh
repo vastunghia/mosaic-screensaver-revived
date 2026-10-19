@@ -2,15 +2,17 @@
 # Builds Mosaic Companion.app: the app that carries and prepares the screen
 # saver, which is also the development harness.
 #
-# Three things SwiftPM will not do on its own, and this is where they happen:
-# compiling the Metal shaders (swift build has no rule for .metal), assembling
-# the bundle, and signing it with a stable identity so TCC does not revoke the
-# Photos grant on every rebuild.
+# Four things SwiftPM will not do on its own, and this is where they happen:
+# compiling the Metal shaders (swift build has no rule for .metal), compiling
+# the String Catalogs into the bundle's .lproj folders, assembling the bundle,
+# and signing it with a stable identity so TCC does not revoke the Photos grant
+# on every rebuild.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
 source scripts/identity.sh
 source scripts/sign.sh
+source scripts/strings.sh
 source scripts/toolchain.sh
 
 CONFIG="release"
@@ -58,6 +60,11 @@ cp "$ICON" "$APP/Contents/Resources/AppIcon.icns"
 cp "$(swift build -c "$CONFIG" ${ARCHS[@]+"${ARCHS[@]}"} --show-bin-path)/MosaicApp" "$APP/Contents/MacOS/$APP_NAME"
 cp "$BUILD/default.metallib" "$APP/Contents/Resources/default.metallib"
 cp -R "$BUILD/$SAVER_NAME.saver" "$APP/Contents/Resources/"
+
+echo "==> strings"
+compile_strings Hosts/App/Localizable.xcstrings "$APP/Contents/Resources"
+compile_strings Hosts/App/InfoPlist.xcstrings "$APP/Contents/Resources"
+PHOTOS_USAGE="$(info_plist_string Hosts/App/InfoPlist.xcstrings NSPhotoLibraryUsageDescription)"
 
 # The user guide travels in the bundle, so it always describes this build:
 # an Apple Help Book, opened from the Help menu, which searches it.
@@ -119,7 +126,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
         </dict>
     </array>
     <key>NSPhotoLibraryUsageDescription</key>
-    <string>Mosaic Companion reads your photo library to prepare the photographs for the Mosaic screen saver.</string>
+    <string>$PHOTOS_USAGE</string>
 </dict>
 </plist>
 PLIST

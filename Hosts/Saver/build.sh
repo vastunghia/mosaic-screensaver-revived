@@ -3,13 +3,14 @@
 #
 # SwiftPM builds the executable as a dynamic library, linked by the Swift
 # driver: a bundle linked by clang loads but crashes on its first Swift global
-# (spike 1). This script compiles the shaders, which `swift build` ignores, and
-# assembles and signs the bundle.
+# (spike 1). This script compiles the shaders and the String Catalog, which
+# `swift build` ignores, and assembles and signs the bundle.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
 source scripts/identity.sh
 source scripts/sign.sh
+source scripts/strings.sh
 source scripts/toolchain.sh
 
 CONFIG="release"
@@ -51,6 +52,13 @@ mkdir -p "$SAVER/Contents/MacOS" "$SAVER/Contents/Resources"
 cp "$THUMBNAILS/thumbnail.png" "$THUMBNAILS/thumbnail@2x.png" "$SAVER/Contents/Resources/"
 cp "$(swift build -c "$CONFIG" ${ARCHS[@]+"${ARCHS[@]}"} --show-bin-path)/libMosaicSaver.dylib" "$SAVER/Contents/MacOS/$SAVER_NAME"
 cp "$BUILD/default.metallib" "$SAVER/Contents/Resources/default.metallib"
+
+# Inside legacyScreenSaver, Bundle.main is the host: the saver looks its strings
+# up in this bundle, in the language it resolves itself (spike 6). No
+# CFBundleLocalizations: the .lproj folders are enough, and the key only makes
+# Bundle.localizations list every language twice.
+echo "==> strings"
+compile_strings Hosts/Saver/Localizable.xcstrings "$SAVER/Contents/Resources"
 
 cat > "$SAVER/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>

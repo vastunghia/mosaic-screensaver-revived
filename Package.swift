@@ -95,10 +95,11 @@ let package = Package(
                 "AppUpdate",
             ],
             path: "Hosts/App",
-            // build.sh and the Help Book live next to the sources; build.sh
-            // copies the Help Book into the bundle, so SwiftPM only needs
-            // telling that neither is one of them.
-            exclude: ["build.sh", "Help"]
+            // build.sh, the Help Book and the String Catalogs live next to the
+            // sources; build.sh puts the Help Book and the compiled catalogs
+            // into the bundle, so SwiftPM only needs telling that none of them
+            // is one of them.
+            exclude: ["build.sh", "Help", "Localizable.xcstrings", "InfoPlist.xcstrings"]
         ),
 
         // M10 — the screen saver: a thin shell over MosaicEngine that reads the
@@ -107,7 +108,7 @@ let package = Package(
             name: "MosaicSaver",
             dependencies: ["MosaicEngine", "MosaicCore", "PhotoIndex", "SharedStore"],
             path: "Hosts/Saver",
-            exclude: ["build.sh"]
+            exclude: ["build.sh", "Localizable.xcstrings"]
         ),
 
         .testTarget(name: "MosaicCoreTests", dependencies: ["MosaicCore"]),
