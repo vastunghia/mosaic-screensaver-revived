@@ -11,6 +11,12 @@
 </p>
 
 <p align="center">
+  <a href="https://vastunghia.github.io/mosaic-screensaver-revived/"><b>Website</b></a> ·
+  <a href="https://github.com/vastunghia/mosaic-screensaver-revived/releases/latest"><b>Download</b></a> ·
+  <a href="https://github.com/vastunghia/mosaic-screensaver-revived/discussions"><b>Discussions</b></a>
+</p>
+
+<p align="center">
   The Mosaic screen saver from Mac OS X Leopard, rebuilt from scratch for macOS 15 and later,
   on your own photographs.
 </p>
