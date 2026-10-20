@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mosaic Privacy Policy</title>
+<meta name="description" content="What Mosaic and Mosaic Companion do with your photographs and your data.">
+<link rel="icon" href="media/icon.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="page legal">
+<div class="column">
+  <p class="back"><a href="index.html">← Mosaic</a></p>
+  <h1>Privacy Policy</h1>
+  <p class="small">Last updated 20 October 2026. It covers the Mosaic screen saver, the Mosaic Companion app, and this website.</p>
+
+  <h2>In short</h2>
+  <p>Mosaic collects no personal data. Nothing about you or your photographs is sent to the developer or to anyone else. There are no analytics, no accounts, no advertising and no tracking, in the app or on this site.</p>
+
+  <h2>Your Photos library</h2>
+  <ul>
+    <li>Mosaic Companion reads your Photos library with the access you give it in macOS. macOS has no read-only option for the whole library, so the request is for full access; Mosaic Companion uses it only to read, and never changes your photographs, albums or their details.</li>
+    <li>To leave out weak photographs, it reads the scores Photos gives your pictures from the library's own database, opened read-only.</li>
+    <li>Faces, documents and the quality of unscored photographs are judged on your Mac, with Apple's Vision framework. Nothing is uploaded for this.</li>
+    <li>You can change or revoke the access at any time in System Settings › Privacy &amp; Security › Photos.</li>
+  </ul>
+
+  <h2>What stays on your Mac</h2>
+  <ul>
+    <li>Reduced copies of the photographs the screen saver uses, 854 pixels wide for tiles and 1920 for close-ups, in <code>~/Library/Application Support/Mosaic</code>, with an index of them. That folder is in your user Library, which macOS lets only your account open.</li>
+    <li>Your settings, in the app's preferences.</li>
+    <li>Diagnostic messages, in the macOS log on your Mac and, after a stall, in <code>~/Library/Logs/Mosaic</code>. They are not sent anywhere.</li>
+  </ul>
+  <p>The screen saver runs inside Apple's sandboxed screen saver host, never reads the Photos library, and reads only those copies.</p>
+
+  <h2>Network connections</h2>
+  <ul>
+    <li><b>Updates.</b> Once a day Mosaic Companion asks GitHub whether a new version has been published, and downloads it from GitHub if you choose to install it. GitHub sees your IP address, as with any visit to a website; its handling of that data is described in the <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub General Privacy Statement</a>. No identifier of you or of your Mac is sent.</li>
+    <li><b>iCloud.</b> If your library keeps its originals in iCloud and you allow downloads, Mosaic Companion asks Photos for sharper copies of some photographs, which Photos fetches from iCloud as it does when you open a photograph, under Apple's terms. With downloads off, which is the default until you choose, nothing is fetched.</li>
+    <li>Mosaic Companion checks whether your Mac is on a personal hotspot or in Low Data Mode, to avoid downloading there. That check happens on your Mac.</li>
+  </ul>
+  <p>There are no other connections.</p>
+
+  <h2>Notifications</h2>
+  <p>If you allow notifications, Mosaic Companion uses them only to tell you that a new version is ready.</p>
+
+  <h2>This website</h2>
+  <p>This site is hosted by GitHub Pages. It sets no cookies and loads no scripts, fonts or analytics from anyone. GitHub may record visitors' IP addresses for security, as described in its <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">privacy statement</a>.</p>
+
+  <h2>Removing everything</h2>
+  <p>Uninstalling Mosaic removes the app, the screen saver and the copies of your photographs; the <a href="https://github.com/vastunghia/mosaic-screensaver-revived#uninstalling">README</a> says how, and <code>scripts/uninstall.sh</code> in the repository does all of it, permissions included. Your photographs and your Photos library are not affected.</p>
+
+  <h2>Checking all this</h2>
+  <p>Mosaic is open source. Everything on this page can be verified in the <a href="https://github.com/vastunghia/mosaic-screensaver-revived">source code</a>, and you can build the app yourself from it.</p>
+
+  <h2>Changes and contact</h2>
+  <p>Changes to this policy are published on this page, with a new date, and in the repository's history. For questions, start a <a href="https://github.com/vastunghia/mosaic-screensaver-revived/discussions">discussion on GitHub</a>. To report a bug, <a href="https://github.com/vastunghia/mosaic-screensaver-revived/issues">open an issue</a>. To report a security problem privately, use GitHub's <a href="https://github.com/vastunghia/mosaic-screensaver-revived/security/advisories/new">private vulnerability reporting</a>.</p>
+</div>
+
+<footer>
+  <span>Mosaic is free software under the MIT license. It is an independent tribute, not affiliated with or endorsed by Apple.</span>
+  <nav>
+    <a href="index.html">Mosaic</a>
+    <a href="https://github.com/vastunghia/mosaic-screensaver-revived/discussions">Discussions</a>
+    <a href="privacy.html">Privacy Policy</a>
+    <a href="terms.html">Terms</a>
+  </nav>
+</footer>
+</main>
+</body>
+</html>

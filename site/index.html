@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mosaic for macOS</title>
+<meta name="description" content="The Mosaic screen saver from Mac OS X Leopard, rebuilt from scratch for macOS 15 and later, on your own photographs. Free and open source.">
+<meta property="og:title" content="Mosaic for macOS">
+<meta property="og:description" content="The Mosaic screen saver from Mac OS X Leopard, rebuilt for macOS 15 and later, on your own photographs.">
+<meta property="og:image" content="media/poster.jpg">
+<link rel="icon" href="media/icon.png">
+<link rel="apple-touch-icon" href="media/icon.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="page">
+
+<header class="hero">
+  <img class="icon" src="media/icon.png" width="112" height="112" alt="">
+  <h1>Mosaic</h1>
+  <p class="line">The Mosaic screen saver from Mac OS X Leopard, rebuilt from scratch for macOS 15 and later, on your own photographs.</p>
+  <div class="actions">
+    <a class="button primary" href="https://github.com/vastunghia/mosaic-screensaver-revived/releases/latest">Download for macOS</a>
+    <a class="button" href="https://github.com/vastunghia/mosaic-screensaver-revived">Source on GitHub</a>
+  </div>
+  <p class="facts">Free and open source · macOS 15 or later · Intel and Apple silicon</p>
+</header>
+
+<section>
+  <div class="loop">
+    <video autoplay muted loop playsinline preload="metadata" poster="media/poster.jpg"
+           aria-label="A heart held in a hand, made of hundreds of small photographs, zooms out until it is one tile of a larger mosaic, which becomes the next photograph.">
+      <source src="media/mosaic-loop.mp4" type="video/mp4">
+    </video>
+  </div>
+  <p class="caption">One minute of Mosaic. The photographs come from the WordPress Photo Directory, under CC0.</p>
+</section>
+
+<section class="column">
+  <h2>An old friend, back</h2>
+  <p>Mac OS X Leopard came with a screen saver called Mosaic in 2007: an endless zoom outwards, in which every photograph turns out to be one tile of a mosaic, which makes up another photograph, which is one tile of the next mosaic. Apple dropped it in Mountain Lion, and nothing of it is left in current macOS.</p>
+  <p>This Mosaic is a clean-room rebuild, drawn with Metal, on the photographs in your own Photos library. It comes with Mosaic Companion, a small app that installs the screen saver, prepares your photographs for it and keeps its settings, since a screen saver cannot read the Photos library by itself.</p>
+</section>
+
+<section class="column">
+  <h2>What it does</h2>
+  <div class="features">
+    <div>
+      <h3>Aesthetics-aware photo selection</h3>
+      <p>Photos scores the pictures in your library. Mosaic leaves out the lowest-rated tenth of each month, and judges on your Mac the ones Photos has not scored yet.</p>
+    </div>
+    <div>
+      <h3>Face-aware cropping</h3>
+      <p>Portrait photographs are cropped to the shape of the screen around the faces in them.</p>
+    </div>
+    <div>
+      <h3>Screenshots filtered out</h3>
+      <p>Screenshots, receipts, notes and other documents stay out of the mosaics, and other photographs take their place.</p>
+    </div>
+    <div>
+      <h3>Smart Optimize Mac Storage support</h3>
+      <p>With originals in iCloud, Mosaic uses what Photos keeps on the Mac. It downloads sharper copies only if you allow it, at most 256 a day and 512 a week.</p>
+    </div>
+    <div>
+      <h3>Smooth 60 fps, even on old Macs</h3>
+      <p>The next mosaic is computed in the background, so the zoom never waits, and the photograph that fills the screen arrives as a sharp 1920-pixel copy.</p>
+    </div>
+    <div>
+      <h3>Private and secure, and you can check</h3>
+      <p>Your library is only read, the copies stay in your account, and the only connection is to GitHub, for updates. All the code is open.</p>
+    </div>
+  </div>
+  <p class="small" style="margin-top: 28px">Also: albums and folders as Photos shows them in its sidebar, or any folder of images; a new selection of photographs every week; updates that install themselves when you say so; English, French, German, Italian and Spanish.</p>
+</section>
+
+<section class="column">
+  <h2>Getting it</h2>
+  <ol class="steps">
+    <li>Download the disk image from the <a href="https://github.com/vastunghia/mosaic-screensaver-revived/releases/latest">latest release</a> and drag Mosaic Companion to Applications.</li>
+    <li>The first time you open it, macOS blocks it: Mosaic Companion is signed, but not notarized by Apple, which takes a paid developer membership. Choose <b>Open Anyway</b> in System Settings › Privacy &amp; Security. You do this once.</li>
+    <li>A short setup then guides you through access to your photographs, the screen saver, opening at login, iCloud and updates.</li>
+  </ol>
+  <p class="small" style="margin-top: 14px">You need macOS 15 Sequoia or later and at least 100 photographs; a couple of thousand look best. If you would rather not trust a downloaded app, <a href="https://github.com/vastunghia/mosaic-screensaver-revived#building-from-source">build it yourself</a>.</p>
+</section>
+
+<section class="column">
+  <h2>Your photographs</h2>
+  <p>They never leave your Mac. Mosaic Companion reads your Photos library without changing it, and keeps reduced copies in your user Library, which macOS lets only you open. The screen saver reads those copies and nothing else. The details are in the <a href="privacy.html">privacy policy</a>.</p>
+  <div class="warning">
+    <p><b>The screen saver shows your photographs while you are away.</b> Mosaic uses every photograph in your library, or in the albums you choose, except those hidden in Photos and those in Recently Deleted. A photograph you would rather nobody saw can fill the screen when the screen saver starts. Hide it in Photos, or choose only the albums you want Mosaic to use.</p>
+  </div>
+</section>
+
+<section class="column">
+  <h2>How it was made</h2>
+  <p>Mosaic was written with an AI coding assistant, Claude Code: I described what I wanted, made the design decisions and judged the results, but I did not review the code line by line. I built it one part at a time, each with a written specification of its own, and tested every part before moving on, on Intel and Apple silicon Macs, on macOS 15 and 26, on standard accounts and on libraries kept in iCloud. If you find a bug, please <a href="https://github.com/vastunghia/mosaic-screensaver-revived/issues">open an issue</a>.</p>
+</section>
+
+<footer>
+  <span>Mosaic is free software under the MIT license. It is an independent tribute, not affiliated with or endorsed by Apple.</span>
+  <nav>
+    <a href="https://github.com/vastunghia/mosaic-screensaver-revived">GitHub</a>
+    <a href="https://github.com/vastunghia/mosaic-screensaver-revived/discussions">Discussions</a>
+    <a href="privacy.html">Privacy Policy</a>
+    <a href="terms.html">Terms</a>
+  </nav>
+</footer>
+
+</main>
+</body>
+</html>

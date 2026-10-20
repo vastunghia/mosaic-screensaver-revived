@@ -1,0 +1,51 @@
+# Publishes the website in site/ with GitHub Pages, at
+# https://vastunghia.github.io/mosaic-screensaver-revived/
+# The loop and the icon are copied from docs/media, which the README uses too,
+# so that the repository holds one copy of each.
+name: Website
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - "docs/media/mosaic-loop.mp4"
+      - "docs/media/icon.png"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assemble the site
+        run: |
+          mkdir -p _site/media
+          cp -R site/. _site/
+          cp docs/media/mosaic-loop.mp4 docs/media/icon.png _site/media/
+          # Plain files: no Jekyll processing.
+          touch _site/.nojekyll
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
