@@ -33,8 +33,15 @@ final class Updater: ObservableObject {
 
     @Published private(set) var state = State.idle
 
-    let current = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString")
-        .flatMap { $0 as? String }.flatMap(ReleaseVersion.init)
+    let current = Updater.version(of: Bundle.main)
+
+    /// The whole version, release candidate included: `MosaicVersion`, which
+    /// `build.sh` writes beside macOS's own field, numbers only (1.0 for
+    /// 1.0-rc1). A build from before release candidates has only the latter.
+    nonisolated static func version(of bundle: Bundle) -> ReleaseVersion? {
+        (bundle.object(forInfoDictionaryKey: "MosaicVersion") ?? bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString"))
+            .flatMap { $0 as? String }.flatMap(ReleaseVersion.init)
+    }
 
     /// Not from where a download was unpacked, which is gone at the next
     /// launch (`AppLocation`), and not for a build without a signature to
@@ -122,13 +129,17 @@ final class Updater: ObservableObject {
         }
     }
 
-    /// GitHub's `releases/latest`, or `-updateFeed <url>` to try updates
-    /// against a server of one's own (a single dash: a double one opens the
-    /// harness). While the repository is private GitHub answers 404.
+    /// GitHub's `releases/latest`, which never holds a pre-release; for a
+    /// release candidate, which follows the candidates after it too, the list
+    /// of releases. Or `-updateFeed <url>` to try updates against a server of
+    /// one's own (a single dash: a double one opens the harness), with either.
     private var feed: URL {
-        UserDefaults.standard.string(forKey: "updateFeed").flatMap(URL.init(string:))
-            ?? URL(string: "https://api.github.com/repos/vastunghia/mosaic-screensaver-revived/releases/latest")!
+        if let custom = UserDefaults.standard.string(forKey: "updateFeed").flatMap(URL.init(string:)) { return custom }
+        let releases = "https://api.github.com/repos/vastunghia/mosaic-screensaver-revived/releases"
+        return URL(string: followsPrereleases ? releases + "?per_page=30" : releases + "/latest")!
     }
+
+    private var followsPrereleases: Bool { current?.isPrerelease ?? false }
 
     private func fetchRelease() async throws -> Release {
         var request = URLRequest(url: feed, timeoutInterval: 30)
@@ -137,7 +148,7 @@ final class Updater: ObservableObject {
         if let status = (response as? HTTPURLResponse)?.statusCode, status != 200 {
             throw UpdateError.server(status, feed)
         }
-        return try Release(gitHub: data, app: Self.productName)
+        return try Release(gitHub: data, app: Self.productName, includingPrereleases: followsPrereleases)
     }
 
     // MARK: Preparing
@@ -273,8 +284,7 @@ final class Updater: ObservableObject {
     private static func verify(_ url: URL, is version: ReleaseVersion) throws {
         guard let bundle = Bundle(url: url),
               bundle.bundleIdentifier == Bundle.main.bundleIdentifier,
-              let text = bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String,
-              ReleaseVersion(text) == version
+              Self.version(of: bundle) == version
         else { throw UpdateError.notThisApp }
         guard let requirement = ownRequirement() else { throw UpdateError.unsigned }
         var code: SecStaticCode?

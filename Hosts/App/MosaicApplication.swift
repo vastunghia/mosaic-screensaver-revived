@@ -65,7 +65,7 @@ enum MosaicApplication {
 
         let app = submenu(of: menu, titled: "Mosaic Companion")
         app.addItem(withTitle: String(localized: "About Mosaic Companion", comment: "Mosaic Companion menu"),
-                    action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+                    action: #selector(AppDelegate.showAbout(_:)), keyEquivalent: "")
         app.addItem(withTitle: String(localized: "Check for Updates…", comment: "Mosaic Companion menu"),
                     action: #selector(AppDelegate.checkForUpdates(_:)), keyEquivalent: "")
         app.addItem(withTitle: String(localized: "Set Up Mosaic…", comment: "Mosaic Companion menu"),
@@ -439,6 +439,14 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             alert.runModal()
         }
+    }
+
+    /// The standard panel, with the whole version: macOS's own field holds
+    /// the numbers alone, 1.0 for a release candidate 1.0-rc1.
+    @objc func showAbout(_ sender: Any?) {
+        var options: [NSApplication.AboutPanelOptionKey: Any] = [:]
+        if let version = updater.current { options[.applicationVersion] = version.description }
+        NSApp.orderFrontStandardAboutPanel(options: options)
     }
 
     /// Check for Updates…: says what it found, even "nothing", and offers a

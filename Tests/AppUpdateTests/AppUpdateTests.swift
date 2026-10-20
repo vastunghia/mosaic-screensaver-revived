@@ -11,9 +11,21 @@ struct ReleaseVersionTests {
         #expect(ReleaseVersion("v0.4")?.components == [0, 4])
         #expect(ReleaseVersion("0.4.1")?.components == [0, 4, 1])
         #expect(ReleaseVersion(" v1.10 \n")?.components == [1, 10])
-        for text in ["", "v", "0..4", "0.4.", "0.4b", "+1", "v-1", "0.4 beta", "V0.4"] {
+        for text in ["", "v", "0..4", "0.4.", "0.4b", "+1", "v-1", "0.4 beta", "V0.4",
+                     "1.0-", "1.0-rc", "1.0-1", "1.0-RC1", "1.0--rc1", "1.0-rc1-x", "-rc1"] {
             #expect(ReleaseVersion(text) == nil, "\(text)")
         }
+    }
+
+    @Test("a release candidate's suffix")
+    func candidate() throws {
+        let version = try #require(ReleaseVersion("v1.0-rc2"))
+        #expect(version.components == [1, 0])
+        #expect(version.stage == "rc")
+        #expect(version.stageNumber == 2)
+        #expect(version.isPrerelease)
+        #expect(version.description == "1.0-rc2")
+        #expect(try #require(ReleaseVersion("1.0")).isPrerelease == false)
     }
 
     @Test("numbers compare as numbers, missing ones as zero")
@@ -25,6 +37,17 @@ struct ReleaseVersionTests {
         #expect(try v("0.4") == v("0.4.0"))
         #expect(try !(v("1.0") < v("0.99")))
         #expect(try v("v0.4").description == "0.4")
+    }
+
+    @Test("a candidate comes after the version before it and before the one it leads to")
+    func candidateOrdering() throws {
+        let v = { (text: String) throws -> ReleaseVersion in try #require(ReleaseVersion(text)) }
+        let ordered = try ["0.9.1", "1.0-rc1", "1.0-rc2", "1.0-rc10", "1.0", "1.0.1-rc1", "1.0.1"].map(v)
+        for (a, b) in zip(ordered, ordered.dropFirst()) {
+            #expect(a < b, "\(a) < \(b)")
+        }
+        #expect(try v("1.0-rc1") == v("1.0.0-rc1"))
+        #expect(try !(v("1.0") < v("1.0-rc9")))
     }
 }
 
@@ -80,6 +103,54 @@ struct ReleaseTests {
         let release = try Release(gitHub: data, app: "Mosaic")
         #expect(release.notes == "")
         #expect(release.page == nil)
+    }
+}
+
+@Suite("Release from GitHub's list")
+struct ReleaseListTests {
+    private func release(_ tag: String, prerelease: Bool = false, draft: Bool = false) -> String {
+        let name = "Mosaic-\(tag.dropFirst()).dmg"
+        return #"""
+        {"tag_name": "\#(tag)", "draft": \#(draft), "prerelease": \#(prerelease),
+         "assets": [{"name": "\#(name)", "browser_download_url": "https://example.com/\#(name)"}]}
+        """#
+    }
+
+    private func list(_ releases: String...) -> Data {
+        Data(("[" + releases.joined(separator: ",") + "]").utf8)
+    }
+
+    @Test("a final version ignores candidates; a candidate follows both")
+    func choosing() throws {
+        let data = list(release("v1.0-rc2", prerelease: true), release("v1.0-rc1", prerelease: true), release("v0.9"))
+        #expect(try Release(gitHub: data, app: "Mosaic").version == ReleaseVersion("0.9"))
+        let candidate = try Release(gitHub: data, app: "Mosaic", includingPrereleases: true)
+        #expect(candidate.version == ReleaseVersion("1.0-rc2"))
+        #expect(candidate.diskImage.lastPathComponent == "Mosaic-1.0-rc2.dmg")
+
+        let final = list(release("v1.0"), release("v1.0-rc2", prerelease: true))
+        #expect(try Release(gitHub: final, app: "Mosaic", includingPrereleases: true).version == ReleaseVersion("1.0"))
+    }
+
+    @Test("drafts and tags that are not versions are passed over")
+    func passedOver() throws {
+        let data = list(release("v2.0", draft: true), release("vnext"), release("v1.0-rc1", prerelease: true))
+        #expect(try Release(gitHub: data, app: "Mosaic", includingPrereleases: true).version == ReleaseVersion("1.0-rc1"))
+    }
+
+    @Test("nothing to offer: no release")
+    func empty() {
+        #expect(throws: ReleaseError.noRelease) { try Release(gitHub: list(), app: "Mosaic") }
+        #expect(throws: ReleaseError.noRelease) {
+            try Release(gitHub: list(release("v1.0-rc1", prerelease: true)), app: "Mosaic")
+        }
+    }
+
+    @Test("a single pre-release, as releases/latest never sends, is refused to a final version")
+    func single() throws {
+        let data = Data(release("v1.0-rc1", prerelease: true).utf8)
+        #expect(throws: ReleaseError.notPublished("v1.0-rc1")) { try Release(gitHub: data, app: "Mosaic") }
+        #expect(try Release(gitHub: data, app: "Mosaic", includingPrereleases: true).version == ReleaseVersion("1.0-rc1"))
     }
 }
 

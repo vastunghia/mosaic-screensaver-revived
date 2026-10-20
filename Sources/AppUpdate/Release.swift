@@ -1,6 +1,7 @@
 import Foundation
 
-/// The newest release, as the app learns it from GitHub's `releases/latest`:
+/// The newest release, as the app learns it from GitHub's `releases/latest`
+/// (or its list of releases, for a release candidate):
 /// its version, its notes, and the disk image `scripts/release.sh` builds,
 /// with the checksum next to it.
 public struct Release: Equatable, Sendable {
@@ -24,18 +25,35 @@ public struct Release: Equatable, Sendable {
         "\(app)-\(version).dmg"
     }
 
-    /// Reads the JSON of `GET /repos/{owner}/{repo}/releases/latest`. The
-    /// version is the tag's; the disk image is the asset named after it, so a
-    /// release carrying other files (the README's video, once) still works.
-    public init(gitHub data: Data, app: String) throws {
-        let release: GitHubRelease
-        do {
-            release = try JSONDecoder().decode(GitHubRelease.self, from: data)
-        } catch {
-            throw ReleaseError.unreadable(error.localizedDescription)
+    /// Reads the JSON of `GET /repos/{owner}/{repo}/releases/latest`, one
+    /// release, or of `GET /repos/{owner}/{repo}/releases`, a list, of which it
+    /// takes the newest version. Drafts never count; pre-releases only for a
+    /// release candidate, which follows the candidates after it as well as the
+    /// final version. The version is the tag's; the disk image is the asset
+    /// named after it, so a release carrying other files (the README's video,
+    /// once) still works.
+    public init(gitHub data: Data, app: String, includingPrereleases: Bool = false) throws {
+        let decoder = JSONDecoder()
+        let releases: [GitHubRelease]
+        let isList: Bool
+        if let list = try? decoder.decode([GitHubRelease].self, from: data) {
+            releases = list
+            isList = true
+        } else {
+            do {
+                releases = [try decoder.decode(GitHubRelease.self, from: data)]
+            } catch {
+                throw ReleaseError.unreadable(error.localizedDescription)
+            }
+            isList = false
         }
-        guard !release.draft, !release.prerelease else { throw ReleaseError.notPublished(release.tag_name) }
-        guard let version = ReleaseVersion(release.tag_name) else { throw ReleaseError.badTag(release.tag_name) }
+
+        let published = releases.filter { !$0.draft && (includingPrereleases || !$0.prerelease) }
+        if !isList, published.isEmpty { throw ReleaseError.notPublished(releases[0].tag_name) }
+        // In a list, a tag that is not a version is someone else's business.
+        let versioned = published.compactMap { release in ReleaseVersion(release.tag_name).map { (release, $0) } }
+        if !isList, versioned.isEmpty { throw ReleaseError.badTag(releases[0].tag_name) }
+        guard let (release, version) = versioned.max(by: { $0.1 < $1.1 }) else { throw ReleaseError.noRelease }
 
         let name = Self.diskImageName(app: app, version: version)
         let assets = Dictionary(release.assets.map { ($0.name, $0.browser_download_url) }, uniquingKeysWith: { a, _ in a })
@@ -84,6 +102,7 @@ public enum ReleaseError: LocalizedError, Equatable {
     case notPublished(String)
     case badTag(String)
     case noDiskImage(String)
+    case noRelease
 
     public var errorDescription: String? {
         switch self {
@@ -100,6 +119,8 @@ public enum ReleaseError: LocalizedError, Equatable {
         case .noDiskImage(let name):
             String(localized: "the release has no \(name)",
                    comment: "Update error, with the name of a missing .dmg file; lowercase, follows a colon")
+        case .noRelease:
+            String(localized: "no release was found", comment: "Update error; lowercase, follows a colon")
         }
     }
 }

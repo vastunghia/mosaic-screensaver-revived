@@ -95,7 +95,7 @@ cat > "$HELP/Contents/Info.plist" <<PLIST
     <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
     <key>CFBundleName</key><string>$APP_NAME</string>
     <key>CFBundlePackageType</key><string>BNDL</string>
-    <key>CFBundleShortVersionString</key><string>$VERSION</string>
+    <key>CFBundleShortVersionString</key><string>$SHORT_VERSION</string>
     <key>CFBundleVersion</key><string>$BUILD_NUMBER</string>
     <key>HPDBookAccessPath</key><string>index.html</string>
     <key>HPDBookIndexPath</key><string>$APP_NAME.cshelpindex</string>
@@ -123,9 +123,10 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
     <key>CFBundleName</key><string>$APP_NAME</string>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>$VERSION</string>
+    <key>CFBundleShortVersionString</key><string>$SHORT_VERSION</string>
     <key>CFBundleVersion</key><string>$BUILD_NUMBER</string>
     <key>LSMinimumSystemVersion</key><string>15.0</string>
+    <key>MosaicVersion</key><string>$VERSION</string>
     <key>NSHighResolutionCapable</key><true/>
     <key>LSUIElement</key><true/>
     <key>CFBundleURLTypes</key>

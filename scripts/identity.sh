@@ -31,4 +31,12 @@ LOG_SUBSYSTEM="com.vastunghia.Mosaic"
 # marketing version is the VERSION file at the root; the build number is the
 # commit count, so it only ever grows.
 VERSION="$(tr -d '[:space:]' < "$(dirname "${BASH_SOURCE[0]}")/../VERSION")"
+# A release candidate is 1.0-rc1: macOS's own CFBundleShortVersionString takes
+# the numbers alone, and MosaicVersion the whole, which the app's updater reads
+# (ReleaseVersion).
+if [[ ! "$VERSION" =~ ^[0-9]+(\.[0-9]+)*(-[a-z]+[0-9]+)?$ ]]; then
+    echo "error: VERSION is \"$VERSION\", not 1.2 or 1.2-rc3" >&2
+    exit 1
+fi
+SHORT_VERSION="${VERSION%%-*}"
 BUILD_NUMBER="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-list --count HEAD 2>/dev/null || echo 1)"

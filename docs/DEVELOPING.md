@@ -197,6 +197,23 @@ feed with `defaults write com.vastunghia.Mosaic updateFeed …`, delete `lastUpd
 and launch with `open "mosaic://update?reason=test"`. Delete `updateFeed` afterwards.
 The update category of the log says what happened.
 
+A release candidate is `1.0-rc1` in `VERSION`. macOS's own `CFBundleShortVersionString`
+takes the numbers alone, `1.0`, and `MosaicVersion` the whole, which the updater and the
+About panel read. On GitHub a candidate is a pre-release (`release.sh` prints the command),
+which `releases/latest` leaves out, so a final version is never offered one. A running
+candidate reads the list of releases instead, and takes the newest of the candidates after
+it and the final version: to try it, serve a list, with `"prerelease": true` on the
+candidates.
+
+```sh
+echo 1.0-rc2 > VERSION && ./scripts/release.sh --allow-dirty; git checkout VERSION
+cat > /tmp/feed/releases.json <<'JSON'
+[{"tag_name": "v1.0-rc2", "prerelease": true, "body": "Notes.", "assets": [
+  {"name": "Mosaic-1.0-rc2.dmg", "browser_download_url": "http://127.0.0.1:8765/Mosaic-1.0-rc2.dmg"},
+  {"name": "Mosaic-1.0-rc2.dmg.sha256", "browser_download_url": "http://127.0.0.1:8765/Mosaic-1.0-rc2.dmg.sha256"}]}]
+JSON
+```
+
 ## Renewing the subset
 
 **Change photographs** in Settings chooses the subset again with a new seed. The new one is

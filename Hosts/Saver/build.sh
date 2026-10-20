@@ -71,9 +71,10 @@ cat > "$SAVER/Contents/Info.plist" <<PLIST
     <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
     <key>CFBundleName</key><string>$SAVER_NAME</string>
     <key>CFBundlePackageType</key><string>BNDL</string>
-    <key>CFBundleShortVersionString</key><string>$VERSION</string>
+    <key>CFBundleShortVersionString</key><string>$SHORT_VERSION</string>
     <key>CFBundleVersion</key><string>$BUILD_NUMBER</string>
     <key>LSMinimumSystemVersion</key><string>15.0</string>
+    <key>MosaicVersion</key><string>$VERSION</string>
     <key>NSPrincipalClass</key><string>MosaicSaverView</string>
 </dict>
 </plist>

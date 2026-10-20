@@ -115,4 +115,10 @@ echo "==> $DMG"
 du -h "$DMG" | cut -f1
 cat "$OUT/$NAME.dmg.sha256"
 echo "    to publish, once the tag is pushed:"
-echo "    gh release create v$VERSION \"$DMG\" \"$OUT/$NAME.dmg.sha256\" --title \"$PRODUCT_NAME $VERSION\""
+if [[ "$VERSION" == *-* ]]; then
+    # A release candidate is a pre-release: releases/latest leaves it out, so
+    # only another candidate's updater offers it (Updater.followsPrereleases).
+    echo "    gh release create v$VERSION \"$DMG\" \"$OUT/$NAME.dmg.sha256\" --prerelease --title \"$PRODUCT_NAME ${VERSION/-rc/ RC }\""
+else
+    echo "    gh release create v$VERSION \"$DMG\" \"$OUT/$NAME.dmg.sha256\" --title \"$PRODUCT_NAME $VERSION\""
+fi
