@@ -4,6 +4,34 @@
     "%lld photographs, updated %@." : {
       "comment" : "Screen saver options: the status, with when the photographs last changed",
       "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%#@photographs@, aktualisiert am %2$@."
+          },
+          "substitutions" : {
+            "photographs" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "needs_review",
+                      "value" : "%arg Foto"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "needs_review",
+                      "value" : "%arg Fotos"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
@@ -25,6 +53,62 @@
                     "stringUnit" : {
                       "state" : "translated",
                       "value" : "%arg photographs"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%#@photographs@ el %2$@."
+          },
+          "substitutions" : {
+            "photographs" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "needs_review",
+                      "value" : "%arg foto, actualizada"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "needs_review",
+                      "value" : "%arg fotos, actualizadas"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%#@photographs@ le %2$@."
+          },
+          "substitutions" : {
+            "photographs" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "needs_review",
+                      "value" : "%arg photo, mise à jour"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "needs_review",
+                      "value" : "%arg photos, mises à jour"
                     }
                   }
                 }
@@ -65,6 +149,34 @@
     "%lld photographs, updated %@: Mosaic needs at least %lld." : {
       "comment" : "Screen saver options: the status, with when the photographs last changed, and too few of them",
       "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%#@photographs@, aktualisiert am %2$@: Mosaic braucht mindestens %3$lld."
+          },
+          "substitutions" : {
+            "photographs" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "needs_review",
+                      "value" : "%arg Foto"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "needs_review",
+                      "value" : "%arg Fotos"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
@@ -86,6 +198,62 @@
                     "stringUnit" : {
                       "state" : "translated",
                       "value" : "%arg photographs"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%#@photographs@ el %2$@: Mosaic necesita al menos %3$lld."
+          },
+          "substitutions" : {
+            "photographs" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "needs_review",
+                      "value" : "%arg foto, actualizada"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "needs_review",
+                      "value" : "%arg fotos, actualizadas"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%#@photographs@ le %2$@ : il en faut au moins %3$lld à Mosaic."
+          },
+          "substitutions" : {
+            "photographs" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "needs_review",
+                      "value" : "%arg photo, mise à jour"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "needs_review",
+                      "value" : "%arg photos, mises à jour"
                     }
                   }
                 }
@@ -126,6 +294,24 @@
     "%lld photographs." : {
       "comment" : "Screen saver options: the status",
       "localizations" : {
+        "de" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld Foto."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld Fotos."
+                }
+              }
+            }
+          }
+        },
         "en" : {
           "variations" : {
             "plural" : {
@@ -144,6 +330,42 @@
             }
           }
         },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld foto."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld fotos."
+                }
+              }
+            }
+          }
+        },
+        "fr" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld photo."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld photos."
+                }
+              }
+            }
+          }
+        },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
@@ -155,6 +377,34 @@
     "%lld photographs: Mosaic needs at least %lld." : {
       "comment" : "Screen saver options: the status, with too few photographs",
       "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%#@photographs@: Mosaic braucht mindestens %2$lld."
+          },
+          "substitutions" : {
+            "photographs" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "needs_review",
+                      "value" : "%arg Foto"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "needs_review",
+                      "value" : "%arg Fotos"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
@@ -183,6 +433,62 @@
             }
           }
         },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%#@photographs@: Mosaic necesita al menos %2$lld."
+          },
+          "substitutions" : {
+            "photographs" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "needs_review",
+                      "value" : "%arg foto"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "needs_review",
+                      "value" : "%arg fotos"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%#@photographs@ : il en faut au moins %2$lld à Mosaic."
+          },
+          "substitutions" : {
+            "photographs" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "needs_review",
+                      "value" : "%arg photo"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "needs_review",
+                      "value" : "%arg photos"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
@@ -194,10 +500,28 @@
     "%lld rows, %lld seconds a photograph." : {
       "comment" : "Screen saver options: the two settings of the effect",
       "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%1$lld Zeilen, %2$lld Sekunden pro Foto."
+          }
+        },
         "en" : {
           "stringUnit" : {
             "state" : "new",
             "value" : "%1$lld rows, %2$lld seconds a photograph."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%1$lld filas, %2$lld segundos por foto."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%1$lld lignes, %2$lld secondes par photo."
           }
         },
         "it" : {
@@ -211,6 +535,24 @@
     "Done" : {
       "comment" : "Screen saver options: button that closes them",
       "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Fertig"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Aceptar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Terminé"
+          }
+        },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
@@ -222,6 +564,24 @@
     "Mosaic could not start. Open Mosaic Companion to check its photographs." : {
       "comment" : "Shown on the screen saver, when it fails",
       "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mosaic konnte nicht starten. Öffne Mosaic Companion, um seine Fotos zu prüfen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "No se ha podido iniciar Mosaic. Abre Mosaic Companion para revisar sus fotos."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Impossible de lancer Mosaic. Ouvrez Mosaic Companion pour vérifier ses photos."
+          }
+        },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
@@ -233,6 +593,24 @@
     "Mosaic has %lld photographs so far. Open Mosaic Companion to add more." : {
       "comment" : "Shown on the screen saver, with too few photographs to start",
       "localizations" : {
+        "de" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "Mosaic hat bisher %lld Foto. Öffne Mosaic Companion, um weitere hinzuzufügen."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "Mosaic hat bisher %lld Fotos. Öffne Mosaic Companion, um weitere hinzuzufügen."
+                }
+              }
+            }
+          }
+        },
         "en" : {
           "variations" : {
             "plural" : {
@@ -251,6 +629,42 @@
             }
           }
         },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "Por ahora Mosaic tiene %lld foto. Abre Mosaic Companion para añadir más."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "Por ahora Mosaic tiene %lld fotos. Abre Mosaic Companion para añadir más."
+                }
+              }
+            }
+          }
+        },
+        "fr" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "Mosaic n’a pour l’instant que %lld photo. Ouvrez Mosaic Companion pour en ajouter."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "Mosaic n’a pour l’instant que %lld photos. Ouvrez Mosaic Companion pour en ajouter."
+                }
+              }
+            }
+          }
+        },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
@@ -262,6 +676,24 @@
     "No photographs yet. Open Mosaic Companion to choose them." : {
       "comment" : "Screen saver options: the status, before there is an index",
       "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Noch keine Fotos. Öffne Mosaic Companion, um sie auszuwählen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Todavía no hay fotos. Abre Mosaic Companion para elegirlas."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Pas encore de photos. Ouvrez Mosaic Companion pour les choisir."
+          }
+        },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
@@ -273,6 +705,24 @@
     "Open Mosaic Companion to choose the photographs for the screen saver." : {
       "comment" : "Shown on the screen saver, when there is no index",
       "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Öffne Mosaic Companion, um die Fotos für den Bildschirmschoner auszuwählen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Abre Mosaic Companion para elegir las fotos del salvapantallas."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Ouvrez Mosaic Companion pour choisir les photos de l’économiseur d’écran."
+          }
+        },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
@@ -284,6 +734,24 @@
     "Open Mosaic Companion…" : {
       "comment" : "Screen saver options: button",
       "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mosaic Companion öffnen …"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Abrir Mosaic Companion…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Ouvrir Mosaic Companion…"
+          }
+        },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
@@ -295,6 +763,24 @@
     "The photographs and the settings are chosen in Mosaic Companion." : {
       "comment" : "Screen saver options",
       "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Fotos und Einstellungen wählst du in Mosaic Companion."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Las fotos y los ajustes se eligen en Mosaic Companion."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Les photos et les réglages se choisissent dans Mosaic Companion."
+          }
+        },
         "it" : {
           "stringUnit" : {
             "state" : "translated",

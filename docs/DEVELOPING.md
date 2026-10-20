@@ -76,6 +76,12 @@ defaults delete "$P" NSDoubleLocalizedStrings             # afterwards
 Doubled, a plural with more than one number shows its raw `%1$#@name@` in the second
 half: it reads right without the doubling.
 
+The catalogs carry German, French, Italian and Spanish beside English, and the guide has a
+folder per language in `Hosts/App/Help/`. Another language is one more column in the three
+catalogs and one more folder of pages, with the same file names and anchors; the build
+scripts pick up both without changes. The names of macOS itself (System Settings, its panes,
+Low Data Mode) are written as that language's macOS writes them.
+
 ## Running the effect on a folder
 
 ```sh

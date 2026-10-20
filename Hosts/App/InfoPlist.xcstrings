@@ -5,10 +5,28 @@
       "comment" : "Why the app asks for the Photos library, shown by macOS in the permission dialog",
       "extractionState" : "manual",
       "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mosaic Companion liest deine Fotos-Mediathek, um die Fotos für den Bildschirmschoner Mosaic vorzubereiten."
+          }
+        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mosaic Companion reads your photo library to prepare the photographs for the Mosaic screen saver."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mosaic Companion lee tu fototeca para preparar las fotos del salvapantallas Mosaic."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mosaic Companion lit votre photothèque pour préparer les photos de l’économiseur d’écran Mosaic."
           }
         },
         "it" : {

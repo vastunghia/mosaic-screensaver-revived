@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Vos photos et la confidentialité</title>
+<meta name="description" content="Vos photos ne quittent jamais votre Mac&nbsp;; Mosaic Companion en conserve de petites copies, et l’économiseur d’écran ne lit que celles-ci.">
+<link rel="stylesheet" href="help.css">
+</head>
+<body>
+<h1>Vos photos et la confidentialité</h1>
+<p class="lead">Vos photos ne quittent jamais votre Mac. Mosaic Companion en conserve de petites copies, et l’économiseur d’écran ne lit que celles-ci.</p>
+
+<h2>Ce que conserve Mosaic Companion</h2>
+<p>Pour chaque photo qu’utilise l’économiseur d’écran, Mosaic Companion conserve une petite copie pour composer les mosaïques et une plus grande pour les gros plans, dans <code>~/Library/Application Support/Mosaic</code>. Cela occupe environ 1,2 Go pour 2&nbsp;048 photos, et environ 1 Go de plus pendant un moment chaque fois que Mosaic choisit d’autres photos (<a href="settings.html#photographs">Changer de photos</a>). Il ne modifie jamais vos photos.</p>
+<p>Si votre photothèque garde les originaux dans iCloud, Mosaic Companion ne télécharge rien sauf si vous le choisissez, dans la configuration ou dans les <a href="settings.html#photographs">réglages</a>. Avec <strong>Gros plans nets seulement</strong>, il demande à Photos une copie plus nette des photos qu’il affiche en plein écran, et de certaines qu’il affiche en grand autour d’elles, d’environ 1 Mo chacune, au plus 256 par jour et 512 par semaine&nbsp;; Photos conserve ces copies dans votre photothèque jusqu’à ce que l’espace soit nécessaire.</p>
+<p>Lorsqu’une photo contient des visages, Mosaic Companion les détecte sur votre Mac, pour que sa copie les garde dans le cadre. Rien n’est envoyé nulle part.</p>
+<p>Pour écarter les captures d’écran, les documents et les photos peu réussies, Mosaic Companion lit les notes que Photos attribue à vos photos dans la base de données de la photothèque elle-même, en lecture seule, et fait examiner par votre Mac les photos que Photos n’a pas encore notées. Tout reste sur votre Mac, et rien ne change dans votre photothèque. Pour désactiver cette fonction, consultez les <a href="settings.html#photographs">réglages</a>.</p>
+
+<h2>Accès à Photos</h2>
+<p>Seul Mosaic Companion lit votre photothèque, avec l’accès que vous lui donnez. L’économiseur d’écran ne le demande jamais et ne lit jamais la photothèque&nbsp;: il utilise les copies que l’app a faites. Pour modifier l’accès, ouvrez <strong>Réglages Système › Confidentialité et sécurité › Photos</strong>.</p>
+<h2>Recherche de mises à jour</h2>
+<p>Une fois par jour, Mosaic Companion demande à GitHub, où il est publié, s’il existe une version plus récente, et la télécharge depuis ce site. GitHub voit votre adresse IP, comme lors d’une visite de la page. Rien sur vous ou sur vos photos n’est envoyé. Consultez <a href="updates.html">Mettre à jour Mosaic</a>.</p>
+</body>
+</html>

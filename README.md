@@ -76,6 +76,10 @@ turns opening at login on and off.
 The full guide is inside the app, under **Help › Mosaic Companion Help**, and always matches the
 version you have.
 
+The app, the screen saver and the guide are in English, French, German, Italian and Spanish,
+and follow the language of your Mac. The French, German and Spanish translations have not
+been checked by a native speaker yet: if something reads wrong, please open an issue.
+
 ## Your photographs
 
 They never leave your Mac. Mosaic Companion reads them through the Photos library (or the folder you
