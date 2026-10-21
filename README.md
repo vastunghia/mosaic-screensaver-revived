@@ -253,7 +253,7 @@ if you find one, please open an issue.
 
 If you like Mosaic, please give it a star on GitHub: it helps other people find it. And if
 you'd like to chip in a few dollars on [Ko-fi](https://ko-fi.com/vastunghia), they will go
-towards the Apple Developer Program ($99 a year), so that future releases can be notarized
+towards the Apple Developer Program (€99 a year), so that future releases can be notarized
 and open without the **Open Anyway** step.
 
 ## License
