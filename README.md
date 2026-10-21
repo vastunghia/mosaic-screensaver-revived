@@ -13,7 +13,8 @@
 <p align="center">
   <a href="https://vastunghia.github.io/mosaic-screensaver-revived/"><b>Website</b></a> ·
   <a href="https://github.com/vastunghia/mosaic-screensaver-revived/releases/latest"><b>Download</b></a> ·
-  <a href="https://github.com/vastunghia/mosaic-screensaver-revived/discussions"><b>Discussions</b></a>
+  <a href="https://github.com/vastunghia/mosaic-screensaver-revived/discussions"><b>Discussions</b></a> ·
+  <a href="https://ko-fi.com/vastunghia"><b>Support</b></a>
 </p>
 
 <p align="center">
@@ -247,6 +248,13 @@ each with a written specification of its own, and tested every part before movin
 real libraries of tens of thousands of photographs, on Intel and Apple silicon Macs, on
 macOS 15 and 26, on standard accounts and on libraries kept in iCloud. Bugs surely remain;
 if you find one, please open an issue.
+
+## Supporting Mosaic
+
+If you like Mosaic, please give it a star on GitHub: it helps other people find it. And if
+you'd like to chip in a few dollars on [Ko-fi](https://ko-fi.com/vastunghia), they will go
+towards the Apple Developer Program ($99 a year), so that future releases can be notarized
+and open without the **Open Anyway** step.
 
 ## License
 
