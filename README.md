@@ -8,6 +8,7 @@
   <a href="https://github.com/vastunghia/mosaic-screensaver-revived/releases"><img src="https://img.shields.io/github/v/release/vastunghia/mosaic-screensaver-revived?include_prereleases&sort=semver" alt="Latest release"></a>
   <a href="#what-you-need"><img src="https://img.shields.io/badge/macOS-15%2B-000000?logo=apple&logoColor=white" alt="macOS 15 or later"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/vastunghia/mosaic-screensaver-revived" alt="License: MIT"></a>
+  <a href="https://ko-fi.com/vastunghia"><img src="https://img.shields.io/badge/Ko--fi-support%20Mosaic-FF5E5B?logo=kofi&logoColor=white" alt="Support Mosaic on Ko-fi"></a>
 </p>
 
 <p align="center">
