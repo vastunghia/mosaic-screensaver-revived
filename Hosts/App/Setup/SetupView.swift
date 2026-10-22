@@ -72,10 +72,12 @@ struct SetupView: View {
 
     /// The last page does not claim everything is done when it is not.
     private var title: String {
-        guard page == .done else { return page.title }
-        let undone = SetupPage.pages(for: model).contains { $0.isDone(model) == false }
-        guard undone else { return page.title }
+        guard page == .done, isAlmostDone else { return page.title }
         return String(localized: "Almost Done", comment: "Setup: last page's title, when some page asked for something not done")
+    }
+
+    private var isAlmostDone: Bool {
+        SetupPage.pages(for: model).contains { $0.isDone(model) == false }
     }
 
     @ViewBuilder private var content: some View {
@@ -107,7 +109,12 @@ struct SetupView: View {
                 }
                 ProblemRow(model: model, place: .photographs)
             } footer: {
-                Footnote("They never leave this Mac: Mosaic Companion keeps a small copy of each, to build the mosaics from. Which albums, and how many photographs, are in Settings.")
+                VStack(alignment: .leading, spacing: 8) {
+                    Footnote("They never leave this Mac: Mosaic Companion keeps a small copy of each, to build the mosaics from. Which albums, and how many photographs, are in Settings.")
+                    if model.preferences.source == .photos && model.preferences.collectionIdentifiers.isEmpty {
+                        PrivacyNote("While you are away, the screen saver may show any photograph in your library, even one you would rather keep private. To avoid that, hide such photographs in Photos, choose only some albums in Settings, or use a folder instead.")
+                    }
+                }
             }
         case .screenSaver:
             Section {
@@ -174,7 +181,7 @@ struct SetupView: View {
             Section {
                 summary
             } footer: {
-                Footnote("What is left undone stays in the Mosaic Companion window, with what to do about it.")
+                Footnote(doneNote)
             }
             if model.saver == .installed {
                 Section {
@@ -186,6 +193,15 @@ struct SetupView: View {
                 }
             }
         }
+    }
+
+    /// The setup asks only what the screen saver cannot do without, and the
+    /// last page says the rest is in Settings. In the footer, not as a row
+    /// with a button: with the row above, that ran past the window's height.
+    private var doneNote: Text {
+        let settings = Text("These were the main choices: rows, zoom duration and the others are in Settings.")
+        guard isAlmostDone else { return settings }
+        return Text("What is left undone stays in the Mosaic Companion window, with what to do about it.") + Text(verbatim: " ") + settings
     }
 
     /// Every step and whether it is done, in two columns: the window keeps

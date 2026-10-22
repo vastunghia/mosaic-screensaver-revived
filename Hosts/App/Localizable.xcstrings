@@ -6258,6 +6258,34 @@
         }
       }
     },
+    "These were the main choices: rows, zoom duration and the others are in Settings." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Das waren die wichtigsten Entscheidungen: Zeilen, Zoomdauer und alles Weitere findest du in den Einstellungen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Estas eran las opciones principales: las filas, la duración del zoom y las demás están en Ajustes."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "C’étaient les choix principaux : les lignes, la durée du zoom et les autres se trouvent dans les réglages."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Queste erano le scelte principali: righe, durata dello zoom e le altre sono in Impostazioni."
+          }
+        }
+      }
+    },
     "They never leave this Mac: Mosaic Companion keeps a small copy of each, to build the mosaics from. Which albums, and how many photographs, are in Settings." : {
       "localizations" : {
         "de" : {
@@ -6651,6 +6679,62 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Quali foto"
+          }
+        }
+      }
+    },
+    "While you are away, the screen saver may show any photograph in your library, even one you would rather keep private. To avoid that, hide such photographs in Photos, choose only some albums in Settings, or use a folder instead." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Während du nicht da bist, kann der Bildschirmschoner jedes Foto deiner Mediathek zeigen, auch eines, das du lieber für dich behalten würdest. Um das zu vermeiden, blende solche Fotos in Fotos aus, wähle in den Einstellungen nur einige Alben oder verwende stattdessen einen Ordner."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mientras no estás, el salvapantallas puede mostrar cualquier foto de tu fototeca, incluso una que preferirías guardar para ti. Para evitarlo, oculta esas fotos en Fotos, elige solo algunos álbumes en Ajustes o usa una carpeta."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Pendant votre absence, l’économiseur d’écran peut afficher n’importe quelle photo de votre photothèque, même une que vous préféreriez garder pour vous. Pour l’éviter, masquez ces photos dans Photos, choisissez seulement quelques albums dans les réglages, ou utilisez plutôt un dossier."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quando non sei al Mac, il salvaschermo può mostrare qualsiasi foto della tua libreria, anche una che preferiresti tenere per te. Per evitarlo, nascondi quelle foto in Foto, scegli solo alcuni album in Impostazioni, oppure usa una cartella."
+          }
+        }
+      }
+    },
+    "While you are away, the screen saver may show any photograph in your library, even one you would rather keep private. To avoid that, hide such photographs in Photos, choose only some albums, or use a folder instead." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Während du nicht da bist, kann der Bildschirmschoner jedes Foto deiner Mediathek zeigen, auch eines, das du lieber für dich behalten würdest. Um das zu vermeiden, blende solche Fotos in Fotos aus, wähle nur einige Alben oder verwende stattdessen einen Ordner."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mientras no estás, el salvapantallas puede mostrar cualquier foto de tu fototeca, incluso una que preferirías guardar para ti. Para evitarlo, oculta esas fotos en Fotos, elige solo algunos álbumes o usa una carpeta."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Pendant votre absence, l’économiseur d’écran peut afficher n’importe quelle photo de votre photothèque, même une que vous préféreriez garder pour vous. Pour l’éviter, masquez ces photos dans Photos, choisissez seulement quelques albums, ou utilisez plutôt un dossier."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quando non sei al Mac, il salvaschermo può mostrare qualsiasi foto della tua libreria, anche una che preferiresti tenere per te. Per evitarlo, nascondi quelle foto in Foto, scegli solo alcuni album, oppure usa una cartella."
           }
         }
       }

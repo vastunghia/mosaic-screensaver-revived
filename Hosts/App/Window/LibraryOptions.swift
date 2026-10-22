@@ -31,7 +31,12 @@ struct LibraryOptions: View {
         } header: {
             Text("Photographs to Use")
         } footer: {
-            Footnote("No album chosen is the whole library; several are combined.")
+            VStack(alignment: .leading, spacing: 8) {
+                Footnote("No album chosen is the whole library; several are combined.")
+                if model.preferences.collectionIdentifiers.isEmpty {
+                    PrivacyNote("While you are away, the screen saver may show any photograph in your library, even one you would rather keep private. To avoid that, hide such photographs in Photos, choose only some albums, or use a folder instead.")
+                }
+            }
         }
         .sheet(isPresented: $choosingAlbums) {
             AlbumPicker(model: model)
