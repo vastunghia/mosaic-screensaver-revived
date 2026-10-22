@@ -6286,30 +6286,30 @@
         }
       }
     },
-    "They never leave this Mac: Mosaic Companion keeps a small copy of each, to build the mosaics from. Which albums, and how many photographs, are in Settings." : {
+    "They never leave this Mac: Mosaic Companion keeps a small copy of each, to build the mosaics from. How many photographs, and which, is in Settings." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Sie verlassen diesen Mac nie: Mosaic Companion behält von jedem eine kleine Kopie, aus der es die Mosaike baut. Welche Alben und wie viele Fotos, legst du in den Einstellungen fest."
+            "value" : "Sie verlassen diesen Mac nie: Mosaic Companion behält von jedem eine kleine Kopie, aus der es die Mosaike baut. Wie viele Fotos und welche, legst du in den Einstellungen fest."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Nunca salen de este Mac: Mosaic Companion guarda una copia pequeña de cada una para componer los mosaicos. Qué álbumes y cuántas fotos se eligen en Ajustes."
+            "value" : "Nunca salen de este Mac: Mosaic Companion guarda una copia pequeña de cada una para componer los mosaicos. Cuántas fotos y cuáles se elige en Ajustes."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Elles ne quittent jamais ce Mac : Mosaic Companion en garde une petite copie, pour composer les mosaïques. Les albums et le nombre de photos se choisissent dans les réglages."
+            "value" : "Elles ne quittent jamais ce Mac : Mosaic Companion en garde une petite copie, pour composer les mosaïques. Le nombre de photos et lesquelles se choisissent dans les réglages."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non lasciano mai questo Mac: Mosaic Companion ne tiene una piccola copia, con cui comporre i mosaici. Quali album e quante foto si scelgono in Impostazioni."
+            "value" : "Non lasciano mai questo Mac: Mosaic Companion ne tiene una piccola copia, con cui comporre i mosaici. Quante foto e quali si sceglie in Impostazioni."
           }
         }
       }
@@ -6513,34 +6513,6 @@
         }
       }
     },
-    "Using" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Verwendet"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "En uso"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Utilisation"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "In uso"
-          }
-        }
-      }
-    },
     "Waiting for approval in System Settings" : {
       "localizations" : {
         "de" : {
@@ -6679,34 +6651,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Quali foto"
-          }
-        }
-      }
-    },
-    "While you are away, the screen saver may show any photograph in your library, even one you would rather keep private. To avoid that, hide such photographs in Photos, choose only some albums in Settings, or use a folder instead." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Während du nicht da bist, kann der Bildschirmschoner jedes Foto deiner Mediathek zeigen, auch eines, das du lieber für dich behalten würdest. Um das zu vermeiden, blende solche Fotos in Fotos aus, wähle in den Einstellungen nur einige Alben oder verwende stattdessen einen Ordner."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Mientras no estás, el salvapantallas puede mostrar cualquier foto de tu fototeca, incluso una que preferirías guardar para ti. Para evitarlo, oculta esas fotos en Fotos, elige solo algunos álbumes en Ajustes o usa una carpeta."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Pendant votre absence, l’économiseur d’écran peut afficher n’importe quelle photo de votre photothèque, même une que vous préféreriez garder pour vous. Pour l’éviter, masquez ces photos dans Photos, choisissez seulement quelques albums dans les réglages, ou utilisez plutôt un dossier."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Quando non sei al Mac, il salvaschermo può mostrare qualsiasi foto della tua libreria, anche una che preferiresti tenere per te. Per evitarlo, nascondi quelle foto in Foto, scegli solo alcuni album in Impostazioni, oppure usa una cartella."
           }
         }
       }

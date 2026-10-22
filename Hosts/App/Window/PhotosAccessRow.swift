@@ -23,7 +23,7 @@ struct PhotosAccessRow: View {
                 Button("Allow Access…", action: model.requestAccess)
             }
         case .authorized:
-            LabeledContent("Using", value: model.albumSummary)
+            AlbumsRow(model: model)
         case .limited:
             HStack {
                 Label("Limited to the photographs you picked", systemImage: "circle.lefthalf.filled")

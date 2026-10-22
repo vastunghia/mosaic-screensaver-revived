@@ -110,9 +110,9 @@ struct SetupView: View {
                 ProblemRow(model: model, place: .photographs)
             } footer: {
                 VStack(alignment: .leading, spacing: 8) {
-                    Footnote("They never leave this Mac: Mosaic Companion keeps a small copy of each, to build the mosaics from. Which albums, and how many photographs, are in Settings.")
+                    Footnote("They never leave this Mac: Mosaic Companion keeps a small copy of each, to build the mosaics from. How many photographs, and which, is in Settings.")
                     if model.preferences.source == .photos && model.preferences.collectionIdentifiers.isEmpty {
-                        PrivacyNote("While you are away, the screen saver may show any photograph in your library, even one you would rather keep private. To avoid that, hide such photographs in Photos, choose only some albums in Settings, or use a folder instead.")
+                        PrivacyNote("While you are away, the screen saver may show any photograph in your library, even one you would rather keep private. To avoid that, hide such photographs in Photos, choose only some albums, or use a folder instead.")
                     }
                 }
             }

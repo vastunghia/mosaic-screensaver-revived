@@ -5,19 +5,10 @@ import SwiftUI
 /// Which photographs of the library: albums, how they are picked, how many.
 struct LibraryOptions: View {
     @ObservedObject var model: AppModel
-    @State private var choosingAlbums = false
 
     var body: some View {
         Section {
-            HStack {
-                LabeledContent("Albums") {
-                    Text(model.albumSummary)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                }
-                Button("Choose…", action: chooseAlbums)
-                    .disabled(model.albums.isEmpty)
-            }
+            AlbumsRow(model: model)
             Picker("Which photographs", selection: $model.preferences.subsetRule) {
                 Text("Random").tag(SubsetRule.random)
                 Text("Most recent").tag(SubsetRule.recent)
@@ -37,9 +28,6 @@ struct LibraryOptions: View {
                     PrivacyNote("While you are away, the screen saver may show any photograph in your library, even one you would rather keep private. To avoid that, hide such photographs in Photos, choose only some albums, or use a folder instead.")
                 }
             }
-        }
-        .sheet(isPresented: $choosingAlbums) {
-            AlbumPicker(model: model)
         }
         Section {
             HStack {
@@ -81,10 +69,6 @@ struct LibraryOptions: View {
         let last = model.subsetRenewedAt.formatted(date: .abbreviated, time: .omitted)
         guard let next = model.nextRenewal else { return "Last changed on \(last)." }
         return "Last changed on \(last), next on \(next.formatted(date: .abbreviated, time: .omitted)). The screen saver shows the current photographs until the new ones are ready."
-    }
-
-    private func chooseAlbums() {
-        choosingAlbums = true
     }
 
     /// Powers of two from 512: more than 8,192 adds time and disk, not
