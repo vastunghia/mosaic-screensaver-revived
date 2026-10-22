@@ -1,6 +1,8 @@
 import SwiftUI
 
 /// The two settings the original exposed: rows, and how long a zoom lasts.
+/// Sliders without steps: with one a row or a second apart, their tick marks
+/// ran together. The preferences round what they set instead.
 struct MosaicOptions: View {
     @ObservedObject var model: AppModel
 
@@ -10,8 +12,7 @@ struct MosaicOptions: View {
                 HStack {
                     Slider(
                         value: $model.preferences.rowsForSlider,
-                        in: Double(AppPreferences.rowRange.lowerBound)...Double(AppPreferences.rowRange.upperBound),
-                        step: 1
+                        in: Double(AppPreferences.rowRange.lowerBound)...Double(AppPreferences.rowRange.upperBound)
                     )
                     Text(model.preferences.rows, format: .number)
                         .monospacedDigit()
@@ -20,7 +21,7 @@ struct MosaicOptions: View {
             }
             LabeledContent("Zoom duration") {
                 HStack {
-                    Slider(value: $model.preferences.cycleDuration, in: AppPreferences.durationRange, step: 1)
+                    Slider(value: $model.preferences.durationForSlider, in: AppPreferences.durationRange)
                     Text("\(Int(model.preferences.cycleDuration)) s", comment: "Zoom duration in seconds, beside its slider")
                         .monospacedDigit()
                         .frame(minWidth: 36, alignment: .trailing)

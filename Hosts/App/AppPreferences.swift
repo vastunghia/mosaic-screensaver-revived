@@ -130,13 +130,20 @@ struct AppPreferences: Equatable {
         SharedSettings(rows: rows, cycleDuration: cycleDuration)
     }
 
-    /// Whether there is anything to index at all.
     /// `rows` for a slider, which moves in doubles.
     var rowsForSlider: Double {
         get { Double(rows) }
         set { rows = Int(newValue.rounded()) }
     }
 
+    /// `cycleDuration` for a slider that moves freely: whole seconds, as the
+    /// label beside it says, and the saver rewritten only when one changes.
+    var durationForSlider: Double {
+        get { cycleDuration }
+        set { cycleDuration = newValue.rounded() }
+    }
+
+    /// Whether there is anything to index at all.
     var hasSource: Bool {
         source == .photos || folder != nil
     }
