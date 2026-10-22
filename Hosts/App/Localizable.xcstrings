@@ -3458,6 +3458,35 @@
         }
       }
     },
+    "More Info…" : {
+      "comment" : "Update alert: opens the release page on GitHub",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Weitere Infos …"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Más información…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "En savoir plus…"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scopri di più…"
+          }
+        }
+      }
+    },
     "Mosaic" : {
       "localizations" : {
         "de" : {

@@ -297,6 +297,8 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: Sheets on the window
 
     private var offeredUpdate: ReleaseVersion?
+    /// The offered release's page on GitHub, for More Info….
+    private var offeredPage: URL?
 
     /// One sheet at a time, at most once a launch: an update ready to
     /// install. Called again as a sheet ends.
@@ -372,7 +374,9 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
                      comment: "Update alert; the version installed now, for a user who is not an administrator")
             : String(localized: "You have \(current.description). Mosaic Companion will relaunch in the new version and update the screen saver too.",
                      comment: "Update alert; the version installed now")
-        if let notes = Self.notesView(release.notes) { alert.accessoryView = notes }
+        offeredPage = release.page
+        alert.accessoryView = Self.accessory(notes: Self.notesView(release.notes),
+                                             moreInfo: release.page == nil ? nil : self)
         alert.addButton(withTitle: String(localized: "Install and Relaunch", comment: "Update alert button"))
         alert.addButton(withTitle: String(localized: "Not Now", comment: "Update alert button"))
         alert.addButton(withTitle: String(localized: "Skip This Version", comment: "Update alert button"))
@@ -396,7 +400,40 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// The release notes, as on the release page, in a box that scrolls.
+    /// The notes, and under them More Info…, which opens the release page and
+    /// leaves the alert up: the alert's own buttons would close it.
+    private static func accessory(notes: NSView?, moreInfo target: AppDelegate?) -> NSView? {
+        let button = target.map { target in
+            let button = NSButton(title: String(localized: "More Info…", comment: "Update alert: opens the release page on GitHub"),
+                                  target: target, action: #selector(openReleasePage(_:)))
+            button.sizeToFit()
+            return button
+        }
+        guard notes != nil || button != nil else { return nil }
+        let gap: CGFloat = 8
+        let notesHeight = notes?.frame.height ?? 0
+        let buttonHeight = button?.frame.height ?? 0
+        let width = notes?.frame.width ?? button?.frame.width ?? 0
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: width,
+                                             height: notesHeight + buttonHeight + (notes != nil && button != nil ? gap : 0)))
+        if let notes {
+            notes.setFrameOrigin(NSPoint(x: 0, y: container.frame.height - notesHeight))
+            container.addSubview(notes)
+        }
+        if let button {
+            button.setFrameOrigin(.zero)
+            container.addSubview(button)
+        }
+        return container
+    }
+
+    @objc private func openReleasePage(_ sender: Any?) {
+        if let offeredPage { NSWorkspace.shared.open(offeredPage) }
+    }
+
+    /// The release notes, as on the release page, in a box that scrolls. The
+    /// scroller stays visible: an overlay one shows only while scrolling, and
+    /// the notes looked cut short.
     private static func notesView(_ notes: String) -> NSView? {
         let trimmed = notes.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
@@ -420,6 +457,8 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
         let scroll = NSTextView.scrollableTextView()
         scroll.frame = NSRect(x: 0, y: 0, width: 360, height: 160)
         scroll.borderType = .bezelBorder
+        scroll.scrollerStyle = .legacy
+        scroll.autohidesScrollers = true
         if let view = scroll.documentView as? NSTextView {
             view.isEditable = false
             view.drawsBackground = false

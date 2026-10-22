@@ -119,6 +119,10 @@ if [[ "$VERSION" == *-* ]]; then
     # A release candidate is a pre-release: releases/latest leaves it out, so
     # only another candidate's updater offers it (Updater.followsPrereleases).
     echo "    gh release create v$VERSION \"$DMG\" \"$OUT/$NAME.dmg.sha256\" --prerelease --title \"$PRODUCT_NAME ${VERSION/-rc/ RC }\""
+    # The updater shows the notes to everyone on a candidate, and asks them
+    # to install: the first line says who should.
+    echo "    with notes whose first line is:"
+    echo "    This is a Release Candidate version. Please consider skipping this version, unless you want to contribute to testing."
 else
     echo "    gh release create v$VERSION \"$DMG\" \"$OUT/$NAME.dmg.sha256\" --title \"$PRODUCT_NAME $VERSION\""
 fi
