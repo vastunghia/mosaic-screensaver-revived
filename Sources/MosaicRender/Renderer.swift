@@ -105,6 +105,8 @@ public final class Renderer {
     ///   - closeUps: photographs of the current mosaic to draw from a texture of
     ///     their own rather than from the atlas. The previous mosaic never uses
     ///     them: by the time it is on screen its tiles are small.
+    ///   - viewport: the size in pixels of what the encoder draws into. A shape
+    ///     other than 16:9 crops the view to fill it (`CanonicalAspect.fill`).
     /// - Returns: how many tiles were drawn, which is the one number that says
     ///   whether culling is doing its job.
     @discardableResult
@@ -112,6 +114,7 @@ public final class Renderer {
         _ frame: FrameState,
         atlas: TileAtlas,
         closeUps: [PhotoID: MTLTexture] = [:],
+        viewport: CGSize,
         into encoder: MTLRenderCommandEncoder
     ) -> Int {
         instances.removeAll(keepingCapacity: true)
@@ -135,9 +138,13 @@ public final class Renderer {
                 destination.update(from: instances, count: instances.count)
             }
 
+        // Culling above stays on the camera's whole 16:9 view, which contains
+        // whatever the crop leaves on screen.
+        let fill = CanonicalAspect.fill(viewportWidth: viewport.width, height: viewport.height)
+        let halfWidth = frame.camera.visibleWidth / 2
         var camera = CameraUniforms(
             center: SIMD2<Float>(Float(frame.camera.center.x), Float(frame.camera.center.y)),
-            halfSpan: Float(frame.camera.visibleWidth / 2)
+            halfSpan: SIMD2<Float>(Float(halfWidth * fill.x), Float(halfWidth * fill.y))
         )
 
         encoder.setVertexBuffer(buffer, offset: 0, index: 0)

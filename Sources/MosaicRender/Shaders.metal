@@ -18,8 +18,7 @@ struct TileInstance {
 
 struct CameraUniforms {
     float2 center;   // in mosaic space
-    float  halfSpan; // half the visible width, in mosaic space
-    float  padding;
+    float2 halfSpan; // half the width and height the screen shows, in mosaic space
 };
 
 struct VertexOut {
@@ -42,9 +41,12 @@ vertex VertexOut tile_vertex(uint vid [[vertex_id]],
     const device TileInstance &tile = instances[iid];
     const float2 p = tile.origin + corner * tile.size;
 
-    // Mosaic space is square and a screenful wide, so the projection carries no
-    // aspect ratio: it is a translation and a scale. The y axis is flipped
-    // because mosaic space grows downwards and clip space grows upwards.
+    // Mosaic space is square and a 16:9 screenful wide, so on a 16:9 screen the
+    // projection is a translation and one scale. On a screen of another shape
+    // the two axes span different amounts of mosaic (CanonicalAspect.fill):
+    // the view fills the screen and the excess is cropped, never stretched.
+    // The y axis is flipped because mosaic space grows downwards and clip space
+    // grows upwards.
     const float2 ndc = (p - camera.center) / camera.halfSpan;
 
     VertexOut out;

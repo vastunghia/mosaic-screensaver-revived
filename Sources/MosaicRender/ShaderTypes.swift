@@ -15,6 +15,5 @@ struct TileInstance {
 
 struct CameraUniforms {
     var center: SIMD2<Float>
-    var halfSpan: Float
-    var padding: Float = 0
+    var halfSpan: SIMD2<Float>
 }

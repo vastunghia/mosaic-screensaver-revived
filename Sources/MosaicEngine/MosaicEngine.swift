@@ -242,7 +242,7 @@ public final class MosaicEngine {
             let layout = lookahead.mosaic(forCycle: index, counting: false).planned.layout
             store.request(
                 cycle: index,
-                widths: closeUpWidths(of: layout, screenWidth: Int(layer.drawableSize.width))
+                widths: closeUpWidths(of: layout, screenWidth: Self.filledWidth(of: layer))
             )
         }
         return store.isComplete(index) ? nil : "close-ups of cycle \(index) loading"
@@ -265,7 +265,7 @@ public final class MosaicEngine {
         let gpu = gpu
 
         let (frame, closeUps) = frameState(
-            at: time, onScreen: true, screenWidth: Int(layer.drawableSize.width)
+            at: time, onScreen: true, screenWidth: Self.filledWidth(of: layer)
         )
 
         // Bounded, because a frame in flight on a device that has just been
@@ -293,7 +293,9 @@ public final class MosaicEngine {
         pass.colorAttachments[0].clearColor = Renderer.clearColor
 
         if let encoder = commands.makeRenderCommandEncoder(descriptor: pass) {
-            let drawn = gpu.renderer.encode(frame, atlas: gpu.atlas, closeUps: closeUps, into: encoder)
+            let drawn = gpu.renderer.encode(
+                frame, atlas: gpu.atlas, closeUps: closeUps, viewport: layer.drawableSize, into: encoder
+            )
             encoder.endEncoding()
             lastTiles = drawn
             statisticsBox.update {
@@ -500,7 +502,10 @@ public final class MosaicEngine {
         pass.colorAttachments[0].clearColor = Renderer.clearColor
 
         if let encoder = commands.makeRenderCommandEncoder(descriptor: pass) {
-            gpu.renderer.encode(frame, atlas: gpu.atlas, closeUps: closeUps, into: encoder)
+            gpu.renderer.encode(
+                frame, atlas: gpu.atlas, closeUps: closeUps,
+                viewport: CGSize(width: texture.width, height: texture.height), into: encoder
+            )
             encoder.endEncoding()
         }
 
@@ -703,6 +708,14 @@ public final class MosaicEngine {
     /// The photographs of a cycle that get bigger on screen than an atlas slice,
     /// within `closeUpOptions.ring` cells of the anchor, each with the width in pixels
     /// it reaches at its largest.
+    /// How wide the whole 16:9 view is on the layer, in pixels: the layer's
+    /// width, or more on a narrower screen, which crops the sides. Close-ups
+    /// are sized to it, since a full-screen photograph then fills the height.
+    private static func filledWidth(of layer: CAMetalLayer) -> Int {
+        let size = layer.drawableSize
+        return Int(CanonicalAspect.filledWidth(viewportWidth: size.width, height: size.height).rounded())
+    }
+
     private func closeUpWidths(of layout: MosaicLayout, screenWidth: Int) -> [PhotoID: Int] {
         let geometry = layout.geometry
         let anchor = layout.anchor
