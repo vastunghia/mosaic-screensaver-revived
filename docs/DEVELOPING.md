@@ -263,6 +263,16 @@ to another Mac.
 - Another profile keeps its own files and permissions: run the script there too.
 - The unified log keeps Mosaic's messages until macOS rotates them away.
 
+## A short screen
+
+The Settings window is as tall as its content, up to what its screen leaves below the menu
+bar and above the Dock; past that the form scrolls. To see a short screen on a tall one,
+cap the content lower with `-settingsHeightLimit <points>`:
+
+```sh
+open ".build/bundle/Mosaic Companion.app" --args -settingsHeightLimit 600
+```
+
 ## The README's video
 
 The loop in the README is an export of four cycles whose subjects come round again, so

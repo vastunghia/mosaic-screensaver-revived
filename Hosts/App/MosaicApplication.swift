@@ -533,7 +533,9 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func showSettings(_ sender: Any?) {
         guard let model else { return }
         if settingsWindow == nil {
-            let controller = NSHostingController(rootView: SettingsView(model: model))
+            let controller = NSHostingController(
+                rootView: SettingsView(model: model, heightLimit: settingsHeightLimit)
+            )
             controller.sizingOptions = [.preferredContentSize]
             let window = NSWindow(contentViewController: controller)
             window.styleMask = [.titled, .closable]
@@ -542,9 +544,47 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
             window.setFrameAutosaveName("Mosaic Settings")
             window.center()
             settingsWindow = window
+            let centre = NotificationCenter.default
+            for name in [NSWindow.didChangeScreenNotification, NSWindow.didResizeNotification] {
+                centre.addObserver(self, selector: #selector(settingsWindowChanged(_:)), name: name, object: window)
+            }
+            centre.addObserver(
+                self, selector: #selector(settingsWindowChanged(_:)),
+                name: NSApplication.didChangeScreenParametersNotification, object: nil
+            )
         }
+        fitSettingsWindow()
         settingsWindow?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private let settingsHeightLimit = SettingsHeightLimit()
+    /// `-settingsHeightLimit <points>` caps the Settings content lower than any
+    /// screen would, to try a short screen on a tall one.
+    private static let settingsHeightLimitKey = "settingsHeightLimit"
+
+    @objc private func settingsWindowChanged(_ notification: Notification) {
+        fitSettingsWindow()
+    }
+
+    /// Keeps the Settings window within the visible part of its screen: the
+    /// content no taller than what is left below the menu bar and above the
+    /// Dock, and the window moved up if its bottom edge falls past them.
+    private func fitSettingsWindow() {
+        guard let window = settingsWindow, let screen = window.screen ?? NSScreen.main else { return }
+        let visible = screen.visibleFrame
+        let titleBar = window.frame.height - window.contentLayoutRect.height
+        let margin: CGFloat = 8
+        var limit = (visible.height - titleBar - 2 * margin).rounded(.down)
+        let override = UserDefaults.standard.double(forKey: Self.settingsHeightLimitKey)
+        if override > 0 { limit = min(limit, override) }
+        if settingsHeightLimit.points != limit { settingsHeightLimit.points = limit }
+
+        var frame = window.frame
+        guard frame.height <= visible.height else { return }
+        if frame.minY < visible.minY { frame.origin.y = visible.minY + margin }
+        if frame.maxY > visible.maxY { frame.origin.y = visible.maxY - frame.height }
+        if frame.origin != window.frame.origin { window.setFrameOrigin(frame.origin) }
     }
 
     /// A login item that quits stops watching the library until the next
