@@ -25,6 +25,10 @@ struct Options {
     /// Where real photographs come from. Without it the harness runs on
     /// synthetic images, which is how milestone 1 judged the movement.
     var folder: URL?
+    /// `--index`. Without it, `--folder` on the command line indexes into
+    /// `harnessIndexDirectory`, never into the index the screen saver reads:
+    /// an experiment on a test folder once replaced that one, and the app's
+    /// housekeeping then deleted the real thumbnails and close-ups.
     var indexDirectory: URL?
     var buildIndex = false
     /// With `--build-index`, stops at the index: no close-ups for the .saver.
@@ -260,6 +264,12 @@ struct Options {
         return SharedLocations.indexDirectory
     }
 
+    /// Where `--folder` indexes when no `--index` is given: beside the app's
+    /// own index and apart from it, so that the screen saver never sees it.
+    static var harnessIndexDirectory: URL {
+        SharedLocations.supportDirectory.appendingPathComponent("harness-index", isDirectory: true)
+    }
+
     /// The shelf of close-ups for the .saver: beside the index it belongs to,
     /// so a test index of another shape never collects the real one's.
     var resolvedCloseUpDirectory: URL {
@@ -444,6 +454,11 @@ struct Options {
             || options.probeLocal != nil || options.probeDownload != nil || options.probeQuality != nil
             || options.exportCulling != nil
             || options.listPhotos != nil || options.exportFaces != nil
+        // The app's own folder source comes from its preferences, not from
+        // here, and does write the real index.
+        if options.folder != nil, options.indexDirectory == nil {
+            options.indexDirectory = harnessIndexDirectory
+        }
         if !options.seedGiven && !exporting {
             options.seed = UInt64.random(in: .min ... .max)
             options.seedIsPerLaunch = true

@@ -109,8 +109,10 @@ APP=".build/bundle/Mosaic Companion.app/Contents/MacOS/Mosaic Companion"
 "$APP" --folder ~/Pictures/SomeFolder --export-cycle /tmp/cycle --frames 240 --width 1280
 ```
 
-`--index <dir>` keeps an index apart from the app's, which lives in
-`~/Library/Application Support/Mosaic`.
+`--folder` indexes into `~/Library/Application Support/Mosaic/harness-index`, apart from
+the index the app keeps in `…/Mosaic/index` for the screen saver; `--index <dir>` puts it
+anywhere else, one per corpus say. Only a folder chosen in the app's Settings goes into the
+screen saver's index.
 
 Tile choice has knobs, because how good a mosaic looks is not something to settle by
 argument: `--k 1|2|4|8` weighs average colour against structure (4 by default),
